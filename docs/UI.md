@@ -1,8 +1,17 @@
 # Vimic2 User Interface
 
+> **Note:** The screenshots below are **UI design mockups** generated programmatically. They accurately represent the intended design but are not captures of the running application.
+>
+> To capture real screenshots:
+> 1. Start the server: `python3 /home/wez/vimic2-demo-server.py`
+> 2. Open http://localhost:8080/ in a browser
+> 3. Take screenshots manually, or
+> 4. Install Playwright: `pip install playwright && playwright install chromium`
+> 5. Run: `python3 /home/wez/capture-real-screenshots.py`
+
 ## Overview
 
-Vimic2 provides a comprehensive web-based user interface for managing CI/CD pipelines, VM pools, runners, and network isolation. The UI is built with HTMX for dynamic updates without page reloads, providing a responsive and modern experience.
+Vimic2 provides a comprehensive web-based user interface for managing CI/CD pipelines, VM pools, runners, and network isolation. The UI is built with vanilla JavaScript and REST APIs for dynamic updates, providing a responsive and modern experience.
 
 ## Table of Contents
 
