@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Vimic2</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/">Vimic2</a>
+        </div>
+        <div class="navbar-menu">
+            <a href="/pipelines">Pipelines</a>
+            <a href="/runners">Runners</a>
+            <a href="/pools">Pools</a>
+            <a href="/networks">Networks</a>
+            <a href="/artifacts">Artifacts</a>
+            <a href="/logs">Logs</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>{{.Title}}</h1>
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="showCreatePipelineModal()">Create Pipeline</button>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Platform</th>
+                    <th>Repository</th>
+                    <th>Branch</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Pipelines}}
+                <tr>
+                    <td><a href="/pipelines/{{.ID}}">{{.ID | truncate 8}}</a></td>
+                    <td><span class="badge badge-{{.Platform | platformClass}}">{{.Platform}}</span></td>
+                    <td>{{.Repository}}</td>
+                    <td><code>{{.Branch}}</code></td>
+                    <td><span class="status status-{{.Status | statusClass}}">{{.Status}}</span></td>
+                    <td>{{.CreatedAt | relativeTime}}</td>
+                    <td>
+                        {{if eq .Status "running"}}
+                        <button class="btn btn-sm btn-danger" onclick="stopPipeline('{{.ID}}')">Stop</button>
+                        {{else if eq .Status "created"}}
+                        <button class="btn btn-sm btn-success" onclick="startPipeline('{{.ID}}')">Start</button>
+                        {{end}}
+                        <button class="btn btn-sm btn-secondary" onclick="viewLogs('{{.ID}}')">Logs</button>
+                        <button class="btn btn-sm btn-danger" onclick="destroyPipeline('{{.ID}}')">Destroy</button>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </main>
+
+    <footer>
+        <p>Vimic2 CI/CD Orchestration Platform &copy; 2024</p>
+    </footer>
+
+    <script>
+        function showCreatePipelineModal() {
+            // TODO: Implement modal
+            alert('Create pipeline modal - not implemented');
+        }
+
+        function startPipeline(id) {
+            fetch('/api/pipelines/' + id + '/start', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    location.reload();
+                });
+        }
+
+        function stopPipeline(id) {
+            fetch('/api/pipelines/' + id + '/stop', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    location.reload();
+                });
+        }
+
+        function destroyPipeline(id) {
+            if (confirm('Are you sure you want to destroy this pipeline?')) {
+                fetch('/api/pipelines/' + id, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(data => {
+                        location.reload();
+                    });
+            }
+        }
+
+        function viewLogs(id) {
+            window.location.href = '/logs?pipeline_id=' + id;
+        }
+    </script>
+</body>
+</html>

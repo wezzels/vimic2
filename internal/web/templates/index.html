@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Vimic2</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/">Vimic2</a>
+        </div>
+        <div class="navbar-menu">
+            <a href="/pipelines">Pipelines</a>
+            <a href="/runners">Runners</a>
+            <a href="/pools">Pools</a>
+            <a href="/networks">Networks</a>
+            <a href="/artifacts">Artifacts</a>
+            <a href="/logs">Logs</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>Vimic2 Dashboard</h1>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Pipelines</h3>
+                <div class="stat-value">{{.PipelineStats.total}}</div>
+                <div class="stat-detail">Running: {{.PipelineStats.running}}</div>
+            </div>
+
+            <div class="stat-card">
+                <h3>Jobs</h3>
+                <div class="stat-value">{{.JobStats.total}}</div>
+                <div class="stat-detail">Running: {{.JobStats.running}}</div>
+            </div>
+
+            <div class="stat-card">
+                <h3>Runners</h3>
+                <div class="stat-value">{{.RunnerStats.total}}</div>
+                <div class="stat-detail">Online: {{.RunnerStats.online}}</div>
+            </div>
+
+            <div class="stat-card">
+                <h3>Networks</h3>
+                <div class="stat-value">{{.NetworkStats.total_networks}}</div>
+                <div class="stat-detail">Active: {{.NetworkStats.active_vlans}}</div>
+            </div>
+        </div>
+
+        <div hx-get="/api/htmx/stats" hx-trigger="every 5s" hx-swap="innerHTML">
+            <!-- Stats loaded dynamically -->
+        </div>
+
+        <section>
+            <h2>Recent Pipelines</h2>
+            <div hx-get="/api/htmx/pipelines" hx-trigger="load" hx-swap="innerHTML">
+                <!-- Pipelines loaded dynamically -->
+            </div>
+        </section>
+
+        <section>
+            <h2>Active Runners</h2>
+            <div hx-get="/api/htmx/runners" hx-trigger="load" hx-swap="innerHTML">
+                <!-- Runners loaded dynamically -->
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Vimic2 CI/CD Orchestration Platform &copy; 2024</p>
+    </footer>
+</body>
+</html>
