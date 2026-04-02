@@ -1,8 +1,259 @@
-# Vimic2 CI/CD Orchestration - Future Enhancements
+# Vimic2 CI/CD Orchestration - TODO & Implementation Plan
 
 **Status: Core System Complete (7 Phases)**
 
-This document outlines optional future enhancements organized as additional phases. Each phase includes detailed implementation plans, technical specifications, and expected outcomes.
+---
+
+## Phase 7.5: UI Completion (IMMEDIATE PRIORITY)
+
+### Overview
+
+Complete the missing UI pages to match the design mockups. This enables full screenshot coverage for the presentation and demo.
+
+### Duration: 1-2 days
+
+### Current State
+
+| Mock Screenshot | Real Screenshot | Status |
+|-----------------|------------------|--------|
+| `01-dashboard.png` | ✅ `01-dashboard.png` | **COMPLETE** |
+| `02-pipelines.png` | ✅ `02-pipelines.png` | **COMPLETE** |
+| `03-pipeline-detail.png` | ❌ Missing | **TODO** |
+| `04-runners.png` | ❌ Missing | **TODO** |
+| `05-pools.png` | ⚠️ `05-vms.png` | **PARTIAL** |
+| `06-networks.png` | ❌ Missing | **TODO** |
+| `07-artifacts.png` | ❌ Missing | **TODO** |
+| `08-logs.png` | ✅ `08-logs.png` | **COMPLETE** |
+| `09-settings.png` | ❌ Missing | **TODO** |
+
+### Task Breakdown
+
+#### Task 1: Pipeline Detail Page (03-pipeline-detail.png)
+
+**Priority:** HIGH  
+**Effort:** 2 hours  
+**Dependencies:** Existing pipelines API
+
+**Implementation:**
+```javascript
+// Route: /pipeline/:id
+// Shows: Stages, Jobs, Logs, Artifacts for single pipeline
+
+// Add to server.py:
+@app.route('/api/pipeline/<pipeline_id>')
+def get_pipeline_detail(pipeline_id):
+    # Return stages, jobs, timing, logs
+    pass
+```
+
+**UI Components:**
+- Pipeline header (ID, status, duration, trigger)
+- Stages timeline (visual progress)
+- Jobs table (name, status, duration, logs link)
+- Artifacts list
+- Log viewer panel
+
+**Screenshot:** Click on a pipeline → show detail view
+
+---
+
+#### Task 2: Runners Management Page (04-runners.png)
+
+**Priority:** HIGH  
+**Effort:** 2 hours  
+**Dependencies:** Existing runners API
+
+**Implementation:**
+```javascript
+// Route: /runners
+// Shows: List of configured runners, status, capabilities
+
+// Add to server.py:
+@app.route('/api/runners')
+def list_runners():
+    # Return runner configurations
+    pass
+
+@app.route('/api/runners/<runner_id>/status')
+def runner_status(runner_id):
+    # Return runner health/status
+    pass
+```
+
+**UI Components:**
+- Runner cards (name, platform, status)
+- Connection status indicator (online/offline)
+- Last job, success rate
+- Create/Edit/Delete buttons
+- Tags and capabilities
+
+**Screenshot:** Navigate to /runners → show runners list
+
+---
+
+#### Task 3: VM Pools Management (05-pools.png)
+
+**Priority:** MEDIUM  
+**Effort:** 2 hours  
+**Dependencies:** Existing VM management
+
+**Implementation:**
+```javascript
+// Route: /pools
+// Shows: VM pools, templates, capacity
+
+// Add to server.py:
+@app.route('/api/pools')
+def list_pools():
+    # Return pool configurations
+    pass
+
+@app.route('/api/pools/<pool_id>/vms')
+def pool_vms(pool_id):
+    # Return VMs in pool
+    pass
+```
+
+**UI Components:**
+- Pool cards (name, capacity, available)
+- Template images list
+- Resource usage graphs
+- Create/Edit/Delete pool buttons
+- VM count, disk usage
+
+**Screenshot:** Navigate to /pools → show pools management
+
+---
+
+#### Task 4: Network Topology Page (06-networks.png)
+
+**Priority:** MEDIUM  
+**Effort:** 3 hours  
+**Dependencies:** Network isolation API
+
+**Implementation:**
+```javascript
+// Route: /networks
+// Shows: VLANs, bridges, firewall rules
+
+// Add to server.py:
+@app.route('/api/networks')
+def list_networks():
+    # Return network configurations
+    pass
+
+@app.route('/api/networks/<network_id>/topology')
+def network_topology(network_id):
+    # Return network graph data
+    pass
+```
+
+**UI Components:**
+- Network list (VLAN, CIDR, status)
+- Visual topology diagram
+- Firewall rules table
+- Connected VMs
+- Create/Edit network buttons
+
+**Screenshot:** Navigate to /networks → show network topology
+
+---
+
+#### Task 5: Artifacts Browser (07-artifacts.png)
+
+**Priority:** LOW  
+**Effort:** 2 hours  
+**Dependencies:** Artifact storage
+
+**Implementation:**
+```javascript
+// Route: /artifacts
+// Shows: Build artifacts, uploads
+
+// Add to server.py:
+@app.route('/api/artifacts')
+def list_artifacts():
+    # Return artifact list
+    pass
+
+@app.route('/api/artifacts/<artifact_id>')
+def get_artifact(artifact_id):
+    # Return artifact metadata/download
+    pass
+```
+
+**UI Components:**
+- Artifact table (name, size, date, pipeline)
+- Filter by pipeline/date
+- Download buttons
+- Preview (for images, logs)
+- Retention status
+
+**Screenshot:** Navigate to /artifacts → show artifacts browser
+
+---
+
+#### Task 6: Settings Page (09-settings.png)
+
+**Priority:** LOW  
+**Effort:** 1 hour  
+**Dependencies:** Configuration API
+
+**Implementation:**
+```javascript
+// Route: /settings
+// Shows: System configuration
+
+// Add to server.py:
+@app.route('/api/settings')
+def get_settings():
+    # Return current settings
+    pass
+
+@app.route('/api/settings', methods=['PUT'])
+def update_settings():
+    # Update settings
+    pass
+```
+
+**UI Components:**
+- General settings (host, port, log level)
+- Platform tokens (GitLab, GitHub, etc.)
+- Network defaults (VLAN range, CIDR)
+- Storage settings
+- Save/Reset buttons
+
+**Screenshot:** Navigate to /settings → show settings form
+
+---
+
+### Implementation Timeline
+
+| Day | Tasks | Hours |
+|-----|-------|-------|
+| Day 1 Morning | Task 1 (Pipeline Detail) + Task 2 (Runners) | 4h |
+| Day 1 Afternoon | Task 3 (Pools) + Task 4 (Networks) | 5h |
+| Day 2 Morning | Task 5 (Artifacts) + Task 6 (Settings) | 3h |
+| Day 2 Afternoon | Screenshot capture + Presentation update | 2h |
+| **Total** | | **14h** |
+
+### Definition of Done
+
+- [ ] All 9 mock screenshots have real counterparts
+- [ ] Demo server serves all pages at correct routes
+- [ ] API endpoints return realistic data
+- [ ] Screenshots captured with Playwright
+- [ ] Presentation updated with new comparison slides
+- [ ] UI.md documentation updated
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `vimic2-demo-server.py` | Add routes for all pages |
+| `docs/screenshots-real/` | Add 6 new screenshots |
+| `docs/UI.md` | Document new pages |
+| `vimic2-presentation.pptx` | Add comparison slides |
 
 ---
 
