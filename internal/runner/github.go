@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/pipeline"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // GitHubRunner manages GitHub Actions runners
 type GitHubRunner struct {
-	db           *pipeline.PipelineDB
+	db           *types.PipelineDB
 	githubURL    string
 	personalToken string
 	runnerName   string
@@ -60,7 +60,7 @@ type GitHubConfig struct {
 }
 
 // NewGitHubRunner creates a new GitHub runner manager
-func NewGitHubRunner(db *pipeline.PipelineDB, config *GitHubConfig) (*GitHubRunner, error) {
+func NewGitHubRunner(db *types.PipelineDB, config *GitHubConfig) (*GitHubRunner, error) {
 	gr := &GitHubRunner{
 		db:            db,
 		githubURL:     config.URL,
@@ -198,7 +198,7 @@ func (gr *GitHubRunner) RegisterRunner(ctx context.Context, vmID, pipelineID str
 		Token:      token,
 		Labels:     gr.labels,
 		Name:       runnerName,
-		Status:     pipeline.RunnerStatusCreating,
+		Status:     types.RunnerStatusCreating,
 		CreatedAt:  time.Now(),
 	}
 	if err := gr.db.SaveRunner(ctx, dbRunner); err != nil {

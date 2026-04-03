@@ -10,10 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/pipeline"
-	"github.com/stsgym/vimic2/internal/pool"
-	"github.com/stsgym/vimic2/internal/network"
-	"github.com/stsgym/vimic2/internal/runner"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 //go:embed templates/*
@@ -21,13 +18,9 @@ var templatesFS embed.FS
 
 // WebUI represents the web UI
 type WebUI struct {
-	db             *pipeline.PipelineDB
-	coordinator    *pipeline.Coordinator
-	dispatcher     *pipeline.JobDispatcher
-	artifacts      *pipeline.ArtifactManager
-	logs           *pipeline.LogCollector
-	poolManager    *pool.PoolManager
-	networkManager *network.IsolationManager
+	db             types.PipelineDB
+	poolManager    types.PoolManagerInterface
+	networkManager types.NetworkManagerInterface
 	runnerManager  *runner.RunnerManager
 	httpServer     *http.Server
 	templates      *template.Template

@@ -7,14 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/pipeline"
-	"github.com/stsgym/vimic2/internal/pool"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // RunnerManager manages CI/CD runners across multiple platforms
 type RunnerManager struct {
-	db          *pipeline.PipelineDB
-	poolManager *pool.PoolManager
+	db          types.PipelineDB
+	poolManager types.PoolManagerInterface
 	gitlab      *GitLabRunner
 	github      *GitHubRunner
 	jenkins     *JenkinsRunner
@@ -30,7 +29,7 @@ type RunnerInfo struct {
 	VMID         string              `json:"vm_id"`
 	PoolName     string              `json:"pool_name"`
 	PipelineID   string              `json:"pipeline_id"`
-	Platform     pipeline.RunnerPlatform `json:"platform"`
+	Platform     types.RunnerPlatform `json:"platform"`
 	PlatformID   string              `json:"platform_runner_id"`
 	Name         string              `json:"name"`
 	Labels       []string            `json:"labels"`
@@ -65,7 +64,7 @@ type RunnerManagerConfig struct {
 }
 
 // NewRunnerManager creates a new runner manager
-func NewRunnerManager(db *pipeline.PipelineDB, poolManager *pool.PoolManager, config *RunnerManagerConfig) (*RunnerManager, error) {
+func NewRunnerManager(db *types.PipelineDB, poolManager *pool.PoolManager, config *RunnerManagerConfig) (*RunnerManager, error) {
 	rm := &RunnerManager{
 		db:          db,
 		poolManager: poolManager,
@@ -117,7 +116,7 @@ func NewRunnerManager(db *pipeline.PipelineDB, poolManager *pool.PoolManager, co
 }
 
 // CreateRunner creates a new runner for a pipeline
-func (rm *RunnerManager) CreateRunner(ctx context.Context, poolName string, platform pipeline.RunnerPlatform, pipelineID string, labels []string) (*RunnerInfo, error) {
+func (rm *RunnerManager) CreateRunner(ctx context.Context, poolName string, platform types.RunnerPlatform, pipelineID string, labels []string) (*RunnerInfo, error) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
@@ -425,7 +424,7 @@ func (rm *RunnerManager) ListRunnersByPipeline(pipelineID string) []*RunnerInfo 
 }
 
 // ListRunnersByPlatform returns runners for a platform
-func (rm *RunnerManager) ListRunnersByPlatform(platform pipeline.RunnerPlatform) []*RunnerInfo {
+func (rm *RunnerManager) ListRunnersByPlatform(platform types.RunnerPlatform) []*RunnerInfo {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 

@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/pipeline"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // PoolManager manages VM pools with QEMU backing files
 type PoolManager struct {
-	db            *pipeline.PipelineDB
+	db            types.PipelineDB
 	templateMgr   *TemplateManager
 	config        map[string]poolConfig
 	vms           map[string]*VM

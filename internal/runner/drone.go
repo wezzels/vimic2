@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/pipeline"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // DroneRunner manages Drone CI runners
 type DroneRunner struct {
-	db          *pipeline.PipelineDB
+	db          *types.PipelineDB
 	droneURL    string
 	rpcHost     string
 	rpcSecret   string
@@ -51,7 +51,7 @@ type DroneConfig struct {
 }
 
 // NewDroneRunner creates a new Drone runner manager
-func NewDroneRunner(db *pipeline.PipelineDB, config *DroneConfig) (*DroneRunner, error) {
+func NewDroneRunner(db *types.PipelineDB, config *DroneConfig) (*DroneRunner, error) {
 	dr := &DroneRunner{
 		db:         db,
 		droneURL:   config.URL,
@@ -153,7 +153,7 @@ func (dr *DroneRunner) RegisterRunner(ctx context.Context, vmID, pipelineID stri
 		PlatformID: token[:8],
 		Token:      token,
 		Name:       fmt.Sprintf("drone-runner-%s", vmID[:8]),
-		Status:     pipeline.RunnerStatusCreating,
+		Status:     types.RunnerStatusCreating,
 		CreatedAt:  time.Now(),
 	}
 

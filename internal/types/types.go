@@ -3,13 +3,69 @@ package types
 
 import "time"
 
-// PipelineDB is a reference to the pipeline database
+// PipelineDB interface for database operations
 type PipelineDB interface {
 	SavePipeline(id string, state map[string]interface{}) error
 	LoadPipeline(id string) (map[string]interface{}, error)
 	DeletePipeline(id string) error
 	ListPipelines() ([]string, error)
 }
+
+// PoolManagerInterface is the interface for pool management
+type PoolManagerInterface interface {
+	AllocateVM(poolName string) (*VMState, error)
+	ReleaseVM(vmID string) error
+	GetPool(name string) (*PoolState, error)
+	ListPools() ([]*PoolState, error)
+}
+
+// NetworkManagerInterface is the interface for network management
+type NetworkManagerInterface interface {
+	CreateNetwork(config *NetworkConfig) (string, error)
+	DestroyNetwork(networkID string) error
+	GetNetwork(networkID string) (*NetworkConfig, error)
+}
+
+// RunnerManagerInterface is the interface for runner management
+type RunnerManagerInterface interface {
+	CreateRunner(platform RunnerPlatform, config map[string]interface{}) (string, error)
+	DestroyRunner(runnerID string) error
+	GetRunner(runnerID string) (map[string]interface{}, error)
+}
+
+// PipelineStatus represents pipeline status
+type PipelineStatus string
+
+const (
+	PipelineStatusCreating  PipelineStatus = "creating"
+	PipelineStatusRunning   PipelineStatus = "running"
+	PipelineStatusSuccess   PipelineStatus = "success"
+	PipelineStatusFailed    PipelineStatus = "failed"
+	PipelineStatusCanceled  PipelineStatus = "canceled"
+)
+
+// RunnerPlatform represents runner platform type
+type RunnerPlatform string
+
+const (
+	PlatformGitLab   RunnerPlatform = "gitlab"
+	PlatformGitHub   RunnerPlatform = "github"
+	PlatformJenkins  RunnerPlatform = "jenkins"
+	PlatformCircleCI RunnerPlatform = "circleci"
+	PlatformDrone    RunnerPlatform = "drone"
+)
+
+// RunnerStatus represents runner status
+type RunnerStatus string
+
+const (
+	RunnerStatusCreating  RunnerStatus = "creating"
+	RunnerStatusOnline    RunnerStatus = "online"
+	RunnerStatusOffline   RunnerStatus = "offline"
+	RunnerStatusBusy      RunnerStatus = "busy"
+	RunnerStatusError     RunnerStatus = "error"
+	RunnerStatusDestroyed RunnerStatus = "destroyed"
+)
 
 // VMState represents VM state
 type VMState struct {
@@ -33,28 +89,6 @@ type PoolState struct {
 	Busy         int    `json:"busy"`
 }
 
-// RunnerPlatform represents runner platform type
-type RunnerPlatform string
-
-const (
-	PlatformGitLab   RunnerPlatform = "gitlab"
-	PlatformGitHub   RunnerPlatform = "github"
-	PlatformJenkins  RunnerPlatform = "jenkins"
-	PlatformCircleCI RunnerPlatform = "circleci"
-	PlatformDrone    RunnerPlatform = "drone"
-)
-
-// PipelineStatus represents pipeline status
-type PipelineStatus string
-
-const (
-	StatusCreated   PipelineStatus = "created"
-	StatusRunning   PipelineStatus = "running"
-	StatusSuccess   PipelineStatus = "success"
-	StatusFailed    PipelineStatus = "failed"
-	StatusCancelled PipelineStatus = "cancelled"
-)
-
 // NetworkConfig represents network configuration
 type NetworkConfig struct {
 	VLAN     int      `json:"vlan"`
@@ -62,43 +96,6 @@ type NetworkConfig struct {
 	Gateway  string   `json:"gateway"`
 	DNS      []string `json:"dns"`
 	Isolated bool     `json:"isolated"`
-}
-
-// PoolManagerInterface is the interface for pool management (breaks import cycle)
-type PoolManagerInterface interface {
-	AllocateVM(poolName string) (*VMState, error)
-	ReleaseVM(vmID string) error
-	GetPool(name string) (*PoolState, error)
-	ListPools() ([]*PoolState, error)
-}
-
-// NetworkManagerInterface is the interface for network management (breaks import cycle)
-type NetworkManagerInterface interface {
-	CreateNetwork(config *NetworkConfig) (string, error)
-	DestroyNetwork(networkID string) error
-	GetNetwork(networkID string) (*NetworkConfig, error)
-}
-
-// RunnerManagerInterface is the interface for runner management (breaks import cycle)
-type RunnerManagerInterface interface {
-	CreateRunner(platform RunnerPlatform, config map[string]interface{}) (string, error)
-	DestroyRunner(runnerID string) error
-	GetRunner(runnerID string) (map[string]interface{}, error)
-	ListRunners() ([]map[string]interface{}, error)
-}
-
-// RunnerState represents runner state
-type RunnerState struct {
-	ID            string          `json:"id"`
-	Name          string          `json:"name"`
-	Platform      RunnerPlatform  `json:"platform"`
-	Status        string          `json:"status"`
-	Version       string          `json:"version"`
-	Tags          []string        `json:"tags"`
-	JobsCompleted int             `json:"jobs_completed"`
-	SuccessRate   float64         `json:"success_rate"`
-	LastJob       *time.Time      `json:"last_job,omitempty"`
-	CreatedAt     time.Time       `json:"created_at"`
 }
 
 // NetworkState represents network state
@@ -109,18 +106,74 @@ type NetworkState struct {
 	Status string `json:"status"`
 }
 
-// StageConfig represents stage configuration
-type StageConfig struct {
-	Name     string   `json:"name"`
-	Jobs     []JobConfig `json:"jobs"`
-	DependsOn []string `json:"depends_on,omitempty"`
+// Runner represents a CI/CD runner
+type Runner struct {
+	ID           string         `json:"id"`
+	Platform     RunnerPlatform `json:"platform"`
+	Status       RunnerStatus   `json:"status"`
+	Name         string         `json:"name"`
+	Labels       []string       `json:"labels"`
+	PipelineID   string         `json:"pipeline_id"`
+	VMID         string         `json:"vm_id"`
+	IPAddress    string         `json:"ip_address"`
+	CurrentJob   string         `json:"current_job,omitempty"`
+	CreatedAt    time.Time      `json:"created_at"`
+	DestroyedAt  *time.Time     `json:"destroyed_at,omitempty"`
 }
 
-// JobConfig represents job configuration
-type JobConfig struct {
-	Name        string            `json:"name"`
-	Image       string            `json:"image,omitempty"`
-	Commands    []string          `json:"commands"`
-	Environment map[string]string `json:"environment,omitempty"`
-	Timeout     int               `json:"timeout,omitempty"`
+// Pipeline represents a CI/CD pipeline
+type Pipeline struct {
+	ID           string         `json:"id"`
+	Platform     RunnerPlatform `json:"platform"`
+	Repository   string         `json:"repository"`
+	Branch       string         `json:"branch"`
+	CommitSHA    string         `json:"commit_sha"`
+	CommitMsg    string         `json:"commit_message"`
+	Author       string         `json:"author"`
+	Status       PipelineStatus `json:"status"`
+	NetworkID    string         `json:"network_id"`
+	VMs          []string       `json:"vms"`
+	Runners      []string       `json:"runners"`
+	StartTime    time.Time      `json:"start_time"`
+	EndTime      *time.Time     `json:"end_time,omitempty"`
+	Duration     int64          `json:"duration_seconds"`
+	CurrentStage string         `json:"current_stage"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+}
+
+// Stage represents a pipeline stage
+type Stage struct {
+	Name      string         `json:"name"`
+	Status    PipelineStatus `json:"status"`
+	Jobs      []Job          `json:"jobs"`
+	StartTime *time.Time     `json:"start_time,omitempty"`
+	EndTime   *time.Time     `json:"end_time,omitempty"`
+}
+
+// Job represents a pipeline job
+type Job struct {
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Stage       string         `json:"stage"`
+	Status      PipelineStatus `json:"status"`
+	RunnerID    string         `json:"runner_id"`
+	StartTime   *time.Time     `json:"start_time,omitempty"`
+	EndTime     *time.Time     `json:"end_time,omitempty"`
+	Duration    int64          `json:"duration_seconds"`
+	Log         []string       `json:"log,omitempty"`
+}
+
+// Artifact represents a build artifact
+type Artifact struct {
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Path        string     `json:"path"`
+	Size        int64      `json:"size"`
+	Checksum    string     `json:"checksum"`
+	PipelineID  string     `json:"pipeline_id"`
+	Downloads   int        `json:"downloads"`
+	TTL         int        `json:"ttl_days"`
+	CreatedAt   time.Time  `json:"created_at"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
 }

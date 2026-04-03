@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/pipeline"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // GitLabRunner manages GitLab CI runners
 type GitLabRunner struct {
-	db           *pipeline.PipelineDB
+	db           *types.PipelineDB
 	gitlabURL    string
 	registrationToken string
 	runnerToken  string
@@ -57,7 +57,7 @@ type GitLabConfig struct {
 }
 
 // NewGitLabRunner creates a new GitLab runner manager
-func NewGitLabRunner(db *pipeline.PipelineDB, config *GitLabConfig) (*GitLabRunner, error) {
+func NewGitLabRunner(db *types.PipelineDB, config *GitLabConfig) (*GitLabRunner, error) {
 	gr := &GitLabRunner{
 		db:               db,
 		gitlabURL:        config.URL,
@@ -183,7 +183,7 @@ func (gr *GitLabRunner) RegisterRunner(ctx context.Context, vmID, pipelineID str
 		Token:      token,
 		Labels:     gr.tags,
 		Name:       runnerName,
-		Status:     pipeline.RunnerStatusCreating,
+		Status:     types.RunnerStatusCreating,
 		CreatedAt:  time.Now(),
 	}
 	if err := gr.db.SaveRunner(ctx, dbRunner); err != nil {

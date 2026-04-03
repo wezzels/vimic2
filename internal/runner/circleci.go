@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/pipeline"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // CircleCIRunner manages CircleCI runners
 type CircleCIRunner struct {
-	db           *pipeline.PipelineDB
+	db           *types.PipelineDB
 	circleciURL  string
 	apiToken     string
 	resourceClass string
@@ -52,7 +52,7 @@ type CircleCIConfig struct {
 }
 
 // NewCircleCIRunner creates a new CircleCI runner manager
-func NewCircleCIRunner(db *pipeline.PipelineDB, config *CircleCIConfig) (*CircleCIRunner, error) {
+func NewCircleCIRunner(db *types.PipelineDB, config *CircleCIConfig) (*CircleCIRunner, error) {
 	cr := &CircleCIRunner{
 		db:            db,
 		circleciURL:   config.URL,
@@ -165,7 +165,7 @@ func (cr *CircleCIRunner) RegisterRunner(ctx context.Context, vmID, pipelineID s
 		PlatformID: resourceClass,
 		Token:      token,
 		Name:       resourceClass,
-		Status:     pipeline.RunnerStatusCreating,
+		Status:     types.RunnerStatusCreating,
 		CreatedAt:  time.Now(),
 	}
 

@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/pipeline"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // IsolationManager manages network isolation for pipelines
 type IsolationManager struct {
-	db           *pipeline.PipelineDB
+	db           types.PipelineDB
 	ovs          *OVSClient
 	vlanAlloc    *VLANAllocator
 	ipam         *IPAMManager

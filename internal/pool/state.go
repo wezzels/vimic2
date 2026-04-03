@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/pipeline"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // StateTracker manages VM state in memory with persistence
 type StateTracker struct {
-	db           *pipeline.PipelineDB
+	db           types.PipelineDB
 	cache        map[string]*VMState
 	stateFile    string
 	eventChan    chan StateEvent

@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/pipeline"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // JenkinsRunner manages Jenkins agents
 type JenkinsRunner struct {
-	db          *pipeline.PipelineDB
+	db          *types.PipelineDB
 	jenkinsURL  string
 	username    string
 	apiToken    string
@@ -52,7 +52,7 @@ type JenkinsConfig struct {
 }
 
 // NewJenkinsRunner creates a new Jenkins runner manager
-func NewJenkinsRunner(db *pipeline.PipelineDB, config *JenkinsConfig) (*JenkinsRunner, error) {
+func NewJenkinsRunner(db *types.PipelineDB, config *JenkinsConfig) (*JenkinsRunner, error) {
 	jr := &JenkinsRunner{
 		db:         db,
 		jenkinsURL: config.URL,
@@ -163,7 +163,7 @@ func (jr *JenkinsRunner) RegisterRunner(ctx context.Context, vmID, pipelineID st
 		PlatformID: agentName,
 		Token:      secret,
 		Name:       agentName,
-		Status:     pipeline.RunnerStatusCreating,
+		Status:     types.RunnerStatusCreating,
 		CreatedAt:  time.Now(),
 	}
 	if err := jr.db.SaveRunner(ctx, dbRunner); err != nil {
