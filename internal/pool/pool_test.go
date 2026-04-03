@@ -20,7 +20,7 @@ func TestPoolManager_ReleaseVM(t *testing.T) {
 	t.Skip("requires database connection")
 }
 
-func TestPoolManager_GetPool(t *testing.T.T) {
+func TestPoolManager_GetPool(t *testing.T) {
 	// Stub test - requires database
 	t.Skip("requires database connection")
 }

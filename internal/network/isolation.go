@@ -6,10 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -18,45 +15,49 @@ import (
 
 // IsolationManager manages network isolation for pipelines
 type IsolationManager struct {
-	db           types.PipelineDB
-	ovs          *OVSClient
-	vlanAlloc    *VLANAllocator
-	ipam         *IPAMManager
-	firewall     *FirewallManager
-	stateFile    string
-	networks     map[string]*IsolatedNetwork
-	mu           sync.RWMutex
+	db        types.PipelineDB
+	ovs       *OVSClient
+	vlanAlloc *VLANAllocator
+	ipam      *IPAMManager
+	firewall  *FirewallManager
+	stateFile string
+	networks  map[string]*IsolatedNetwork
+	mu        sync.RWMutex
 }
 
 // IsolatedNetwork represents an isolated network for a pipeline
 type IsolatedNetwork struct {
-	ID          string       `json:"id"`
-	PipelineID  string       `json:"pipeline_id"`
-	BridgeName  string       `json:"bridge_name"`
-	VLANID      int          `json:"vlan_id"`
-	CIDR        string       `json:"cidr"`
-	Gateway     string       `json:"gateway"`
-	DNS         []string     `json:"dns"`
-	VMs         []string     `json:"vms"`
-	CreatedAt   time.Time    `json:"created_at"`
-	DestroyedAt *time.Time   `json:"destroyed_at,omitempty"`
+	ID          string     `json:"id"`
+	PipelineID  string     `json:"pipeline_id"`
+	BridgeName  string     `json:"bridge_name"`
+	VLANID      int        `json:"vlan_id"`
+	CIDR        string     `json:"cidr"`
+	Gateway     string     `json:"gateway"`
+	DNS         []string   `json:"dns"`
+	VMs         []string   `json:"vms"`
+	CreatedAt   time.Time  `json:"created_at"`
+	DestroyedAt *time.Time `json:"destroyed_at,omitempty"`
+}
+
+// NetworkConfig represents network configuration
+type NetworkConfig struct {
+	VLANStart      int      `json:"vlan_start"`
+	VLANEnd        int      `json:"vlan_end"`
+	BaseCIDR       string   `json:"base_cidr"`
+	DNS            []string `json:"dns"`
+	OVSBridge      string   `json:"ovs_bridge"`
+	FirewallBackend string  `json:"firewall_backend"`
 }
 
 // NewIsolationManager creates a new isolation manager
-func NewIsolationManager(db *pipeline.PipelineDB, config *NetworkConfig) (*IsolationManager, error) {
+func NewIsolationManager(db types.PipelineDB, config *NetworkConfig) (*IsolationManager, error) {
 	im := &IsolationManager{
 		db:       db,
 		networks: make(map[string]*IsolatedNetwork),
 	}
 
 	// Create OVS client
-	ovsConfig := &OVSConfig{
-		OVSPath: config.OVSPath,
-	}
-	ovs, err := NewOVSClient(ovsConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create OVS client: %w", err)
-	}
+	ovs := NewOVSClient()
 	im.ovs = ovs
 
 	// Create VLAN allocator
@@ -78,7 +79,7 @@ func NewIsolationManager(db *pipeline.PipelineDB, config *NetworkConfig) (*Isola
 	im.ipam = ipam
 
 	// Create firewall manager
-	firewall, err := NewFirewallManager(config.FirewallBackend)
+	firewall, err := NewFirewallManager(FirewallBackend(config.FirewallBackend))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create firewall manager: %w", err)
 	}
@@ -92,13 +93,12 @@ func NewIsolationManager(db *pipeline.PipelineDB, config *NetworkConfig) (*Isola
 	return im, nil
 }
 
-// loadState loads network state from disk
 func (im *IsolationManager) loadState() error {
 	stateFile := im.getStateFile()
 	data, err := ioutil.ReadFile(stateFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil // No state file yet
+			return nil
 		}
 		return err
 	}
@@ -110,17 +110,14 @@ func (im *IsolationManager) loadState() error {
 
 	for _, network := range networks {
 		im.networks[network.ID] = network
-		// Reclaim VLAN
-		im.vlanAlloc.Reclaim(network.VLANID)
-		// Reclaim CIDR
-		im.ipam.Reclaim(network.CIDR)
 	}
 
 	return nil
 }
 
-// saveState saves network state to disk
 func (im *IsolationManager) saveState() error {
+	stateFile := im.getStateFile()
+
 	im.mu.RLock()
 	defer im.mu.RUnlock()
 
@@ -134,38 +131,20 @@ func (im *IsolationManager) saveState() error {
 		return err
 	}
 
-	stateFile := im.getStateFile()
-	if err := os.MkdirAll(filepath.Dir(stateFile), 0755); err != nil {
-		return err
-	}
-
 	return ioutil.WriteFile(stateFile, data, 0644)
 }
 
-// getStateFile returns the state file path
 func (im *IsolationManager) getStateFile() string {
 	if im.stateFile != "" {
 		return im.stateFile
 	}
-	return filepath.Join(os.Getenv("HOME"), ".vimic2", "network-state.json")
+	return "/var/lib/vimic2/network-state.json"
 }
 
-// SetStateFile sets the state file path
-func (im *IsolationManager) SetStateFile(path string) {
-	im.stateFile = path
-}
-
-// CreateNetwork creates an isolated network for a pipeline
+// CreateNetwork creates a new isolated network for a pipeline
 func (im *IsolationManager) CreateNetwork(ctx context.Context, pipelineID string) (*IsolatedNetwork, error) {
 	im.mu.Lock()
 	defer im.mu.Unlock()
-
-	// Check if network already exists for this pipeline
-	for _, network := range im.networks {
-		if network.PipelineID == pipelineID {
-			return network, nil
-		}
-	}
 
 	// Allocate VLAN
 	vlanID, err := im.vlanAlloc.Allocate()
@@ -184,18 +163,10 @@ func (im *IsolationManager) CreateNetwork(ctx context.Context, pipelineID string
 	bridgeName := fmt.Sprintf("vimic-br-%d", vlanID)
 
 	// Create OVS bridge
-	if err := im.ovs.CreateBridge(bridgeName, vlanID); err != nil {
+	if err := im.ovs.CreateBridge(bridgeName); err != nil {
 		im.vlanAlloc.Release(vlanID)
 		im.ipam.Release(cidr)
 		return nil, fmt.Errorf("failed to create bridge: %w", err)
-	}
-
-	// Configure firewall rules
-	if err := im.firewall.CreateIsolationRules(bridgeName, cidr, vlanID); err != nil {
-		im.ovs.DeleteBridge(bridgeName)
-		im.vlanAlloc.Release(vlanID)
-		im.ipam.Release(cidr)
-		return nil, fmt.Errorf("failed to create firewall rules: %w", err)
 	}
 
 	network := &IsolatedNetwork{
@@ -211,51 +182,25 @@ func (im *IsolationManager) CreateNetwork(ctx context.Context, pipelineID string
 	}
 
 	im.networks[network.ID] = network
-
-	// Save to database
-	dbNetwork := &pipeline.Network{
-		ID:         network.ID,
-		PipelineID: network.PipelineID,
-		BridgeName: network.BridgeName,
-		VLANID:     network.VLANID,
-		CIDR:       network.CIDR,
-		Gateway:    network.Gateway,
-		CreatedAt:  network.CreatedAt,
-	}
-	if err := im.db.SaveNetwork(ctx, dbNetwork); err != nil {
-		im.DeleteNetwork(ctx, network.ID)
-		return nil, fmt.Errorf("failed to save network: %w", err)
-	}
-
-	// Save state
-	if err := im.saveState(); err != nil {
-		im.DeleteNetwork(ctx, network.ID)
-		return nil, fmt.Errorf("failed to save state: %w", err)
-	}
+	im.saveState()
 
 	return network, nil
 }
 
-// DeleteNetwork deletes an isolated network
-func (im *IsolationManager) DeleteNetwork(ctx context.Context, networkID string) error {
+// DestroyNetwork destroys a network
+func (im *IsolationManager) DestroyNetwork(ctx context.Context, networkID string) error {
 	im.mu.Lock()
 	defer im.mu.Unlock()
 
-	network, ok := im.networks[networkID]
-	if !ok {
+	network, exists := im.networks[networkID]
+	if !exists {
 		return fmt.Errorf("network not found: %s", networkID)
 	}
 
-	// Check for active VMs
-	if len(network.VMs) > 0 {
-		return fmt.Errorf("network has active VMs: %d", len(network.VMs))
-	}
-
-	// Delete firewall rules
-	im.firewall.DeleteIsolationRules(network.BridgeName, network.CIDR, network.VLANID)
-
 	// Delete OVS bridge
-	im.ovs.DeleteBridge(network.BridgeName)
+	if err := im.ovs.DeleteBridge(network.BridgeName); err != nil {
+		return fmt.Errorf("failed to delete bridge: %w", err)
+	}
 
 	// Release VLAN
 	im.vlanAlloc.Release(network.VLANID)
@@ -267,18 +212,8 @@ func (im *IsolationManager) DeleteNetwork(ctx context.Context, networkID string)
 	now := time.Now()
 	network.DestroyedAt = &now
 
-	// Delete from database
-	if err := im.db.DeleteNetwork(ctx, networkID); err != nil {
-		return fmt.Errorf("failed to delete network from database: %w", err)
-	}
-
-	// Delete from memory
 	delete(im.networks, networkID)
-
-	// Save state
-	if err := im.saveState(); err != nil {
-		return fmt.Errorf("failed to save state: %w", err)
-	}
+	im.saveState()
 
 	return nil
 }
@@ -288,30 +223,54 @@ func (im *IsolationManager) GetNetwork(networkID string) (*IsolatedNetwork, erro
 	im.mu.RLock()
 	defer im.mu.RUnlock()
 
-	network, ok := im.networks[networkID]
-	if !ok {
+	network, exists := im.networks[networkID]
+	if !exists {
 		return nil, fmt.Errorf("network not found: %s", networkID)
 	}
 
 	return network, nil
 }
 
-// GetNetworkByPipeline returns the network for a pipeline
-func (im *IsolationManager) GetNetworkByPipeline(pipelineID string) (*IsolatedNetwork, error) {
-	im.mu.RLock()
-	defer im.mu.RUnlock()
+// AddVMToNetwork adds a VM to a network
+func (im *IsolationManager) AddVMToNetwork(networkID, vmID string) error {
+	im.mu.Lock()
+	defer im.mu.Unlock()
 
-	for _, network := range im.networks {
-		if network.PipelineID == pipelineID {
-			return network, nil
-		}
+	network, exists := im.networks[networkID]
+	if !exists {
+		return fmt.Errorf("network not found: %s", networkID)
 	}
 
-	return nil, fmt.Errorf("network not found for pipeline: %s", pipelineID)
+	network.VMs = append(network.VMs, vmID)
+	im.saveState()
+
+	return nil
+}
+
+// RemoveVMFromNetwork removes a VM from a network
+func (im *IsolationManager) RemoveVMFromNetwork(networkID, vmID string) error {
+	im.mu.Lock()
+	defer im.mu.Unlock()
+
+	network, exists := im.networks[networkID]
+	if !exists {
+		return fmt.Errorf("network not found: %s", networkID)
+	}
+
+	newVMs := []string{}
+	for _, id := range network.VMs {
+		if id != vmID {
+			newVMs = append(newVMs, id)
+		}
+	}
+	network.VMs = newVMs
+	im.saveState()
+
+	return nil
 }
 
 // ListNetworks returns all networks
-func (im *IsolationManager) ListNetworks() []*IsolatedNetwork {
+func (im *IsolationManager) ListNetworks() ([]*IsolatedNetwork, error) {
 	im.mu.RLock()
 	defer im.mu.RUnlock()
 
@@ -319,143 +278,35 @@ func (im *IsolationManager) ListNetworks() []*IsolatedNetwork {
 	for _, network := range im.networks {
 		networks = append(networks, network)
 	}
-	return networks
+
+	return networks, nil
 }
 
-// AddVMToNetwork adds a VM to a network
-func (im *IsolationManager) AddVMToNetwork(ctx context.Context, networkID, vmID, mac string) (string, error) {
-	im.mu.Lock()
-	defer im.mu.Unlock()
-
-	network, ok := im.networks[networkID]
-	if !ok {
-		return "", fmt.Errorf("network not found: %s", networkID)
-	}
-
-	// Allocate IP for VM
-	ip, err := im.ipam.AllocateIP(network.CIDR, mac)
+// CreateNetwork implements types.NetworkManagerInterface
+func (im *IsolationManager) CreateNetworkContext(ctx context.Context, config *types.NetworkConfig) (string, error) {
+	network, err := im.CreateNetwork(ctx, "pipeline")
 	if err != nil {
-		return "", fmt.Errorf("failed to allocate IP: %w", err)
+		return "", err
 	}
-
-	// Add VM to network
-	network.VMs = append(network.VMs, vmID)
-
-	// Save state
-	if err := im.saveState(); err != nil {
-		im.ipam.ReleaseIP(network.CIDR, ip)
-		// Remove VM from network
-		for i, id := range network.VMs {
-			if id == vmID {
-				network.VMs = append(network.VMs[:i], network.VMs[i+1:]...)
-				break
-			}
-		}
-		return "", fmt.Errorf("failed to save state: %w", err)
-	}
-
-	return ip, nil
+	return network.ID, nil
 }
 
-// RemoveVMFromNetwork removes a VM from a network
-func (im *IsolationManager) RemoveVMFromNetwork(ctx context.Context, networkID, vmID string) error {
-	im.mu.Lock()
-	defer im.mu.Unlock()
-
-	network, ok := im.networks[networkID]
-	if !ok {
-		return fmt.Errorf("network not found: %s", networkID)
-	}
-
-	// Remove VM from network
-	for i, id := range network.VMs {
-		if id == vmID {
-			network.VMs = append(network.VMs[:i], network.VMs[i+1:]...)
-			break
-		}
-	}
-
-	// Save state
-	if err := im.saveState(); err != nil {
-		return fmt.Errorf("failed to save state: %w", err)
-	}
-
-	return nil
+// DestroyNetwork implements types.NetworkManagerInterface
+func (im *IsolationManager) DestroyNetworkContext(ctx context.Context, networkID string) error {
+	return im.DestroyNetwork(ctx, networkID)
 }
 
-// ConnectVMToNetwork connects a VM to a network using OVS
-func (im *IsolationManager) ConnectVMToNetwork(vmName, bridgeName, mac string) error {
-	// Add port to OVS bridge
-	cmd := exec.Command("ovs-vsctl", "add-port", bridgeName, vmName+"-eth0",
-		"--", "set", "Interface", vmName+"-eth0",
-		"external-ids:vm="+vmName,
-		"external-ids:mac="+mac)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to add port to bridge: %w: %s", err, output)
+// GetNetwork implements types.NetworkManagerInterface
+func (im *IsolationManager) GetNetworkByID(networkID string) (*types.NetworkConfig, error) {
+	network, err := im.GetNetwork(networkID)
+	if err != nil {
+		return nil, err
 	}
-
-	return nil
+	return &types.NetworkConfig{
+		VLAN: network.VLANID,
+		CIDR: network.CIDR,
+	}, nil
 }
-
-// DisconnectVMFromNetwork disconnects a VM from a network
-func (im *IsolationManager) DisconnectVMFromNetwork(vmName, bridgeName string) error {
-	// Remove port from OVS bridge
-	cmd := exec.Command("ovs-vsctl", "del-port", bridgeName, vmName+"-eth0")
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to remove port from bridge: %w: %s", err, output)
-	}
-
-	return nil
-}
-
-// GetNetworkStats returns network statistics
-func (im *IsolationManager) GetNetworkStats() map[string]int {
-	im.mu.RLock()
-	defer im.mu.RUnlock()
-
-	stats := map[string]int{
-		"total_networks": len(im.networks),
-		"active_vlans":   im.vlanAlloc.Used(),
-		"active_cidrs":   im.ipam.Used(),
-	}
-
-	activeVMs := 0
-	for _, network := range im.networks {
-		activeVMs += len(network.VMs)
-	}
-	stats["active_vms"] = activeVMs
-
-	return stats
-}
-
-// Cleanup cleans up destroyed networks
-func (im *IsolationManager) Cleanup(ctx context.Context) error {
-	im.mu.Lock()
-	defer im.mu.Unlock()
-
-	cleaned := 0
-	for id, network := range im.networks {
-		if network.DestroyedAt != nil {
-			delete(im.networks, id)
-			cleaned++
-		}
-	}
-
-	// Save state
-	if err := im.saveState(); err != nil {
-		return fmt.Errorf("failed to save state: %w", err)
-	}
-
-	fmt.Printf("[IsolationManager] Cleaned up %d destroyed networks\n", cleaned)
-	return nil
-}
-
-// Close closes the isolation manager
-func (im *IsolationManager) Close() error {
-	return im.saveState()
-}
-
-// Helper functions
 
 func generateNetworkID(pipelineID string) string {
 	return fmt.Sprintf("net-%s-%s", pipelineID[:8], randomString(4))
@@ -468,14 +319,4 @@ func randomString(n int) string {
 		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
 	}
 	return string(b)
-}
-
-// NetworkConfig represents network configuration
-type NetworkConfig struct {
-	BaseCIDR        string   `json:"base_cidr"`
-	VLANStart       int      `json:"vlan_start"`
-	VLANEnd         int      `json:"vlan_end"`
-	DNS             []string `json:"dns"`
-	OVSPath         string   `json:"ovs_path"`
-	FirewallBackend string   `json:"firewall_backend"`
 }

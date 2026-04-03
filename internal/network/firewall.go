@@ -121,7 +121,7 @@ func (fm *FirewallManager) initNFTablesChains() error {
 	}
 
 	// Create forward chain
-	cmd = exec.Command("nft", "add", "chain", "inet", "vimic2", "forward", "{ type filter hook forward priority 0 \; }")
+	cmd = exec.Command("nft", "add", "chain", "inet", "vimic2", "forward", "{ type filter hook forward priority 0 \\; }")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to create forward chain: %w: %s", err, output)
 	}

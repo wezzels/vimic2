@@ -9,6 +9,17 @@ type PipelineDB interface {
 	LoadPipeline(id string) (map[string]interface{}, error)
 	DeletePipeline(id string) error
 	ListPipelines() ([]string, error)
+	SaveRunner(id string, state map[string]interface{}) error
+	LoadRunner(id string) (map[string]interface{}, error)
+	DeleteRunner(id string) error
+	SaveNetwork(id string, state map[string]interface{}) error
+	LoadNetwork(id string) (map[string]interface{}, error)
+	DeleteNetwork(id string) error
+	SavePool(id string, state map[string]interface{}) error
+	LoadPool(id string) (map[string]interface{}, error)
+	DeletePool(id string) error
+	UpdatePoolSize(id string, available, busy int) error
+	UpdateVMState(vmID string, state string) error
 }
 
 // PoolManagerInterface is the interface for pool management
