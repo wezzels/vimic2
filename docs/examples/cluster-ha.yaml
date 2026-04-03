@@ -1,0 +1,81 @@
+# High Availability Cluster Configuration
+# Multiple hosts with automatic failover
+
+name: "ha-cluster"
+type: "ha"
+
+hosts:
+  - name: "host-1"
+    address: "192.168.1.101"
+    ssh_user: "root"
+    capacity: 20
+    
+  - name: "host-2"
+    address: "192.168.1.102"
+    ssh_user: "root"
+    capacity: 20
+    
+  - name: "host-3"
+    address: "192.168.1.103"
+    ssh_user: "root"
+    capacity: 20
+
+pools:
+  default:
+    size: 30
+    platform: "linux/amd64"
+    memory: 4096
+    cpus: 4
+    ha: true  # Enable HA for this pool
+    
+  gpu:
+    size: 6
+    platform: "linux/amd64"
+    memory: 16384
+    cpus: 8
+    gpu: true
+    ha: true
+
+network:
+  bridge: "vimicbr0"
+  vlan_start: 100
+  vlan_end: 500
+  routes:
+    - name: "internal"
+      cidr: "10.0.0.0/16"
+      gateway: "10.0.0.1"
+    - name: "build"
+      cidr: "172.16.0.0/12"
+      gateway: "172.16.0.1"
+
+auto_scaling:
+  enabled: true
+  min_size: 10
+  max_size: 50
+  scale_up_threshold: 70  # CPU %
+  scale_down_threshold: 30
+  cooldown: 300  # 5 minutes
+
+monitoring:
+  enabled: true
+  interval: 5
+  thresholds:
+    cpu_percent: 75
+    memory_percent: 80
+    disk_percent: 85
+
+alerts:
+  enabled: true
+  webhooks:
+    - name: "slack"
+      url: "https://hooks.slack.com/..."
+      enabled: false
+    - name: "pagerduty"
+      url: "https://events.pagerduty.com/..."
+      enabled: false
+
+backup:
+  enabled: true
+  interval: 3600  # 1 hour
+  retention: 7  # days
+  path: "/var/lib/vimic2/backups"

@@ -1,0 +1,28 @@
+# Basic Cluster Configuration
+# Single cluster with default pool
+
+name: "basic-cluster"
+type: "single"
+
+pool:
+  name: "default"
+  size: 10
+  platform: "linux/amd64"
+  memory: 2048
+  cpus: 2
+
+network:
+  bridge: "vimicbr0"
+  vlan: 100
+  cidr: "10.0.100.0/24"
+  gateway: "10.0.100.1"
+  dns:
+    - "8.8.8.8"
+    - "8.8.4.4"
+
+monitoring:
+  enabled: true
+  interval: 10
+  thresholds:
+    cpu_percent: 80
+    memory_percent: 85
