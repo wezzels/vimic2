@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -377,6 +375,3 @@ func randomString(n int) string {
 }
 
 // AllocateVM implements types.PoolManagerInterface
-func (pm *PoolManager) AllocateVMContext(ctx context.Context, poolName string) (*types.VMState, error) {
-	return pm.AllocateVM(poolName)
-}

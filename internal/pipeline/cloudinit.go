@@ -236,14 +236,14 @@ func (g *CloudInitGenerator) CreateCloudInitISO(config *CloudInitConfig) (string
 		filepath.Join(tmpDir, "vendor-data"),
 	)
 
-	if output, err := cmd.CombinedOutput(); err != nil {
+	if _, err = cmd.CombinedOutput(); err != nil {
 		// Fallback to cloud-localds
 		cmd = exec.Command("cloud-localds", isoPath,
 			filepath.Join(tmpDir, "user-data"),
 			filepath.Join(tmpDir, "meta-data"),
 		)
-		if output, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("failed to create cloud-init ISO: %w: %s", err, output)
+		if output, ferr := cmd.CombinedOutput(); ferr != nil {
+			return "", fmt.Errorf("failed to create cloud-init ISO: %w: %s", ferr, output)
 		}
 	}
 

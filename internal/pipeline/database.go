@@ -147,31 +147,6 @@ type Network struct {
 	DestroyedAt *time.Time `json:"destroyed_at,omitempty"`
 }
 
-// Artifact represents a pipeline artifact
-type Artifact struct {
-	ID          string    `json:"id"`
-	PipelineID  string    `json:"pipeline_id"`
-	Type        string    `json:"type"` // build, test, coverage, log
-	Name        string    `json:"name"`
-	Path        string    `json:"path"`
-	Size        int64     `json:"size"`
-	Checksum    string    `json:"checksum"`
-	CreatedAt   time.Time `json:"created_at"`
-}
-
-// LogEntry represents a log entry
-type LogEntry struct {
-	ID          string    `json:"id"`
-	PipelineID  string    `json:"pipeline_id"`
-	RunnerID    string    `json:"runner_id"`
-	Stage       string    `json:"stage"`
-	Job         string    `json:"job"`
-	Timestamp   time.Time `json:"timestamp"`
-	Level       string    `json:"level"`
-	Message     string    `json:"message"`
-	Duration    int64     `json:"duration_ms"`
-}
-
 // PipelineDB provides database operations for pipeline management
 type PipelineDB struct {
 	db *sql.DB
@@ -744,6 +719,12 @@ func (db *PipelineDB) SaveArtifact(ctx context.Context, a *Artifact) error {
 
 	_, err := db.db.ExecContext(ctx, query,
 		a.ID, a.PipelineID, a.Type, a.Name, a.Path, a.Size, a.Checksum, a.CreatedAt)
+	return err
+}
+
+func (db *PipelineDB) DeleteArtifact(ctx context.Context, id string) error {
+	query := `DELETE FROM artifacts WHERE id = ?`
+	_, err := db.db.ExecContext(ctx, query, id)
 	return err
 }
 

@@ -159,7 +159,7 @@ func (im *IPAMManager) Allocate() (string, string, error) {
 	}
 
 	// Calculate next /24 subnet
-	ones, bits := ipnet.Mask.Size()
+	ones, _ := ipnet.Mask.Size()
 	if ones > 24 {
 		return "", "", fmt.Errorf("base CIDR too small: need /24 or larger")
 	}
