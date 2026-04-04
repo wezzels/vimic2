@@ -756,16 +756,16 @@ func (db *PipelineDB) ListArtifactsByPipeline(ctx context.Context, pipelineID st
 
 func (db *PipelineDB) SaveLog(ctx context.Context, l *LogEntry) error {
 	query := `INSERT INTO logs 
-		(id, pipeline_id, runner_id, stage, job, timestamp, level, message, duration_ms)
+		(id, pipeline_id, runner_id, stage, job_id, timestamp, level, message, duration_ms)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := db.db.ExecContext(ctx, query,
-		l.ID, l.PipelineID, l.RunnerID, l.Stage, l.Job, l.Timestamp, l.Level, l.Message, l.Duration)
+		l.ID, l.PipelineID, l.RunnerID, l.Stage, l.JobID, l.Timestamp, l.Level, l.Message, l.Duration)
 	return err
 }
 
 func (db *PipelineDB) ListLogsByPipeline(ctx context.Context, pipelineID string, limit, offset int) ([]*LogEntry, error) {
-	query := `SELECT id, pipeline_id, runner_id, stage, job, timestamp, level, message, duration_ms
+	query := `SELECT id, pipeline_id, runner_id, stage, job_id, timestamp, level, message, duration_ms
 		FROM logs WHERE pipeline_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?`
 
 	rows, err := db.db.QueryContext(ctx, query, pipelineID, limit, offset)
@@ -778,7 +778,7 @@ func (db *PipelineDB) ListLogsByPipeline(ctx context.Context, pipelineID string,
 	for rows.Next() {
 		l := &LogEntry{}
 		err := rows.Scan(
-			&l.ID, &l.PipelineID, &l.RunnerID, &l.Stage, &l.Job, &l.Timestamp,
+			&l.ID, &l.PipelineID, &l.RunnerID, &l.Stage, &l.JobID, &l.Timestamp,
 			&l.Level, &l.Message, &l.Duration)
 		if err != nil {
 			return nil, err

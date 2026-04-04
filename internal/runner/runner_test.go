@@ -2,7 +2,10 @@
 package runner
 
 import (
+	"fmt"
+	"strings"
 	"testing"
+	"time"
 )
 
 // GitLab Runner Tests
@@ -147,6 +150,36 @@ func TestRunnerManager_CheckHealth(t *testing.T) {
 
 func TestRunnerManager_GetStats(t *testing.T) {
 	t.Skip("requires database")
+}
+
+// Helper functions for testing
+
+func generateRunnerID(prefix string) string {
+	return fmt.Sprintf("%s-%s-%d", prefix, randomString(8), time.Now().UnixNano())
+}
+
+func randomString(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
+	}
+	return string(b)
+}
+
+func joinTags(tags []string) string {
+	return strings.Join(tags, ",")
+}
+
+func splitLines(input string) []string {
+	if input == "" {
+		return nil
+	}
+	return strings.Split(strings.TrimSpace(input), "\n")
+}
+
+func trimQuotes(input string) string {
+	return strings.Trim(input, "\"")
 }
 
 // Helper function tests

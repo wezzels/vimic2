@@ -2,7 +2,9 @@
 package pool
 
 import (
+	"fmt"
 	"testing"
+	"time"
 )
 
 func TestPoolManager_CreatePool(t *testing.T) {
@@ -152,6 +154,25 @@ func TestGenerateID(t *testing.T) {
 	if len(id1) < 10 {
 		t.Errorf("generated ID too short: %s", id1)
 	}
+}
+
+// Helper functions for testing
+
+func generateMAC() string {
+	const prefix = "52:54:00"
+	return fmt.Sprintf("%s:%02x:%02x:%02x", prefix, 
+		time.Now().UnixNano()%256, 
+		(time.Now().UnixNano()>>8)%256, 
+		(time.Now().UnixNano()>>16)%256)
+}
+
+func randomString(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
+	}
+	return string(b)
 }
 
 func TestGenerateMAC(t *testing.T) {

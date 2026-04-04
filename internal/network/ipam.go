@@ -444,16 +444,21 @@ func incrementIP(ip string, offsets ...int) string {
 		offset = offsets[0]
 	}
 
-	result := make(net.IP, len(parsed))
+	// Convert to 4-byte representation for IPv4
+	parsed = parsed.To4()
+	if parsed == nil {
+		return ip
+	}
+
+	result := make(net.IP, 4)
 	copy(result, parsed)
 
 	// Add offset (big-endian)
-	for i := 3; i >= 0; i-- {
-		result[i] += byte(offset)
-		if result[i] >= parsed[i] {
-			break
-		}
-		offset >>= 8
+	carry := offset
+	for i := 3; i >= 0 && carry > 0; i-- {
+		val := int(result[i]) + carry
+		result[i] = byte(val)
+		carry = val >> 8
 	}
 
 	return result.String()

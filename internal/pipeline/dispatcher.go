@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/stsgym/vimic2/internal/runner"
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // JobDispatcher dispatches jobs to runners
@@ -302,12 +303,15 @@ func (d *JobDispatcher) processJob(workerID int, job *Job) {
 // selectRunner selects a runner for a job
 func (d *JobDispatcher) selectRunner(job *Job) (*runner.RunnerInfo, error) {
 	// Get all runners
-	allRunners := d.runnerManager.ListRunners()
+	allRunners, err := d.runnerManager.ListRunners()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list runners: %w", err)
+	}
 
 	// Filter by status (only use idle runners)
 	var availableRunners []*runner.RunnerInfo
 	for _, r := range allRunners {
-		if r.Status == runner.RunnerStatusOnline || r.Status == runner.RunnerStatusIdle {
+		if r.Status == types.RunnerStatusOnline || r.Status == types.RunnerStatusBusy {
 			availableRunners = append(availableRunners, r)
 		}
 	}
@@ -549,13 +553,4 @@ func (d *JobDispatcher) Stop() error {
 
 func generateJobID() string {
 	return fmt.Sprintf("job-%s-%d", randomString(8), time.Now().Unix())
-}
-
-func randomString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
-	}
-	return string(b)
 }

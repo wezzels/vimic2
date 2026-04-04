@@ -272,7 +272,7 @@ func (lc *LogCollector) ReadLog(streamID string, offset int64, limit int) ([]*Lo
 
 	// Read lines
 	entries := make([]*LogEntry, 0, limit)
-	scanner := io.LimitReader(stream.file, 1<<20) // 1 MB limit
+	_ = io.LimitReader(stream.file, 1<<20) // 1 MB limit
 
 	// TODO: Implement proper line-by-line reading
 
@@ -301,7 +301,7 @@ func (lc *LogCollector) StreamLog(streamID string) (<-chan *LogEntry, error) {
 }
 
 // Unsubscribe unsubscribes from log updates
-func (lc *LogCollector) Unsubscribe(streamID string, ch <-chan *LogEntry) error {
+func (lc *LogCollector) Unsubscribe(streamID string, ch chan<- *LogEntry) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 

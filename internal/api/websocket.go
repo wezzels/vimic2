@@ -11,6 +11,50 @@ import (
 	"github.com/stsgym/vimic2/internal/pipeline"
 )
 
+// WebSocketConn is a stub interface for WebSocket connections
+type WebSocketConn interface {
+	WriteMessage(messageType int, data []byte) error
+	ReadMessage() (int, []byte, error)
+	Close() error
+	SetReadLimit(limit int64)
+	SetReadDeadline(t time.Time) error
+	SetPongHandler(h func(string) error)
+}
+
+// WebSocketUpgrader is a stub interface for WebSocket upgrader
+type WebSocketUpgrader interface {
+	Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (WebSocketConn, error)
+}
+
+// WebSocket message types
+const (
+	TextMessage   = 1
+	BinaryMessage = 2
+	CloseMessage   = 8
+	PingMessage    = 9
+	PongMessage    = 10
+)
+
+// DefaultUpgrader is the default WebSocket upgrader
+var DefaultUpgrader = &stubUpgrader{}
+
+// stubUpgrader is a stub implementation
+type stubUpgrader struct{}
+
+func (u *stubUpgrader) Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (WebSocketConn, error) {
+	return &stubConn{}, nil
+}
+
+// stubConn is a stub WebSocket connection
+type stubConn struct{}
+
+func (c *stubConn) WriteMessage(messageType int, data []byte) error   { return nil }
+func (c *stubConn) ReadMessage() (int, []byte, error)                 { return TextMessage, nil, nil }
+func (c *stubConn) Close() error                                       { return nil }
+func (c *stubConn) SetReadLimit(limit int64)                           {}
+func (c *stubConn) SetReadDeadline(t time.Time) error                  { return nil }
+func (c *stubConn) SetPongHandler(h func(string) error)                { return nil }
+
 // WebSocketServer handles WebSocket connections
 type WebSocketServer struct {
 	coordinator *pipeline.Coordinator
@@ -23,10 +67,10 @@ type WebSocketServer struct {
 
 // WebSocketClient represents a WebSocket client
 type WebSocketClient struct {
-	conn       *websocket.Conn
-	send       chan []byte
-	closeChan  chan struct{}
-	filters    map[string]bool
+	conn      WebSocketConn
+	send      chan []byte
+	closeChan chan struct{}
+	filters   map[string]bool
 }
 
 // WebSocketMessage represents a WebSocket message
@@ -194,7 +238,7 @@ func (ws *WebSocketServer) BroadcastTo(clientIDs []string, message *WebSocketMes
 // handleWebSocket handles WebSocket connections
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Upgrade HTTP connection to WebSocket
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := DefaultUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Printf("[WebSocket] Upgrade error: %v\n", err)
 		return
@@ -229,18 +273,18 @@ func (c *WebSocketClient) writePump() {
 	for {
 		select {
 		case <-c.closeChan:
-			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			c.conn.WriteMessage(CloseMessage, []byte{})
 			return
 		case message, ok := <-c.send:
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				c.conn.WriteMessage(CloseMessage, []byte{})
 				return
 			}
-			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			if err := c.conn.WriteMessage(TextMessage, message); err != nil {
 				return
 			}
 		case <-ticker.C:
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			if err := c.conn.WriteMessage(PingMessage, nil); err != nil {
 				return
 			}
 		}
@@ -314,33 +358,3 @@ func (c *WebSocketClient) readPump() {
 		}
 	}
 }
-
-// WebSocket imports (gorilla/websocket stub for compilation)
-// In production, use: github.com/gorilla/websocket
-
-type websocket struct{}
-
-var upgrader = &websocketUpgrader{}
-
-type websocketUpgrader struct{}
-
-type websocketConn struct{}
-
-type websocketMessageType int
-
-const (
-	websocket.TextMessage  websocketMessageType = 1
-	websocket.BinaryMessage websocketMessageType = 2
-	websocket.CloseMessage  websocketMessageType = 8
-	websocket.PingMessage   websocketMessageType = 9
-	websocket.PongMessage   websocketMessageType = 10
-)
-
-func (u *websocketUpgrader) Upgrade(w http.ResponseWriter, r *http.Request, responseHeader interface{}) (*websocket.Conn, error) {
-	// Stub implementation
-	// In production, use gorilla/websocket
-	return &websocket.Conn{}, nil
-}
-
-// Stub for websocket package
-// In production, use: import "github.com/gorilla/websocket"
