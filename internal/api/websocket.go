@@ -48,12 +48,14 @@ func (u *stubUpgrader) Upgrade(w http.ResponseWriter, r *http.Request, responseH
 // stubConn is a stub WebSocket connection
 type stubConn struct{}
 
-func (c *stubConn) WriteMessage(messageType int, data []byte) error   { return nil }
-func (c *stubConn) ReadMessage() (int, []byte, error)                 { return TextMessage, nil, nil }
-func (c *stubConn) Close() error                                       { return nil }
-func (c *stubConn) SetReadLimit(limit int64)                           {}
-func (c *stubConn) SetReadDeadline(t time.Time) error                  { return nil }
-func (c *stubConn) SetPongHandler(h func(string) error)                { return nil }
+func (c *stubConn) WriteMessage(messageType int, data []byte) error { return nil }
+func (c *stubConn) ReadMessage() (int, []byte, error) {
+	return TextMessage, nil, nil
+}
+func (c *stubConn) Close() error { return nil }
+func (c *stubConn) SetReadLimit(limit int64) {}
+func (c *stubConn) SetReadDeadline(t time.Time) error { return nil }
+func (c *stubConn) SetPongHandler(h func(string) error) {}
 
 // WebSocketServer handles WebSocket connections
 type WebSocketServer struct {
@@ -191,33 +193,34 @@ func (ws *WebSocketServer) shouldSend(client *WebSocketClient, message *WebSocke
 
 // subscribeToCoordinator subscribes to coordinator events
 func (ws *WebSocketServer) subscribeToCoordinator() {
-	events := ws.coordinator.Events()
-	for event := range events {
-		message := &WebSocketMessage{
-			Type:    string(eventToWebSocketType(event)),
-			Payload: event,
-		}
-		ws.broadcast <- message
-	}
+	// TODO: Implement event subscription when coordinator supports it
+	// events := ws.coordinator.Events()
+	// for event := range events {
+	// 	message := &WebSocketMessage{
+	// 		Type:    string(eventToWebSocketType(event)),
+	// 		Payload: event,
+	// 	}
+	// 	ws.broadcast <- message
+	// }
 }
 
 // eventToWebSocketType converts coordinator event to WebSocket event type
-func eventToWebSocketType(event pipeline.PipelineEvent) WebSocketEventType {
-	switch event.NewStatus {
-	case pipeline.PipelineStatusRunning:
-		if event.OldStatus == pipeline.PipelineStatusCreating {
-			return EventTypePipelineCreate
-		}
-		return EventTypePipelineStart
-	case pipeline.PipelineStatusSuccess:
-		return EventTypePipelineComplete
-	case pipeline.PipelineStatusFailed:
-		return EventTypePipelineFail
-	case pipeline.PipelineStatusCanceled:
-		return EventTypePipelineStop
-	}
-	return EventTypePipelineUpdate
-}
+// func eventToWebSocketType(event pipeline.PipelineEvent) WebSocketEventType {
+// 	switch event.NewStatus {
+// 	case types.PipelineStatusRunning:
+// 		if event.OldStatus == types.PipelineStatusCreating {
+// 			return EventTypePipelineCreate
+// 		}
+// 		return EventTypePipelineStart
+// 	case types.PipelineStatusSuccess:
+// 		return EventTypePipelineComplete
+// 	case types.PipelineStatusFailed:
+// 		return EventTypePipelineFail
+// 	case types.PipelineStatusCanceled:
+// 		return EventTypePipelineStop
+// 	}
+// 	return EventTypePipelineUpdate
+// }
 
 // processEvents processes WebSocket events
 func (ws *WebSocketServer) processEvents() {
