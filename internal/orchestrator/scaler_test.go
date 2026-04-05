@@ -2,7 +2,6 @@
 package orchestrator_test
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/monitor"
 	"github.com/stsgym/vimic2/internal/orchestrator"
+	"github.com/stsgym/vimic2/pkg/hypervisor"
 	"go.uber.org/zap"
 )
 
@@ -43,8 +43,8 @@ func createTestAutoScaler(t *testing.T) (*orchestrator.AutoScaler, *database.DB)
 	db.SaveCluster(testCluster)
 
 	// Create stub hypervisor and cluster manager
-	stubHV := cluster.NewStubHypervisor()
-	hosts := map[string]cluster.Hypervisor{
+	stubHV := hypervisor.NewStubHypervisor()
+	hosts := map[string]hypervisor.Hypervisor{
 		"test-host": stubHV,
 	}
 	clusterMgr := cluster.NewManager(db, hosts)

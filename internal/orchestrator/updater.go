@@ -74,7 +74,12 @@ func (r *RollingUpdater) UpgradeNode(ctx context.Context, nodeID string, version
 	if err != nil {
 		return err
 	}
-	node.Config.Version = version
+	// Update node config with new version
+	if node.Config == nil {
+		node.Config = &database.NodeConfig{}
+	}
+	// Note: Version stored in Image field for now
+	node.Config.Image = version
 	return r.db.SaveNode(node)
 }
 
@@ -87,16 +92,6 @@ func (r *RollingUpdater) RestoreNode(ctx context.Context, nodeID string) error {
 	node.State = "running"
 	return r.db.SaveNode(node)
 }
-
-import (
-	"context"
-	"fmt"
-	"sync"
-	"time"
-
-	"github.com/stsgym/vimic2/internal/database"
-	"go.uber.org/zap"
-)
 
 // RollingUpdater performs zero-downtime rolling updates
 type RollingUpdater struct {

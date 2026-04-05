@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stsgym/vimic2/internal/cluster"
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/orchestrator"
 	"go.uber.org/zap"
@@ -40,17 +39,10 @@ func createTestUpdater(t *testing.T) (*orchestrator.RollingUpdater, *database.DB
 	}
 	db.SaveCluster(testCluster)
 
-	// Create stub hypervisor and cluster manager
-	stubHV := cluster.NewStubHypervisor()
-	hosts := map[string]cluster.Hypervisor{
-		"test-host": stubHV,
-	}
-	clusterMgr := cluster.NewManager(db, hosts)
-
 	// Create logger
 	sugar := zap.NewExample().Sugar()
 
-	updater := orchestrator.NewRollingUpdater(clusterMgr, sugar)
+	updater := orchestrator.NewRollingUpdater(db, sugar)
 
 	return updater, db
 }
