@@ -166,14 +166,7 @@ func generateMAC() string {
 		(time.Now().UnixNano()>>16)%256)
 }
 
-func randomString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
-	}
-	return string(b)
-}
+// randomString is defined in manager.go
 
 func TestGenerateMAC(t *testing.T) {
 	mac1 := generateMAC()
