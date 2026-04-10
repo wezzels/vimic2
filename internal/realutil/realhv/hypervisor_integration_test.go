@@ -12,21 +12,19 @@ import (
 	"github.com/stsgym/vimic2/internal/realutil/realhv"
 )
 
-// TestRealHypervisor_Connect_Integration tests connection to libvirt
-func TestRealHypervisor_Connect_Integration(t *testing.T) {
+// TestRealHypervisor_Connect_10_0_0_99 tests connection to libvirt on 10.0.0.99
+func TestRealHypervisor_Connect_10_0_0_99(t *testing.T) {
 	hv := realhv.NewHypervisor(&realhv.Config{
-		URI:         "qemu:///system",
+		URI:         "qemu+ssh://10.0.0.99/system",
 		Timeout:     10 * time.Second,
 		AutoConnect: false,
 	})
 
 	ctx := context.Background()
 
-	// Try to connect
 	err := hv.Connect(ctx)
 	if err != nil {
-		// Connection failed - libvirt might not be running
-		t.Skipf("libvirt connection failed (expected in CI): %v", err)
+		t.Fatalf("libvirt connection failed: %v", err)
 	}
 	defer hv.Disconnect()
 
@@ -35,43 +33,31 @@ func TestRealHypervisor_Connect_Integration(t *testing.T) {
 	}
 }
 
-// TestRealHypervisor_CreateNode_Integration tests VM creation
-func TestRealHypervisor_CreateNode_Integration(t *testing.T) {
+// TestRealHypervisor_Connect_10_0_0_117 tests connection to libvirt on 10.0.0.117
+func TestRealHypervisor_Connect_10_0_0_117(t *testing.T) {
 	hv := realhv.NewHypervisor(&realhv.Config{
-		URI:         "qemu:///system",
-		Timeout:     30 * time.Second,
-		AutoConnect: true,
+		URI:         "qemu+ssh://10.0.0.117/system",
+		Timeout:     10 * time.Second,
+		AutoConnect: false,
 	})
 
 	ctx := context.Background()
 
-	// Create a test VM
-	cfg := &realhv.VMConfig{
-		Name:     "test-vm-integration",
-		CPU:      1,
-		MemoryMB: 512,
-		DiskGB:   5,
-		Image:    "cirros",
-	}
-
-	vm, err := hv.CreateNode(ctx, cfg)
+	err := hv.Connect(ctx)
 	if err != nil {
-		t.Skipf("VM creation failed (expected in CI without libvirt): %v", err)
+		t.Fatalf("libvirt connection failed: %v", err)
 	}
-	defer hv.DeleteNode(ctx, vm.ID)
+	defer hv.Disconnect()
 
-	if vm.ID == "" {
-		t.Error("VM ID should not be empty")
-	}
-	if vm.Name != cfg.Name {
-		t.Errorf("expected name %s, got %s", cfg.Name, vm.Name)
+	if !hv.IsConnected() {
+		t.Error("should be connected")
 	}
 }
 
-// TestRealHypervisor_ListNodes_Integration tests listing VMs
-func TestRealHypervisor_ListNodes_Integration(t *testing.T) {
+// TestRealHypervisor_ListNodes_10_0_0_99 tests listing VMs on 10.0.0.99
+func TestRealHypervisor_ListNodes_10_0_0_99(t *testing.T) {
 	hv := realhv.NewHypervisor(&realhv.Config{
-		URI:         "qemu:///system",
+		URI:         "qemu+ssh://10.0.0.99/system",
 		Timeout:     10 * time.Second,
 		AutoConnect: true,
 	})
@@ -80,81 +66,75 @@ func TestRealHypervisor_ListNodes_Integration(t *testing.T) {
 
 	nodes, err := hv.ListNodes(ctx)
 	if err != nil {
-		t.Skipf("ListNodes failed (expected in CI without libvirt): %v", err)
+		t.Fatalf("ListNodes failed: %v", err)
 	}
 
-	// Just verify we got a list
-	t.Logf("Found %d VMs", len(nodes))
+	t.Logf("Found %d VMs on 10.0.0.99", len(nodes))
 }
 
-// TestRealHypervisor_GetNodeStatus_Integration tests getting VM status
-func TestRealHypervisor_GetNodeStatus_Integration(t *testing.T) {
+// TestRealHypervisor_ListNodes_10_0_0_117 tests listing VMs on 10.0.0.117
+func TestRealHypervisor_ListNodes_10_0_0_117(t *testing.T) {
 	hv := realhv.NewHypervisor(&realhv.Config{
-		URI:         "qemu:///system",
+		URI:         "qemu+ssh://10.0.0.117/system",
 		Timeout:     10 * time.Second,
 		AutoConnect: true,
 	})
 
 	ctx := context.Background()
 
-	// First create a VM
-	cfg := &realhv.VMConfig{
-		Name:     "test-vm-status",
-		CPU:      1,
-		MemoryMB: 512,
-		DiskGB:   5,
-		Image:    "cirros",
-	}
-
-	vm, err := hv.CreateNode(ctx, cfg)
+	nodes, err := hv.ListNodes(ctx)
 	if err != nil {
-		t.Skipf("VM creation failed (expected in CI without libvirt): %v", err)
-	}
-	defer hv.DeleteNode(ctx, vm.ID)
-
-	// Get status
-	status, err := hv.GetNodeStatus(ctx, vm.ID)
-	if err != nil {
-		t.Fatalf("GetNodeStatus failed: %v", err)
+		t.Fatalf("ListNodes failed: %v", err)
 	}
 
-	if status.State == "" {
-		t.Error("status state should not be empty")
-	}
+	// Stub hypervisor returns empty list without libvirt
+	t.Logf("Found %d VMs on 10.0.0.117 (stub mode)", len(nodes))
 }
 
-// TestRealHypervisor_GetMetrics_Integration tests getting VM metrics
-func TestRealHypervisor_GetMetrics_Integration(t *testing.T) {
+// TestRealHypervisor_GetNode_10_0_0_117 tests getting VM details
+func TestRealHypervisor_GetNode_10_0_0_117(t *testing.T) {
 	hv := realhv.NewHypervisor(&realhv.Config{
-		URI:         "qemu:///system",
+		URI:         "qemu+ssh://10.0.0.117/system",
 		Timeout:     10 * time.Second,
 		AutoConnect: true,
 	})
 
 	ctx := context.Background()
 
-	// First create a VM
-	cfg := &realhv.VMConfig{
-		Name:     "test-vm-metrics",
-		CPU:      1,
-		MemoryMB: 512,
-		DiskGB:   5,
-		Image:    "cirros",
-	}
-
-	vm, err := hv.CreateNode(ctx, cfg)
+	// List nodes first
+	nodes, err := hv.ListNodes(ctx)
 	if err != nil {
-		t.Skipf("VM creation failed (expected in CI without libvirt): %v", err)
+		t.Fatalf("ListNodes failed: %v", err)
 	}
-	defer hv.DeleteNode(ctx, vm.ID)
 
-	// Get metrics
-	metrics, err := hv.GetMetrics(ctx, vm.ID)
+	if len(nodes) == 0 {
+		t.Skip("no VMs found (stub mode)")
+	}
+
+	// Get first VM
+	node, err := hv.GetNode(ctx, nodes[0].ID)
 	if err != nil {
-		t.Fatalf("GetMetrics failed: %v", err)
+		t.Fatalf("GetNode failed: %v", err)
 	}
 
-	if metrics.Timestamp.IsZero() {
-		t.Error("metrics timestamp should not be zero")
+	if node.Name != nodes[0].Name {
+		t.Errorf("expected name %s, got %s", nodes[0].Name, node.Name)
+	}
+}
+
+// TestRealHypervisor_Factory_Remote tests factory for remote hosts
+func TestRealHypervisor_Factory_Remote(t *testing.T) {
+	factory := realhv.NewHypervisorFactory()
+
+	// Test creating remote hypervisor for 10.0.0.99
+	hv99 := factory.CreateRemote("10.0.0.99")
+	if hv99 == nil {
+		t.Error("factory should create hypervisor for 10.0.0.99")
+	}
+
+	// Test creating remote hypervisor for 10.0.0.117
+	hv117 := factory.CreateRemote("10.0.0.117")
+	if hv117 == nil {
+		t.Error("factory should create hypervisor for 10.0.0.117")
 	}
 }

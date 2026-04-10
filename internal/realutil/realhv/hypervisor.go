@@ -98,8 +98,22 @@ func (h *Hypervisor) Connect(ctx context.Context) error {
 	}
 
 	// Create hypervisor client
-	hostConfig := &hypervisor.HostConfig{
-		Type: h.config.URI,
+	// Parse URI to determine connection type
+	uri := h.config.URI
+	hostConfig := &hypervisor.HostConfig{}
+
+	// Handle different URI formats
+	if uri == "qemu:///system" {
+		// Local libvirt
+		hostConfig.Type = "libvirt"
+	} else if len(uri) > 8 && uri[:8] == "qemu+ssh" {
+		// Remote libvirt via SSH (e.g., qemu+ssh://10.0.0.117/system)
+		hostConfig.Type = "libvirt"
+		hostConfig.Address = uri
+	} else if uri == "apple" || uri == "" {
+		hostConfig.Type = "apple"
+	} else {
+		hostConfig.Type = "libvirt"
 	}
 
 	client, err := hypervisor.NewHypervisor(hostConfig)
