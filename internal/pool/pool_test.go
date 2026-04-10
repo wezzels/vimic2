@@ -2,9 +2,7 @@
 package pool
 
 import (
-	"fmt"
 	"testing"
-	"time"
 )
 
 func TestPoolManager_CreatePool(t *testing.T) {
@@ -156,17 +154,8 @@ func TestGenerateID(t *testing.T) {
 	}
 }
 
-// Helper functions for testing
-
-func generateMAC() string {
-	const prefix = "52:54:00"
-	return fmt.Sprintf("%s:%02x:%02x:%02x", prefix, 
-		time.Now().UnixNano()%256, 
-		(time.Now().UnixNano()>>8)%256, 
-		(time.Now().UnixNano()>>16)%256)
-}
-
 // randomString is defined in manager.go
+// generateMAC is defined in manager.go
 
 func TestGenerateMAC(t *testing.T) {
 	mac1 := generateMAC()

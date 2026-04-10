@@ -81,9 +81,9 @@ func TestRunnerInfo_JSON(t *testing.T) {
 func TestRunnerManagerConfig_Create(t *testing.T) {
 	config := &RunnerManagerConfig{
 		GitLab: &GitLabConfig{
-			URL:      "https://gitlab.example.com",
-			Token:    "glrt-xxx",
-			Executor: "docker",
+			URL:   "https://gitlab.example.com",
+			Token: "glrt-xxx",
+			Labels: []string{"docker"},
 		},
 		GitHub: &GitHubConfig{
 			Repo:   "owner/repo",
@@ -91,17 +91,16 @@ func TestRunnerManagerConfig_Create(t *testing.T) {
 			Labels: []string{"ubuntu", "docker"},
 		},
 		Jenkins: &JenkinsConfig{
-			URL:   "https://jenkins.example.com",
-			User:  "jenkins",
-			Token: "jenkins-token",
+			URL:      "https://jenkins.example.com",
+			Username: "jenkins",
+			APIToken: "jenkins-token",
 		},
 		CircleCI: &CircleCIConfig{
-			Org:   "myorg",
-			Token: "cci_xxx",
+			APIToken: "cci_xxx",
 		},
 		Drone: &DroneConfig{
-			URL:   "https://drone.example.com",
-			Token: "drone-token",
+			URL:      "https://drone.example.com",
+			APIToken: "drone-token",
 		},
 	}
 
@@ -119,9 +118,9 @@ func TestRunnerManagerConfig_Create(t *testing.T) {
 // TestGitLabConfig tests GitLab runner configuration
 func TestGitLabConfig_Create(t *testing.T) {
 	config := &GitLabConfig{
-		URL:      "https://gitlab.example.com",
-		Token:    "glrt-xxx",
-		Executor: "docker",
+		URL:   "https://gitlab.example.com",
+		Token: "glrt-xxx",
+		Labels: []string{"docker"},
 	}
 
 	if config.URL != "https://gitlab.example.com" {
@@ -129,9 +128,6 @@ func TestGitLabConfig_Create(t *testing.T) {
 	}
 	if config.Token != "glrt-xxx" {
 		t.Errorf("expected token, got %s", config.Token)
-	}
-	if config.Executor != "docker" {
-		t.Errorf("expected docker executor, got %s", config.Executor)
 	}
 }
 
@@ -157,46 +153,43 @@ func TestGitHubConfig_Create(t *testing.T) {
 // TestJenkinsConfig tests Jenkins runner configuration
 func TestJenkinsConfig_Create(t *testing.T) {
 	config := &JenkinsConfig{
-		URL:   "https://jenkins.example.com",
-		User:  "jenkins",
-		Token: "jenkins-token",
+		URL:      "https://jenkins.example.com",
+		Username: "jenkins",
+		APIToken: "jenkins-token",
 	}
 
 	if config.URL != "https://jenkins.example.com" {
 		t.Errorf("expected jenkins URL, got %s", config.URL)
 	}
-	if config.User != "jenkins" {
-		t.Errorf("expected jenkins user, got %s", config.User)
+	if config.Username != "jenkins" {
+		t.Errorf("expected jenkins username, got %s", config.Username)
 	}
 }
 
 // TestCircleCIConfig tests CircleCI runner configuration
 func TestCircleCIConfig_Create(t *testing.T) {
 	config := &CircleCIConfig{
-		Org:   "myorg",
-		Token: "cci_xxx",
+		APIToken: "cci_xxx",
+		Name:    "test-runner",
 	}
 
-	if config.Org != "myorg" {
-		t.Errorf("expected org myorg, got %s", config.Org)
-	}
-	if config.Token != "cci_xxx" {
-		t.Errorf("expected token, got %s", config.Token)
+	if config.APIToken != "cci_xxx" {
+		t.Errorf("expected APIToken, got %s", config.APIToken)
 	}
 }
 
 // TestDroneConfig tests Drone runner configuration
 func TestDroneConfig_Create(t *testing.T) {
 	config := &DroneConfig{
-		URL:   "https://drone.example.com",
-		Token: "drone-token",
+		URL:      "https://drone.example.com",
+		APIToken: "drone-token",
 	}
 
 	if config.URL != "https://drone.example.com" {
 		t.Errorf("expected drone URL, got %s", config.URL)
 	}
-	if config.Token != "drone-token" {
-		t.Errorf("expected token, got %s", config.Token)
+	if config.APIToken != "drone-token" {
+		t.Errorf("expected APIToken, got %s", config.APIToken)
 	}
 }
 
@@ -376,9 +369,9 @@ func TestRunnerInfo_JSON_Fields(t *testing.T) {
 // TestGitLabConfig_JSON tests GitLab config JSON
 func TestGitLabConfig_JSON(t *testing.T) {
 	config := &GitLabConfig{
-		URL:      "https://gitlab.example.com",
-		Token:    "glrt-xxx",
-		Executor: "docker",
+		URL:    "https://gitlab.example.com",
+		Token:  "glrt-xxx",
+		Labels: []string{"docker"},
 	}
 
 	data, err := json.Marshal(config)
@@ -422,9 +415,9 @@ func TestGitHubConfig_JSON(t *testing.T) {
 // TestJenkinsConfig_JSON tests Jenkins config JSON
 func TestJenkinsConfig_JSON(t *testing.T) {
 	config := &JenkinsConfig{
-		URL:   "https://jenkins.example.com",
-		User:  "jenkins",
-		Token: "token",
+		URL:      "https://jenkins.example.com",
+		Username: "jenkins",
+		APIToken: "token",
 	}
 
 	data, err := json.Marshal(config)
