@@ -32,7 +32,6 @@ type Server struct {
 	ws             *WebSocketServer
 	authEnabled    bool
 	authToken      string
-	ws             *WebSocketServer
 }
 
 // ServerConfig represents server configuration
