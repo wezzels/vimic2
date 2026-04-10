@@ -4,6 +4,7 @@ package realhv
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -100,7 +101,11 @@ func (h *Hypervisor) Connect(ctx context.Context) error {
 	// Create hypervisor client
 	// Parse URI to determine connection type
 	uri := h.config.URI
-	hostConfig := &hypervisor.HostConfig{}
+
+	// Create host config for libvirt
+	hostConfig := &hypervisor.HostConfig{
+		Type: "libvirt",
+	}
 
 	// Handle different URI formats
 	if uri == "qemu:///system" {
@@ -108,8 +113,13 @@ func (h *Hypervisor) Connect(ctx context.Context) error {
 		hostConfig.Type = "libvirt"
 	} else if len(uri) > 8 && uri[:8] == "qemu+ssh" {
 		// Remote libvirt via SSH (e.g., qemu+ssh://10.0.0.117/system)
-		hostConfig.Type = "libvirt"
-		hostConfig.Address = uri
+		// Extract host from URI
+		// Format: qemu+ssh://host/system
+		parts := strings.Split(strings.TrimPrefix(uri, "qemu+ssh://"), "/")
+		if len(parts) > 0 && parts[0] != "" {
+				hostConfig.Address = parts[0]
+			}
+			hostConfig.Type = "libvirt"
 	} else if uri == "apple" || uri == "" {
 		hostConfig.Type = "apple"
 	} else {
