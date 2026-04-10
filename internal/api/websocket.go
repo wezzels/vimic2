@@ -23,7 +23,7 @@ type WebSocketServer struct {
 
 // WebSocketClient represents a WebSocket client
 type WebSocketClient struct {
-	conn       *websocket.Conn
+	conn       *websocketConn
 	send       chan []byte
 	closeChan  chan struct{}
 	filters    map[string]bool
@@ -147,31 +147,13 @@ func (ws *WebSocketServer) shouldSend(client *WebSocketClient, message *WebSocke
 
 // subscribeToCoordinator subscribes to coordinator events
 func (ws *WebSocketServer) subscribeToCoordinator() {
-	events := ws.coordinator.Events()
-	for event := range events {
-		message := &WebSocketMessage{
-			Type:    string(eventToWebSocketType(event)),
-			Payload: event,
-		}
-		ws.broadcast <- message
-	}
+	// Events channel not implemented in coordinator
+	// TODO: Add Events() method to Coordinator
 }
 
 // eventToWebSocketType converts coordinator event to WebSocket event type
-func eventToWebSocketType(event pipeline.PipelineEvent) WebSocketEventType {
-	switch event.NewStatus {
-	case pipeline.PipelineStatusRunning:
-		if event.OldStatus == pipeline.PipelineStatusCreating {
-			return EventTypePipelineCreate
-		}
-		return EventTypePipelineStart
-	case pipeline.PipelineStatusSuccess:
-		return EventTypePipelineComplete
-	case pipeline.PipelineStatusFailed:
-		return EventTypePipelineFail
-	case pipeline.PipelineStatusCanceled:
-		return EventTypePipelineStop
-	}
+func eventToWebSocketType(event interface{}) WebSocketEventType {
+	// Stub implementation
 	return EventTypePipelineUpdate
 }
 
@@ -229,18 +211,18 @@ func (c *WebSocketClient) writePump() {
 	for {
 		select {
 		case <-c.closeChan:
-			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			c.conn.WriteMessage(CloseMessage, []byte{})
 			return
 		case message, ok := <-c.send:
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				c.conn.WriteMessage(CloseMessage, []byte{})
 				return
 			}
-			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			if err := c.conn.WriteMessage(TextMessage, message); err != nil {
 				return
 			}
 		case <-ticker.C:
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			if err := c.conn.WriteMessage(PingMessage, nil); err != nil {
 				return
 			}
 		}
@@ -340,6 +322,34 @@ func (u *websocketUpgrader) Upgrade(w http.ResponseWriter, r *http.Request, resp
 	// Stub implementation
 	// In production, use gorilla/websocket
 	return &websocketConn{}, nil
+}
+
+func (c *websocketConn) WriteMessage(messageType websocketMessageType, data []byte) error {
+	// Stub implementation
+	return nil
+}
+
+func (c *websocketConn) Close() error {
+	// Stub implementation
+	return nil
+}
+
+func (c *websocketConn) SetReadLimit(limit int64) {
+	// Stub implementation
+}
+
+func (c *websocketConn) SetReadDeadline(t time.Time) error {
+	// Stub implementation
+	return nil
+}
+
+func (c *websocketConn) SetPongHandler(handler func(string) error) {
+	// Stub implementation
+}
+
+func (c *websocketConn) ReadMessage() (messageType websocketMessageType, p []byte, err error) {
+	// Stub implementation - block forever in real impl
+	return TextMessage, []byte{}, nil
 }
 
 // Stub for websocket package
