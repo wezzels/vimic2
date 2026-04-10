@@ -80,7 +80,7 @@ func NewClient(cfg *Config) *Client {
 func NewClientWithDefaults() *Client {
 	return NewClient(&Config{
 		Timeout: 30 * time.Second,
-		Sudo:    false,
+		Sudo:    true, // Use sudo for OVS commands
 		DryRun:  false,
 	})
 }
@@ -289,17 +289,9 @@ func (c *Client) SetPortQoS(portName string, bandwidthMbps int64) error {
 
 // SetPortSecurity sets port security (MAC/IP anti-spoofing)
 func (c *Client) SetPortSecurity(portName, mac, ip string) error {
-	security := mac
-	if ip != "" {
-		security += " " + ip
-	}
-	_, err := c.run(context.Background(), "set", "port", portName,
-		fmt.Sprintf("other_config:protected=%s", "true"))
-	if err != nil {
-		return err
-	}
-	_, err = c.run(context.Background(), "set", "interface", portName,
-		fmt.Sprintf("mac=%s", mac))
+	// Set MAC on interface
+	_, err := c.run(context.Background(), "set", "interface", portName,
+		fmt.Sprintf("mac=\"%s\"", mac))
 	if err != nil {
 		return err
 	}
@@ -308,7 +300,7 @@ func (c *Client) SetPortSecurity(portName, mac, ip string) error {
 
 // GetPort gets a port by name
 func (c *Client) GetPort(name string) (*Port, error) {
-	output, err := c.run(context.Background(), "list-ports", name)
+	output, err := c.run(context.Background(), "get", "Port", name, "name")
 	if err != nil {
 		return nil, err
 	}
