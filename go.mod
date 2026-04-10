@@ -5,6 +5,7 @@ go 1.23.0
 require (
 	fyne.io/fyne/v2 v2.4.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/libvirt/libvirt-go v7.4.0+incompatible
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/spf13/viper v1.18.2

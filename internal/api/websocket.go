@@ -8,54 +8,27 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/stsgym/vimic2/internal/pipeline"
 )
 
-// WebSocketConn is a stub interface for WebSocket connections
-type WebSocketConn interface {
-	WriteMessage(messageType int, data []byte) error
-	ReadMessage() (int, []byte, error)
-	Close() error
-	SetReadLimit(limit int64)
-	SetReadDeadline(t time.Time) error
-	SetPongHandler(h func(string) error)
-}
-
-// WebSocketUpgrader is a stub interface for WebSocket upgrader
-type WebSocketUpgrader interface {
-	Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (WebSocketConn, error)
-}
-
-// WebSocket message types
+// WebSocket message types (alias gorilla/websocket constants)
 const (
-	TextMessage   = 1
-	BinaryMessage = 2
-	CloseMessage   = 8
-	PingMessage    = 9
-	PongMessage    = 10
+	TextMessage   = websocket.TextMessage
+	BinaryMessage = websocket.BinaryMessage
+	CloseMessage  = websocket.CloseMessage
+	PingMessage   = websocket.PingMessage
+	PongMessage   = websocket.PongMessage
 )
 
 // DefaultUpgrader is the default WebSocket upgrader
-var DefaultUpgrader = &stubUpgrader{}
-
-// stubUpgrader is a stub implementation
-type stubUpgrader struct{}
-
-func (u *stubUpgrader) Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (WebSocketConn, error) {
-	return &stubConn{}, nil
+var DefaultUpgrader = &websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins for development
+	},
 }
-
-// stubConn is a stub WebSocket connection
-type stubConn struct{}
-
-func (c *stubConn) WriteMessage(messageType int, data []byte) error { return nil }
-func (c *stubConn) ReadMessage() (int, []byte, error) {
-	return TextMessage, nil, nil
-}
-func (c *stubConn) Close() error { return nil }
-func (c *stubConn) SetReadLimit(limit int64) {}
-func (c *stubConn) SetReadDeadline(t time.Time) error { return nil }
-func (c *stubConn) SetPongHandler(h func(string) error) {}
 
 // WebSocketServer handles WebSocket connections
 type WebSocketServer struct {
@@ -69,7 +42,7 @@ type WebSocketServer struct {
 
 // WebSocketClient represents a WebSocket client
 type WebSocketClient struct {
-	conn      WebSocketConn
+	conn      *websocket.Conn
 	send      chan []byte
 	closeChan chan struct{}
 	filters   map[string]bool
@@ -204,24 +177,6 @@ func (ws *WebSocketServer) subscribeToCoordinator() {
 	// }
 }
 
-// eventToWebSocketType converts coordinator event to WebSocket event type
-// func eventToWebSocketType(event pipeline.PipelineEvent) WebSocketEventType {
-// 	switch event.NewStatus {
-// 	case types.PipelineStatusRunning:
-// 		if event.OldStatus == types.PipelineStatusCreating {
-// 			return EventTypePipelineCreate
-// 		}
-// 		return EventTypePipelineStart
-// 	case types.PipelineStatusSuccess:
-// 		return EventTypePipelineComplete
-// 	case types.PipelineStatusFailed:
-// 		return EventTypePipelineFail
-// 	case types.PipelineStatusCanceled:
-// 		return EventTypePipelineStop
-// 	}
-// 	return EventTypePipelineUpdate
-// }
-
 // processEvents processes WebSocket events
 func (ws *WebSocketServer) processEvents() {
 	// This could be used for additional event processing
@@ -276,18 +231,18 @@ func (c *WebSocketClient) writePump() {
 	for {
 		select {
 		case <-c.closeChan:
-			c.conn.WriteMessage(CloseMessage, []byte{})
+			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 			return
 		case message, ok := <-c.send:
 			if !ok {
-				c.conn.WriteMessage(CloseMessage, []byte{})
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			if err := c.conn.WriteMessage(TextMessage, message); err != nil {
+			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				return
 			}
 		case <-ticker.C:
-			if err := c.conn.WriteMessage(PingMessage, nil); err != nil {
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
 		}
