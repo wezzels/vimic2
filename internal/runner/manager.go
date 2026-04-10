@@ -136,32 +136,3 @@ func randomString(n int) string {
 	}
 	return string(b)
 }
-
-// Placeholder implementations for platform-specific runners
-type GitLabConfig struct {
-	Token    string `json:"token"`
-	URL      string `json:"url"`
-	Executor string `json:"executor"`
-}
-
-type GitHubConfig struct {
-	Token    string `json:"token"`
-	Repo     string `json:"repo"`
-	Labels   []string `json:"labels"`
-}
-
-type JenkinsConfig struct {
-	URL      string `json:"url"`
-	User     string `json:"user"`
-	Token    string `json:"token"`
-}
-
-type CircleCIConfig struct {
-	Token    string `json:"token"`
-	Org      string `json:"org"`
-}
-
-type DroneConfig struct {
-	Token    string `json:"token"`
-	URL      string `json:"url"`
-}
