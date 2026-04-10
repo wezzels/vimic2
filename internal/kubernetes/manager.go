@@ -4,30 +4,25 @@ package kubernetes
 import (
 	"context"
 	"sync"
-
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 // Manager manages Kubernetes deployments
 type Manager struct {
-	client    *kubernetes.Clientset
-	config    *rest.Config
 	namespace string
 	mu        sync.RWMutex
 }
 
 // PodConfig represents pod configuration
 type PodConfig struct {
-	Name         string
-	Image        string
-	CPULimit     string
-	MemoryLimit  string
-	CPURequest   string
+	Name          string
+	Image         string
+	CPULimit      string
+	MemoryLimit   string
+	CPURequest    string
 	MemoryRequest string
-	Env          []string
-	Command      []string
-	Args         []string
+	Env           []string
+	Command       []string
+	Args          []string
 }
 
 // PodInfo represents pod information
