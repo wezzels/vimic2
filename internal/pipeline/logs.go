@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -272,8 +271,6 @@ func (lc *LogCollector) ReadLog(streamID string, offset int64, limit int) ([]*Lo
 
 	// Read lines
 	entries := make([]*LogEntry, 0, limit)
-	scanner := io.LimitReader(stream.file, 1<<20) // 1 MB limit
-
 	// TODO: Implement proper line-by-line reading
 
 	return entries, nil
@@ -310,9 +307,10 @@ func (lc *LogCollector) Unsubscribe(streamID string, ch <-chan *LogEntry) error 
 		return fmt.Errorf("log stream not found: %s", streamID)
 	}
 
-	// Remove subscriber
+	// Remove subscriber - cast to compare channel pointers
 	for i, sub := range stream.Subscribers {
-		if sub == ch {
+		// Compare channel pointers by casting to same type
+		if interface{}(sub) == interface{}(ch) {
 			stream.Subscribers = append(stream.Subscribers[:i], stream.Subscribers[i+1:]...)
 			break
 		}

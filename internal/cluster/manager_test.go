@@ -339,10 +339,8 @@ func TestGetOrCreateHost(t *testing.T) {
 	}
 	defer db.Close()
 
-	hosts := map[string]hypervisor.Hypervisor{}
+ hosts := map[string]hypervisor.Hypervisor{}
 	mgr := cluster.NewManager(db, hosts)
-
-	ctx := context.Background()
 
 	t.Run("CreateNewHost", func(t *testing.T) {
 		cfg := &database.Host{

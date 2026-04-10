@@ -374,4 +374,12 @@ func randomString(n int) string {
 	return string(b)
 }
 
+func generateMAC() string {
+	// Generate random MAC with QEMU prefix 52:54:00
+	return fmt.Sprintf("52:54:00:%02x:%02x:%02x",
+		time.Now().UnixNano()%256,
+		(time.Now().UnixNano()>>8)%256,
+		(time.Now().UnixNano()>>16)%256)
+}
+
 // AllocateVM implements types.PoolManagerInterface

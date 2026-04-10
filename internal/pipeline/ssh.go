@@ -3,8 +3,6 @@ package pipeline
 
 import (
 	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -186,7 +184,7 @@ users:
 	// Create cloud-init ISO
 	isoPath := filepath.Join("/tmp", fmt.Sprintf("%s-cloud-init.iso", vmName))
 	cmd := exec.Command("cloud-localds", isoPath, tmpFile.Name())
-	if output, err := cmd.CombinedOutput(); err != nil {
+	if err := cmd.Run(); err != nil {
 		// Fallback: use virt-copy-in
 		return m.copyKeyWithVirtCopyIn(vmName)
 	}
@@ -194,8 +192,8 @@ users:
 
 	// Attach ISO to VM
 	attachCmd := exec.Command("virsh", "attach-disk", vmName, isoPath, "hda", "--type", "cdrom", "--mode", "readonly")
-	if output, err := attachCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to attach cloud-init ISO: %w: %s", err, output)
+	if err := attachCmd.Run(); err != nil {
+		return fmt.Errorf("failed to attach cloud-init ISO: %w", err)
 	}
 
 	return nil
@@ -293,14 +291,14 @@ runcmd:
 		filepath.Join(tmpDir, "meta-data"),
 		filepath.Join(tmpDir, "user-data"),
 	)
-	if output, err := cmd.CombinedOutput(); err != nil {
+	if err := cmd.Run(); err != nil {
 		// Fallback to cloud-localds if genisoimage not available
 		cmd = exec.Command("cloud-localds", isoPath,
 			filepath.Join(tmpDir, "user-data"),
 			filepath.Join(tmpDir, "meta-data"),
 		)
-		if output, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("failed to create cloud-init ISO: %w: %s", err, output)
+		if err := cmd.Run(); err != nil {
+			return "", fmt.Errorf("failed to create cloud-init ISO: %w", err)
 		}
 	}
 
@@ -376,14 +374,9 @@ func (m *SSHKeyManager) ExportPrivateKeyPEM() ([]byte, error) {
 	// Get crypto private key
 	cryptoKey := key.(ssh.Signer).PublicKey().(ssh.CryptoPublicKey)
 
-	// Marshal to PEM
-	switch k := cryptoKey.(type) {
-	case *x509.Certificate:
-		return nil, fmt.Errorf("certificate keys not supported")
-	default:
-		// For ed25519 and rsa, the key is already in PEM format
-		return m.privateKey, nil
-	}
+	// For ed25519 and rsa, the key is already in PEM format
+	_ = cryptoKey
+	return m.privateKey, nil
 }
 
 // SignData signs data with the private key
@@ -403,5 +396,6 @@ func (m *SSHKeyManager) SignData(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to sign data: %w", err)
 	}
 
-	return signature, nil
+	// Return signature bytes
+	return ssh.Marshal(signature), nil
 }

@@ -2,6 +2,7 @@
 package runner
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -152,8 +153,8 @@ func TestRunnerManager_GetStats(t *testing.T) {
 // Helper function tests
 
 func TestGenerateRunnerID(t *testing.T) {
-	id1 := generateRunnerID("gl")
-	id2 := generateRunnerID("gl")
+	id1 := generateID("gl")
+	id2 := generateID("gl")
 
 	if id1 == id2 {
 		t.Error("generated IDs should be unique")
@@ -186,6 +187,17 @@ func TestJoinTags(t *testing.T) {
 	}
 }
 
+func joinTags(tags []string) string {
+	result := ""
+	for i, tag := range tags {
+		if i > 0 {
+			result += ","
+		}
+		result += tag
+	}
+	return result
+}
+
 func TestSplitLines(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -202,6 +214,14 @@ func TestSplitLines(t *testing.T) {
 			t.Errorf("splitLines(%q) = %d lines, expected %d", test.input, len(result), test.expected)
 		}
 	}
+}
+
+func splitLines(input string) []string {
+	if input == "" {
+		return []string{}
+	}
+	lines := strings.Split(input, "\n")
+	return lines
 }
 
 func TestTrimQuotes(t *testing.T) {
@@ -221,6 +241,13 @@ func TestTrimQuotes(t *testing.T) {
 			t.Errorf("trimQuotes(%q) = %q, expected %q", test.input, result, test.expected)
 		}
 	}
+}
+
+func trimQuotes(s string) string {
+	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
+		return s[1 : len(s)-1]
+	}
+	return s
 }
 
 // Integration tests (require full setup)

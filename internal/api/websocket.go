@@ -329,17 +329,17 @@ type websocketConn struct{}
 type websocketMessageType int
 
 const (
-	websocket.TextMessage  websocketMessageType = 1
-	websocket.BinaryMessage websocketMessageType = 2
-	websocket.CloseMessage  websocketMessageType = 8
-	websocket.PingMessage   websocketMessageType = 9
-	websocket.PongMessage   websocketMessageType = 10
+	TextMessage  websocketMessageType = 1
+	BinaryMessage websocketMessageType = 2
+	CloseMessage  websocketMessageType = 8
+	PingMessage   websocketMessageType = 9
+	PongMessage   websocketMessageType = 10
 )
 
-func (u *websocketUpgrader) Upgrade(w http.ResponseWriter, r *http.Request, responseHeader interface{}) (*websocket.Conn, error) {
+func (u *websocketUpgrader) Upgrade(w http.ResponseWriter, r *http.Request, responseHeader interface{}) (*websocketConn, error) {
 	// Stub implementation
 	// In production, use gorilla/websocket
-	return &websocket.Conn{}, nil
+	return &websocketConn{}, nil
 }
 
 // Stub for websocket package
