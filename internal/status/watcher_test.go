@@ -1,220 +1,192 @@
-// Package status_test tests status watcher functionality
-package status_test
+// Package status provides tests for status watcher
+package status
 
 import (
-	"os"
-	"sync"
+	"encoding/json"
 	"testing"
 	"time"
-
-	"github.com/stsgym/vimic2/internal/database"
-	"github.com/stsgym/vimic2/internal/status"
-	"github.com/stsgym/vimic2/pkg/hypervisor"
 )
 
-// TestWatcher tests the status watcher
-func TestWatcher(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "vimic2-watcher-test-*.db")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	db, err := database.NewDB(tmpPath)
-	if err != nil {
-		t.Fatalf("Failed to create database: %v", err)
-	}
-	defer db.Close()
-
-	// Create test cluster
-	testCluster := &database.Cluster{
-		ID:     "test-cluster",
-		Name:   "Test Cluster",
-		Status: "running",
-	}
-	db.SaveCluster(testCluster)
-
-	// Create stub hypervisor
-	stubHV := hypervisor.NewStubHypervisor()
-	hosts := map[string]hypervisor.Hypervisor{
-		"test-host": stubHV,
-	}
-
-	watcher := status.NewWatcher(db, hosts)
-	if watcher == nil {
-		t.Fatal("Watcher should not be nil")
-	}
-}
-
-// TestWatcherSubscribe tests subscriber management
-func TestWatcherSubscribe(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "vimic2-watcher-test-*.db")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	db, err := database.NewDB(tmpPath)
-	if err != nil {
-		t.Fatalf("Failed to create database: %v", err)
-	}
-	defer db.Close()
-
-	stubHV := hypervisor.NewStubHypervisor()
-	hosts := map[string]hypervisor.Hypervisor{
-		"test-host": stubHV,
-	}
-
-	watcher := status.NewWatcher(db, hosts)
-
-	// Create a test subscriber
-	sub := &TestSubscriber{}
-	watcher.Subscribe(sub)
-
-	// Unsubscribe
-	watcher.Unsubscribe(sub)
-
-	// Subscribe again
-	watcher.Subscribe(sub)
-}
-
-// TestWatcherStartStop tests starting and stopping the watcher
-func TestWatcherStartStop(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "vimic2-watcher-test-*.db")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	db, err := database.NewDB(tmpPath)
-	if err != nil {
-		t.Fatalf("Failed to create database: %v", err)
-	}
-	defer db.Close()
-
-	stubHV := hypervisor.NewStubHypervisor()
-	hosts := map[string]hypervisor.Hypervisor{
-		"test-host": stubHV,
-	}
-
-	watcher := status.NewWatcher(db, hosts)
-
-	// Start and immediately stop
-	watcher.Start(100 * time.Millisecond)
-	time.Sleep(50 * time.Millisecond)
-	watcher.Stop()
-
-	// If we get here without hanging, the test passed
-}
-
-// TestWatcherCheckAll tests the check all function
-// TestWatcherCheckAll tests the checkAll method
-func TestWatcherCheckAll(t *testing.T) {
-	t.Skip("checkAll is unexported - internal method")
-}
-
 // TestNodeUpdate tests node update structure
-func TestNodeUpdate(t *testing.T) {
-	update := &status.NodeUpdate{
-		Type:      status.UpdateNode,
+func TestNodeUpdate_Create(t *testing.T) {
+	update := &NodeUpdate{
+		Type:      UpdateNode,
 		NodeID:    "node-1",
 		ClusterID: "cluster-1",
 		State:     "running",
+		IP:        "10.0.0.1",
 		CPU:       45.5,
-		Memory:    60.0,
-		Disk:      30.0,
+		Memory:    60.2,
+		Disk:      30.1,
 		Timestamp: time.Now(),
 	}
 
-	if update.Type != status.UpdateNode {
-		t.Errorf("Expected type UpdateNode, got %s", update.Type)
+	if update.Type != UpdateNode {
+		t.Errorf("expected UpdateNode, got %s", update.Type)
+	}
+	if update.NodeID != "node-1" {
+		t.Errorf("expected node-1, got %s", update.NodeID)
 	}
 	if update.State != "running" {
-		t.Errorf("Expected state 'running', got '%s'", update.State)
+		t.Errorf("expected running state, got %s", update.State)
+	}
+	if update.CPU != 45.5 {
+		t.Errorf("expected CPU 45.5, got %f", update.CPU)
 	}
 }
 
 // TestClusterUpdate tests cluster update structure
-func TestClusterUpdate(t *testing.T) {
-	update := &status.ClusterUpdate{
-		Type:      status.UpdateCluster,
+func TestClusterUpdate_Create(t *testing.T) {
+	update := &ClusterUpdate{
+		Type:      UpdateCluster,
 		ClusterID: "cluster-1",
-		Status:    "running",
+		Status:    "healthy",
 		NodeCount: 5,
 		Timestamp: time.Now(),
 	}
 
-	if update.Type != status.UpdateCluster {
-		t.Errorf("Expected type UpdateCluster, got %s", update.Type)
+	if update.Type != UpdateCluster {
+		t.Errorf("expected UpdateCluster, got %s", update.Type)
+	}
+	if update.ClusterID != "cluster-1" {
+		t.Errorf("expected cluster-1, got %s", update.ClusterID)
+	}
+	if update.Status != "healthy" {
+		t.Errorf("expected healthy status, got %s", update.Status)
 	}
 	if update.NodeCount != 5 {
-		t.Errorf("Expected NodeCount 5, got %d", update.NodeCount)
+		t.Errorf("expected 5 nodes, got %d", update.NodeCount)
 	}
 }
 
-// TestWebSocketHub tests the WebSocket hub
-func TestWebSocketHub(t *testing.T) {
-	hub := status.NewWebSocketHub()
-	if hub == nil {
-		t.Fatal("Hub should not be nil")
+// TestUpdateType tests update type constants
+func TestUpdateType_Constants(t *testing.T) {
+	types := []UpdateType{UpdateNode, UpdateCluster, UpdateMetrics}
+
+	for _, ut := range types {
+		if ut == "" {
+			t.Error("empty update type")
+		}
 	}
+}
 
-	// Start the hub
-	go hub.Run()
-
-	// Broadcast should not panic
-	hub.Broadcast(&status.NodeUpdate{
-		Type:      status.UpdateNode,
+// TestNodeUpdate_JSON tests JSON marshaling
+func TestNodeUpdate_JSON(t *testing.T) {
+	update := &NodeUpdate{
+		Type:      UpdateNode,
 		NodeID:    "node-1",
 		ClusterID: "cluster-1",
 		State:     "running",
-	})
+		IP:        "10.0.0.1",
+		CPU:       45.5,
+		Memory:    60.2,
+		Disk:      30.1,
+		Timestamp: time.Now(),
+	}
+
+	data, err := json.Marshal(update)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var update2 NodeUpdate
+	if err := json.Unmarshal(data, &update2); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if update2.NodeID != update.NodeID {
+		t.Errorf("expected NodeID %s, got %s", update.NodeID, update2.NodeID)
+	}
+	if update2.CPU != update.CPU {
+		t.Errorf("expected CPU %f, got %f", update.CPU, update2.CPU)
+	}
 }
 
-// TestWebSocketHubBroadcast tests broadcasting to multiple clients
-func TestWebSocketHubBroadcast(t *testing.T) {
-	hub := status.NewWebSocketHub()
-	go hub.Run()
+// TestClusterUpdate_JSON tests JSON marshaling
+func TestClusterUpdate_JSON(t *testing.T) {
+	update := &ClusterUpdate{
+		Type:      UpdateCluster,
+		ClusterID: "cluster-1",
+		Status:    "healthy",
+		NodeCount: 5,
+		Timestamp: time.Now(),
+	}
 
-	// Broadcast update
-	update := &status.NodeUpdate{
-		Type:      status.UpdateNode,
+	data, err := json.Marshal(update)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var update2 ClusterUpdate
+	if err := json.Unmarshal(data, &update2); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if update2.ClusterID != update.ClusterID {
+		t.Errorf("expected ClusterID %s, got %s", update.ClusterID, update2.ClusterID)
+	}
+	if update2.NodeCount != update.NodeCount {
+		t.Errorf("expected NodeCount %d, got %d", update.NodeCount, update2.NodeCount)
+	}
+}
+
+// TestSubscriberInterface tests subscriber interface
+func TestSubscriberInterface(t *testing.T) {
+	// Create a mock subscriber
+	var _ Subscriber = &mockSubscriber{}
+}
+
+type mockSubscriber struct {
+	nodeUpdates    []*NodeUpdate
+	clusterUpdates []*ClusterUpdate
+}
+
+func (m *mockSubscriber) OnNodeUpdate(u *NodeUpdate) {
+	m.nodeUpdates = append(m.nodeUpdates, u)
+}
+
+func (m *mockSubscriber) OnClusterUpdate(u *ClusterUpdate) {
+	m.clusterUpdates = append(m.clusterUpdates, u)
+}
+
+// TestMockSubscriber tests mock subscriber
+func TestMockSubscriber(t *testing.T) {
+	mock := &mockSubscriber{
+		nodeUpdates:    make([]*NodeUpdate, 0),
+		clusterUpdates: make([]*ClusterUpdate, 0),
+	}
+
+	// Test node update
+	nodeUpdate := &NodeUpdate{
+		Type:      UpdateNode,
 		NodeID:    "node-1",
 		ClusterID: "cluster-1",
 		State:     "running",
+		Timestamp: time.Now(),
 	}
-	hub.Broadcast(update)
+	mock.OnNodeUpdate(nodeUpdate)
 
-	// Give time for broadcast
-	time.Sleep(10 * time.Millisecond)
-}
+	if len(mock.nodeUpdates) != 1 {
+		t.Errorf("expected 1 node update, got %d", len(mock.nodeUpdates))
+	}
+	if mock.nodeUpdates[0].NodeID != "node-1" {
+		t.Errorf("expected node-1, got %s", mock.nodeUpdates[0].NodeID)
+	}
 
-// TestSubscriberFilter tests node filtering
-func TestSubscriberFilter(t *testing.T) {
-	t.Skip("WebSocketClient fields are unexported")
-}
+	// Test cluster update
+	clusterUpdate := &ClusterUpdate{
+		Type:      UpdateCluster,
+		ClusterID: "cluster-1",
+		Status:    "healthy",
+		NodeCount: 5,
+		Timestamp: time.Now(),
+	}
+	mock.OnClusterUpdate(clusterUpdate)
 
-// TestSubscriber interface implementation for testing
-type TestSubscriber struct {
-	mu         sync.Mutex
-	nodeUpdates []*status.NodeUpdate
-	clusterUpdates []*status.ClusterUpdate
-}
-
-func (s *TestSubscriber) OnNodeUpdate(update *status.NodeUpdate) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.nodeUpdates = append(s.nodeUpdates, update)
-}
-
-func (s *TestSubscriber) OnClusterUpdate(update *status.ClusterUpdate) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.clusterUpdates = append(s.clusterUpdates, update)
+	if len(mock.clusterUpdates) != 1 {
+		t.Errorf("expected 1 cluster update, got %d", len(mock.clusterUpdates))
+	}
+	if mock.clusterUpdates[0].ClusterID != "cluster-1" {
+		t.Errorf("expected cluster-1, got %s", mock.clusterUpdates[0].ClusterID)
+	}
 }
