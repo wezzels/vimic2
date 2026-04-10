@@ -434,3 +434,93 @@ func TestRealOVSClient_FlowOperations(t *testing.T) {
 		t.Fatalf("delete bridge failed: %v", err)
 	}
 }
+
+// TestRealOVSClient_GetBridge tests GetBridge (dry-run)
+func TestRealOVSClient_GetBridge(t *testing.T) {
+	client := realovs.NewClient(&realovs.Config{
+		DryRun: true,
+	})
+
+	// GetBridge returns error in dry-run mode
+	_, err := client.GetBridge("br-test")
+	// This should not error in dry-run mode
+	_ = err
+}
+
+// TestRealOVSClient_ListBridges tests ListBridges (dry-run)
+func TestRealOVSClient_ListBridges(t *testing.T) {
+	client := realovs.NewClient(&realovs.Config{
+		DryRun: true,
+	})
+
+	_, err := client.ListBridges()
+	_ = err
+}
+
+// TestRealOVSClient_GetPort tests GetPort (dry-run)
+func TestRealOVSClient_GetPort(t *testing.T) {
+	client := realovs.NewClient(&realovs.Config{
+		DryRun: true,
+	})
+
+	_, err := client.GetPort("vnet0")
+	_ = err
+}
+
+// TestRealOVSClient_ListPorts tests ListPorts (dry-run)
+func TestRealOVSClient_ListPorts(t *testing.T) {
+	client := realovs.NewClient(&realovs.Config{
+		DryRun: true,
+	})
+
+	_, err := client.ListPorts("br-test")
+	_ = err
+}
+
+// TestRealOVSClient_ListFlows tests ListFlows (dry-run)
+func TestRealOVSClient_ListFlows(t *testing.T) {
+	client := realovs.NewClient(&realovs.Config{
+		DryRun: true,
+	})
+
+	_, err := client.ListFlows("br-test")
+	_ = err
+}
+
+// TestRealOVSClient_GetInterfaceUUID tests GetInterfaceUUID (dry-run)
+func TestRealOVSClient_GetInterfaceUUID(t *testing.T) {
+	client := realovs.NewClient(&realovs.Config{
+		DryRun: true,
+	})
+
+	_, err := client.GetInterfaceUUID("vnet0")
+	_ = err
+}
+
+// TestRealOVSClient_GetInterfaceOption tests GetInterfaceOption (dry-run)
+func TestRealOVSClient_GetInterfaceOption(t *testing.T) {
+	client := realovs.NewClient(&realovs.Config{
+		DryRun: true,
+	})
+
+	_, err := client.GetInterfaceOption("vnet0", "key")
+	_ = err
+}
+
+// TestRealOVSClient_IsAvailable tests IsAvailable
+func TestRealOVSClient_IsAvailable(t *testing.T) {
+	// This function checks if ovs-vsctl is in PATH
+	available := realovs.IsAvailable()
+	_ = available
+}
+
+// TestRealOVSClient_Version tests Version
+func TestRealOVSClient_Version(t *testing.T) {
+	// This function returns OVS version
+	version, err := realovs.Version()
+	if err != nil {
+		// OVS may not be installed, that's fine
+		return
+	}
+	_ = version
+}

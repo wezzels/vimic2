@@ -621,3 +621,24 @@ func TestRealDatabase_Concurrent(t *testing.T) {
 		t.Errorf("expected 10 clusters, got %d", len(clusters))
 	}
 }
+
+// TestRealDatabase_NewDatabaseWithConfig tests database creation with config
+func TestRealDatabase_NewDatabaseWithConfig(t *testing.T) {
+	db, err := realdb.NewDatabase(&realdb.Config{
+		Path:         ":memory:",
+		MaxOpenConns: 5,
+		MaxIdleConns: 2,
+		BusyTimeout:  1 * time.Second,
+		WALMode:      false,
+	})
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	if db == nil {
+		t.Error("database should not be nil")
+	}
+}
+
+// TestRealDatabase_NewDatabase tests database creation with config

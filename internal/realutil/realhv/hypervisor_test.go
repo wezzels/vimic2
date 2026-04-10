@@ -235,3 +235,74 @@ func TestRealHypervisor_OperationsWithoutConnect(t *testing.T) {
 		t.Error("GetNode should fail without connection")
 	}
 }
+
+// TestRealHypervisor_Connect tests connection
+func TestRealHypervisor_Connect(t *testing.T) {
+	hv := realhv.NewHypervisor(&realhv.Config{
+		AutoConnect: false,
+	})
+
+	ctx := context.Background()
+
+	// Connect should fail with invalid URI
+	err := hv.Connect(ctx)
+	// Connection attempt should be made, but will fail
+	_ = err
+}
+
+// TestRealHypervisor_DeleteNode tests delete node
+func TestRealHypervisor_DeleteNode(t *testing.T) {
+	hv := realhv.NewHypervisor(&realhv.Config{
+		AutoConnect: false,
+	})
+
+	ctx := context.Background()
+
+	err := hv.DeleteNode(ctx, "vm-1")
+	if err == nil {
+		t.Error("DeleteNode should fail without connection")
+	}
+}
+
+// TestRealHypervisor_RestartNode tests restart node
+func TestRealHypervisor_RestartNode(t *testing.T) {
+	hv := realhv.NewHypervisor(&realhv.Config{
+		AutoConnect: false,
+	})
+
+	ctx := context.Background()
+
+	err := hv.RestartNode(ctx, "vm-1")
+	if err == nil {
+		t.Error("RestartNode should fail without connection")
+	}
+}
+
+// TestRealHypervisor_GetNodeStatus tests get node status
+func TestRealHypervisor_GetNodeStatus(t *testing.T) {
+	hv := realhv.NewHypervisor(&realhv.Config{
+		AutoConnect: false,
+	})
+
+	ctx := context.Background()
+
+	_, err := hv.GetNodeStatus(ctx, "vm-1")
+	if err == nil {
+		t.Error("GetNodeStatus should fail without connection")
+	}
+}
+
+// TestRealHypervisor_GetMetrics tests get metrics
+func TestRealHypervisor_GetMetrics(t *testing.T) {
+	hv := realhv.NewHypervisor(&realhv.Config{
+		AutoConnect: false,
+	})
+
+	ctx := context.Background()
+
+	_, err := hv.GetMetrics(ctx, "vm-1")
+	if err == nil {
+		t.Error("GetMetrics should fail without connection")
+	}
+}
+

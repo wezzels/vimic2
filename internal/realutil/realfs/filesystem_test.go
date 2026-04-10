@@ -547,3 +547,116 @@ func TestRealFilesystem_AtomicWrite(t *testing.T) {
 		t.Error("file should exist")
 	}
 }
+
+// TestRealFilesystem_Chown tests chown
+func TestRealFilesystem_Chown(t *testing.T) {
+	fs := realfs.NewFilesystem()
+
+	tmpDir, err := os.MkdirTemp("", "realfs-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	testFile := filepath.Join(tmpDir, "test.txt")
+	_ = fs.WriteFile(testFile, []byte("test"), 0644)
+
+	// Note: Chown may fail without root, but we test the function exists
+	_ = fs.Chown(testFile, os.Getuid(), os.Getgid())
+}
+
+// TestRealFilesystem_Rel tests relative path
+func TestRealFilesystem_Rel(t *testing.T) {
+	fs := realfs.NewFilesystem()
+
+	rel, err := fs.Rel("/tmp", "/tmp/test.txt")
+	if err != nil {
+		t.Fatalf("failed to get rel: %v", err)
+	}
+	if rel != "test.txt" {
+		t.Errorf("expected test.txt, got %s", rel)
+	}
+}
+
+// TestRealFilesystem_SplitList tests split list
+func TestRealFilesystem_SplitList(t *testing.T) {
+	fs := realfs.NewFilesystem()
+
+	parts := fs.SplitList("/usr/bin:/usr/local/bin")
+	if len(parts) != 2 {
+		t.Errorf("expected 2 parts, got %d", len(parts))
+	}
+	if parts[0] != "/usr/bin" {
+		t.Errorf("expected /usr/bin, got %s", parts[0])
+	}
+}
+
+// TestRealFilesystem_OpString tests operation string
+func TestRealFilesystem_OpString(t *testing.T) {
+	op := realfs.Create
+	if op.String() != "CREATE" {
+		t.Errorf("expected CREATE, got %s", op.String())
+	}
+
+	op = realfs.Write
+	if op.String() != "WRITE" {
+		t.Errorf("expected WRITE, got %s", op.String())
+	}
+
+	op = realfs.Remove
+	if op.String() != "REMOVE" {
+		t.Errorf("expected REMOVE, got %s", op.String())
+	}
+
+	op = realfs.Rename
+	if op.String() != "RENAME" {
+		t.Errorf("expected RENAME, got %s", op.String())
+	}
+
+	op = realfs.Chmod
+	if op.String() != "CHMOD" {
+		t.Errorf("expected CHMOD, got %s", op.String())
+	}
+
+	op = realfs.Op(0)
+	if op.String() != "?" {
+		t.Errorf("expected ?, got %s", op.String())
+	}
+}
+
+// TestRealFilesystem_LockFileIO tests lock file read/write
+func TestRealFilesystem_LockFileIO(t *testing.T) {
+	fs := realfs.NewFilesystem()
+
+	tmpDir, err := os.MkdirTemp("", "realfs-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	lockFile := filepath.Join(tmpDir, "test.lock")
+
+	lf, err := fs.Lock(lockFile)
+	if err != nil {
+		t.Fatalf("failed to acquire lock: %v", err)
+	}
+
+	// Test write
+	n, err := lf.Write([]byte("test"))
+	if err != nil {
+		t.Fatalf("failed to write: %v", err)
+	}
+	if n != 4 {
+		t.Errorf("expected 4 bytes, got %d", n)
+	}
+
+	// Test read
+	buf := make([]byte, 100)
+	_, _ = lf.File().ReadAt(buf, 0) // May return EOF, that's fine
+
+	// Release lock
+	err = lf.Unlock()
+	if err != nil {
+		t.Fatalf("failed to release lock: %v", err)
+	}
+}
