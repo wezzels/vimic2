@@ -131,9 +131,9 @@ func TestLogCollector_GetStats(t *testing.T) {
 
 // Helper function tests
 
-func TestGeneratePipelineID(t *testing.T) {
-	id1 := generatePipelineID()
-	id2 := generatePipelineID()
+func TestGenerateID(t *testing.T) {
+	id1 := generateID()
+	id2 := generateID()
 
 	if id1 == id2 {
 		t.Error("generated IDs should be unique")

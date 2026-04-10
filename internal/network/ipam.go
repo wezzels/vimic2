@@ -455,9 +455,9 @@ func incrementIP(ip string, offsets ...int) string {
 
 	// Add offset (big-endian)
 	carry := offset
-	for i := 3; i >= 0; i-- {
+	for i := 3; i >= 0 && carry > 0; i-- {
 		val := int(result[i]) + carry
-		result[i] = byte(val & 0xFF)
+		result[i] = byte(val)
 		carry = val >> 8
 	}
 

@@ -1,0 +1,33 @@
+# Basic Cluster Configuration
+# Example: Single cluster with default pool
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  auth:
+    token: "your-secure-token"
+
+database:
+  path: "~/.vimic2/vimic2.db"
+
+network:
+  bridge: "vimicbr0"
+  external_iface: "eth0"
+  vlan_start: 100
+  vlan_end: 1000
+
+pools:
+  default:
+    size: 10
+    platform: "linux/amd64"
+    memory: 2048
+    cpus: 2
+    disk_size: 20971520  # 20GB
+
+hypervisor:
+  type: "libvirt"
+  connection: "qemu:///system"
+
+monitoring:
+  enabled: true
+  interval: 10

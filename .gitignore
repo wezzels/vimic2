@@ -46,3 +46,20 @@ logs/
 tmp/
 temp/
 *.tmp
+
+# Build artifacts
+vimic2
+build/
+*.test
+*.out
+coverage.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

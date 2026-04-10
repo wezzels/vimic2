@@ -184,7 +184,7 @@ users:
 	// Create cloud-init ISO
 	isoPath := filepath.Join("/tmp", fmt.Sprintf("%s-cloud-init.iso", vmName))
 	cmd := exec.Command("cloud-localds", isoPath, tmpFile.Name())
-	if err := cmd.Run(); err != nil {
+	if _, err := cmd.CombinedOutput(); err != nil {
 		// Fallback: use virt-copy-in
 		return m.copyKeyWithVirtCopyIn(vmName)
 	}
@@ -192,7 +192,7 @@ users:
 
 	// Attach ISO to VM
 	attachCmd := exec.Command("virsh", "attach-disk", vmName, isoPath, "hda", "--type", "cdrom", "--mode", "readonly")
-	if err := attachCmd.Run(); err != nil {
+	if _, err := attachCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to attach cloud-init ISO: %w", err)
 	}
 
@@ -291,13 +291,13 @@ runcmd:
 		filepath.Join(tmpDir, "meta-data"),
 		filepath.Join(tmpDir, "user-data"),
 	)
-	if err := cmd.Run(); err != nil {
+	if _, err := cmd.CombinedOutput(); err != nil {
 		// Fallback to cloud-localds if genisoimage not available
 		cmd = exec.Command("cloud-localds", isoPath,
 			filepath.Join(tmpDir, "user-data"),
 			filepath.Join(tmpDir, "meta-data"),
 		)
-		if err := cmd.Run(); err != nil {
+		if _, err := cmd.CombinedOutput(); err != nil {
 			return "", fmt.Errorf("failed to create cloud-init ISO: %w", err)
 		}
 	}
@@ -365,17 +365,7 @@ func (m *SSHKeyManager) ExportPrivateKeyPEM() ([]byte, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Parse private key
-	key, err := ssh.ParsePrivateKey(m.privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %w", err)
-	}
-
-	// Get crypto private key
-	cryptoKey := key.(ssh.Signer).PublicKey().(ssh.CryptoPublicKey)
-
 	// For ed25519 and rsa, the key is already in PEM format
-	_ = cryptoKey
 	return m.privateKey, nil
 }
 
@@ -390,12 +380,12 @@ func (m *SSHKeyManager) SignData(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	// Sign data
-	signature, err := signer.Sign(rand.Reader, data)
+	// Sign data - the Sign method returns an ssh.Signature
+	sig, err := signer.Sign(rand.Reader, data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign data: %w", err)
 	}
 
-	// Return signature bytes
-	return ssh.Marshal(signature), nil
+	// Return the signature blob
+	return sig.Blob, nil
 }

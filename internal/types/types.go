@@ -70,12 +70,13 @@ const (
 type RunnerStatus string
 
 const (
-	RunnerStatusCreating  RunnerStatus = "creating"
-	RunnerStatusOnline    RunnerStatus = "online"
-	RunnerStatusOffline   RunnerStatus = "offline"
-	RunnerStatusBusy      RunnerStatus = "busy"
-	RunnerStatusError     RunnerStatus = "error"
-	RunnerStatusDestroyed RunnerStatus = "destroyed"
+	RunnerStatusCreating     RunnerStatus = "creating"
+	RunnerStatusRegistering  RunnerStatus = "registering"
+	RunnerStatusOnline       RunnerStatus = "online"
+	RunnerStatusOffline      RunnerStatus = "offline"
+	RunnerStatusBusy         RunnerStatus = "busy"
+	RunnerStatusError        RunnerStatus = "error"
+	RunnerStatusDestroyed    RunnerStatus = "destroyed"
 )
 
 // VMState represents VM state

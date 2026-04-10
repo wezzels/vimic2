@@ -303,7 +303,10 @@ func (d *JobDispatcher) processJob(workerID int, job *Job) {
 // selectRunner selects a runner for a job
 func (d *JobDispatcher) selectRunner(job *Job) (*runner.RunnerInfo, error) {
 	// Get all runners
-	allRunners, _ := d.runnerManager.ListRunners()
+	allRunners, err := d.runnerManager.ListRunners()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list runners: %w", err)
+	}
 
 	// Filter by status (only use idle runners)
 	var availableRunners []*runner.RunnerInfo

@@ -11,13 +11,96 @@ import (
 	"go.uber.org/zap"
 )
 
+// UpdateStrategy defines the strategy for rolling updates
+type UpdateStrategy struct {
+	BatchSize      int // Nodes to update simultaneously
+	MaxUnavailable int // Max nodes that can be unavailable
+	WaitBetween    int // Seconds to wait between batches
+}
+
+// IsValid validates the update strategy
+func (s *UpdateStrategy) IsValid() bool {
+	return s.BatchSize > 0 && s.MaxUnavailable >= 0 && s.WaitBetween >= 0
+}
+
+// CalculateBatches divides nodes into update batches
+func (r *RollingUpdater) CalculateBatches(nodes []string, batchSize int) [][]string {
+	if batchSize <= 0 || len(nodes) == 0 {
+		return nil
+	}
+	
+	var batches [][]string
+	for i := 0; i < len(nodes); i += batchSize {
+		end := i + batchSize
+		if end > len(nodes) {
+			end = len(nodes)
+		}
+		batches = append(batches, nodes[i:end])
+	}
+	return batches
+}
+
+// SetStrategy sets the update strategy
+func (r *RollingUpdater) SetStrategy(strategy *UpdateStrategy) {
+	r.strategy = strategy
+}
+
+// IsNodeHealthy checks if a node is healthy
+func (r *RollingUpdater) IsNodeHealthy(ctx context.Context, nodeID string) (bool, error) {
+	node, err := r.db.GetNode(nodeID)
+	if err != nil {
+		return false, err
+	}
+	if node == nil {
+		return false, fmt.Errorf("node not found: %s", nodeID)
+	}
+	return node.State == "running", nil
+}
+
+// DrainNode cordons and drains a node
+func (r *RollingUpdater) DrainNode(ctx context.Context, nodeID string) error {
+	node, err := r.db.GetNode(nodeID)
+	if err != nil {
+		return err
+	}
+	// Mark as draining
+	node.State = "draining"
+	return r.db.SaveNode(node)
+}
+
+// UpgradeNode upgrades a node to a new version
+func (r *RollingUpdater) UpgradeNode(ctx context.Context, nodeID string, version string) error {
+	node, err := r.db.GetNode(nodeID)
+	if err != nil {
+		return err
+	}
+	// Update node config with new version
+	if node.Config == nil {
+		node.Config = &database.NodeConfig{}
+	}
+	// Note: Version stored in Image field for now
+	node.Config.Image = version
+	return r.db.SaveNode(node)
+}
+
+// RestoreNode restores a node to its previous state
+func (r *RollingUpdater) RestoreNode(ctx context.Context, nodeID string) error {
+	node, err := r.db.GetNode(nodeID)
+	if err != nil {
+		return err
+	}
+	node.State = "running"
+	return r.db.SaveNode(node)
+}
+
 // RollingUpdater performs zero-downtime rolling updates
 type RollingUpdater struct {
-	db     *database.DB
-	nodes  map[string]*database.Node
-	sugar  *zap.SugaredLogger
-	ctx    context.Context
-	cancel context.CancelFunc
+	db       *database.DB
+	nodes    map[string]*database.Node
+	sugar    *zap.SugaredLogger
+	ctx      context.Context
+	cancel   context.CancelFunc
+	strategy *UpdateStrategy
 }
 
 // UpdateConfig holds rolling update configuration

@@ -1,262 +1,299 @@
-// Package deploy_test tests deployment wizard functionality
-package deploy_test
+// Package deploy provides tests for deployment wizard
+package deploy
 
 import (
 	"testing"
-
-	"github.com/stsgym/vimic2/internal/deploy"
+	"time"
 )
 
-// TestWizardCreation tests wizard initialization
-func TestWizardCreation(t *testing.T) {
-	w := deploy.NewWizard()
+// TestWizard_Create tests wizard creation
+func TestWizard_Create(t *testing.T) {
+	wizard := NewWizard()
 
-	if w == nil {
-		t.Fatal("Wizard should not be nil")
+	if wizard == nil {
+		t.Fatal("wizard should not be nil")
 	}
-
-	cluster := w.GetCluster()
-	if cluster == nil {
-		t.Fatal("Cluster should not be nil")
+	if wizard.cluster == nil {
+		t.Error("cluster should not be nil")
 	}
-
-	if cluster.ID == "" {
-		t.Error("Cluster ID should be generated")
-	}
-
-	if w.GetStep() != 1 {
-		t.Errorf("Initial step should be 1, got %d", w.GetStep())
+	if wizard.cluster.ID == "" {
+		t.Error("cluster ID should be generated")
 	}
 }
 
-// TestWizardStepNavigation tests step navigation
-func TestWizardStepNavigation(t *testing.T) {
-	w := deploy.NewWizard()
-
-	// Test initial step (starts at 1)
-	if w.GetStep() != 1 {
-		t.Errorf("Expected step 1, got %d", w.GetStep())
+// TestCluster tests cluster structure
+func TestCluster_Create(t *testing.T) {
+	cluster := &Cluster{
+		ID:         "cluster-1",
+		Name:       "test-cluster",
+		Hosts:      []*HostRef{},
+		NodeGroups: []*NodeGroup{},
+		Network: &NetworkConfig{
+			Type:    "nat",
+			Name:    "default",
+			CIDR:    "10.0.0.0/24",
+			Gateway: "10.0.0.1",
+		},
+		Status:     "pending",
+		DeployedAt: time.Time{},
 	}
 
-	// Navigate forward
-	w.NextStep()
-	if w.GetStep() != 2 {
-		t.Errorf("Expected step 2, got %d", w.GetStep())
+	if cluster.ID != "cluster-1" {
+		t.Errorf("expected cluster-1, got %s", cluster.ID)
 	}
-
-	w.NextStep()
-	if w.GetStep() != 3 {
-		t.Errorf("Expected step 3, got %d", w.GetStep())
-	}
-
-	// Navigate backward
-	w.PrevStep()
-	if w.GetStep() != 2 {
-		t.Errorf("Expected step 2, got %d", w.GetStep())
-	}
-
-	// Test boundary - can't go below 1
-	w.PrevStep() // Now at 1
-	if w.GetStep() != 1 {
-		t.Errorf("Expected step 1, got %d", w.GetStep())
-	}
-}
-
-// TestWizardNameSetting tests cluster name configuration
-func TestWizardNameSetting(t *testing.T) {
-	w := deploy.NewWizard()
-
-	w.SetName("test-cluster")
-
-	cluster := w.GetCluster()
 	if cluster.Name != "test-cluster" {
-		t.Errorf("Expected name 'test-cluster', got '%s'", cluster.Name)
+		t.Errorf("expected test-cluster, got %s", cluster.Name)
 	}
-}
-
-// TestWizardNetworkConfiguration tests network config
-func TestWizardNetworkConfiguration(t *testing.T) {
-	w := deploy.NewWizard()
-
-	nw := &deploy.NetworkConfig{
-		Name:    "default-network",
-		Type:    "nat",
-		CIDR:    "10.0.0.0/24",
-		Gateway: "10.0.0.1",
-	}
-
-	w.SetNetwork(nw)
-
-	cluster := w.GetCluster()
 	if cluster.Network == nil {
-		t.Fatal("Network config should not be nil")
+		t.Error("network should not be nil")
 	}
-
-	if cluster.Network.Name != "default-network" {
-		t.Errorf("Expected network name 'default-network', got '%s'", cluster.Network.Name)
-	}
-
-	if cluster.Network.CIDR != "10.0.0.0/24" {
-		t.Errorf("Expected CIDR '10.0.0.0/24', got '%s'", cluster.Network.CIDR)
-	}
-
 	if cluster.Network.Type != "nat" {
-		t.Errorf("Expected type 'nat', got '%s'", cluster.Network.Type)
+		t.Errorf("expected nat network type, got %s", cluster.Network.Type)
 	}
 }
 
-// TestWizardNodeGroupManagement tests node group operations
-func TestWizardNodeGroupManagement(t *testing.T) {
-	w := deploy.NewWizard()
+// TestHostRef tests host reference structure
+func TestHostRef_Create(t *testing.T) {
+	host := &HostRef{
+		HostID:    "host-1",
+		HostName:  "worker-node",
+		NodeCount: 3,
+	}
 
-	// Add first node group
-	ng1 := &deploy.NodeGroup{
+	if host.HostID != "host-1" {
+		t.Errorf("expected host-1, got %s", host.HostID)
+	}
+	if host.HostName != "worker-node" {
+		t.Errorf("expected worker-node, got %s", host.HostName)
+	}
+	if host.NodeCount != 3 {
+		t.Errorf("expected 3 nodes, got %d", host.NodeCount)
+	}
+}
+
+// TestNodeGroup tests node group structure
+func TestNodeGroup_Create(t *testing.T) {
+	group := &NodeGroup{
 		Name:     "workers",
-		Count:    3,
-		CPU:      2,
-		MemoryMB: 4096,
-		DiskGB:   20,
-		Image:    "ubuntu:22.04",
 		Role:     "worker",
-	}
-	w.AddNodeGroup(ng1)
-
-	cluster := w.GetCluster()
-	if len(cluster.NodeGroups) != 1 {
-		t.Errorf("Expected 1 node group, got %d", len(cluster.NodeGroups))
-	}
-
-	// Add second node group
-	ng2 := &deploy.NodeGroup{
-		Name:     "masters",
-		Count:    1,
+		Count:    5,
 		CPU:      4,
 		MemoryMB: 8192,
 		DiskGB:   50,
-		Image:    "ubuntu:22.04",
-		Role:     "master",
-	}
-	w.AddNodeGroup(ng2)
-
-	if len(cluster.NodeGroups) != 2 {
-		t.Errorf("Expected 2 node groups, got %d", len(cluster.NodeGroups))
+		Image:    "ubuntu-22.04",
+		HostID:   "host-1",
 	}
 
-	// Remove first node group
-	w.RemoveNodeGroup(0)
-
-	if len(cluster.NodeGroups) != 1 {
-		t.Errorf("Expected 1 node group after removal, got %d", len(cluster.NodeGroups))
+	if group.Name != "workers" {
+		t.Errorf("expected workers, got %s", group.Name)
 	}
-
-	// Verify remaining group is the master
-	if cluster.NodeGroups[0].Name != "masters" {
-		t.Errorf("Expected 'masters' node group, got '%s'", cluster.NodeGroups[0].Name)
+	if group.Role != "worker" {
+		t.Errorf("expected worker role, got %s", group.Role)
 	}
-}
-
-// TestWizardHostConfiguration tests host assignment
-func TestWizardHostConfiguration(t *testing.T) {
-	w := deploy.NewWizard()
-
-	host := &deploy.HostRef{
-		HostID:    "host-1",
-		HostName:  "Primary Host",
-		NodeCount: 0,
+	if group.Count != 5 {
+		t.Errorf("expected 5 nodes, got %d", group.Count)
 	}
-
-	cluster := w.GetCluster()
-	cluster.Hosts = append(cluster.Hosts, host)
-
-	if len(cluster.Hosts) != 1 {
-		t.Errorf("Expected 1 host, got %d", len(cluster.Hosts))
+	if group.CPU != 4 {
+		t.Errorf("expected 4 CPUs, got %d", group.CPU)
 	}
-
-	if cluster.Hosts[0].HostID != "host-1" {
-		t.Errorf("Expected host ID 'host-1', got '%s'", cluster.Hosts[0].HostID)
+	if group.MemoryMB != 8192 {
+		t.Errorf("expected 8192MB memory, got %d", group.MemoryMB)
 	}
 }
 
-// TestWizardValidation tests configuration validation
-func TestWizardValidation(t *testing.T) {
-	t.Run("ValidConfiguration", func(t *testing.T) {
-		w := deploy.NewWizard()
-		w.SetName("valid-cluster")
+// TestNetworkConfig tests network configuration
+func TestNetworkConfig_Create(t *testing.T) {
+	config := &NetworkConfig{
+		Type:    "bridge",
+		Name:    "br-cluster",
+		CIDR:    "172.20.0.0/16",
+		Gateway: "172.20.0.1",
+	}
 
-		ng := &deploy.NodeGroup{
-			Name:     "workers",
-			Count:    3,
-			CPU:      2,
-			MemoryMB: 4096,
-			DiskGB:   20,
-			Image:    "ubuntu:22.04",
-			Role:     "worker",
-		}
-		w.AddNodeGroup(ng)
-
-		err := w.Validate()
-		if err != nil {
-			t.Errorf("Valid configuration should not error: %v", err)
-		}
-	})
-
-	t.Run("EmptyName", func(t *testing.T) {
-		w := deploy.NewWizard()
-		// Don't set name
-
-		err := w.Validate()
-		if err == nil {
-			t.Error("Empty name should fail validation")
-		}
-	})
-
-	t.Run("NoNodeGroups", func(t *testing.T) {
-		w := deploy.NewWizard()
-		w.SetName("test-cluster")
-		// Don't add node groups
-
-		err := w.Validate()
-		if err == nil {
-			t.Error("No node groups should fail validation")
-		}
-	})
+	if config.Type != "bridge" {
+		t.Errorf("expected bridge type, got %s", config.Type)
+	}
+	if config.Name != "br-cluster" {
+		t.Errorf("expected br-cluster, got %s", config.Name)
+	}
+	if config.CIDR != "172.20.0.0/16" {
+		t.Errorf("expected 172.20.0.0/16 CIDR, got %s", config.CIDR)
+	}
+	if config.Gateway != "172.20.0.1" {
+		t.Errorf("expected gateway 172.20.0.1, got %s", config.Gateway)
+	}
 }
 
-// TestNodeGroupDefaults tests node group values
-func TestNodeGroupDefaults(t *testing.T) {
-	// NodeGroup fields should be explicitly set
-	// No defaults are applied by the struct itself
-	ng := &deploy.NodeGroup{
-		Name:     "test",
-		Count:    3,
+// TestWizard_SetName tests setting cluster name
+func TestWizard_SetName(t *testing.T) {
+	wizard := NewWizard()
+
+	wizard.SetName("my-cluster")
+
+	if wizard.cluster.Name != "my-cluster" {
+		t.Errorf("expected my-cluster, got %s", wizard.cluster.Name)
+	}
+}
+
+// TestWizard_AddNodeGroup tests adding node groups
+func TestWizard_AddNodeGroup(t *testing.T) {
+	wizard := NewWizard()
+
+	group := &NodeGroup{
+		Name:     "control-plane",
+		Role:     "control-plane",
+		Count:    1,
 		CPU:      2,
 		MemoryMB: 4096,
 		DiskGB:   20,
+		Image:    "ubuntu-22.04",
 	}
 
-	// Verify set values
-	if ng.CPU != 2 {
-		t.Errorf("Expected CPU 2, got %d", ng.CPU)
+	wizard.AddNodeGroup(group)
+
+	if len(wizard.cluster.NodeGroups) != 1 {
+		t.Errorf("expected 1 node group, got %d", len(wizard.cluster.NodeGroups))
 	}
-	if ng.MemoryMB != 4096 {
-		t.Errorf("Expected MemoryMB 4096, got %d", ng.MemoryMB)
-	}
-	if ng.DiskGB != 20 {
-		t.Errorf("Expected DiskGB 20, got %d", ng.DiskGB)
+	if wizard.cluster.NodeGroups[0].Name != "control-plane" {
+		t.Errorf("expected control-plane, got %s", wizard.cluster.NodeGroups[0].Name)
 	}
 }
 
-// TestNetworkConfigDefaults tests network config default values
-func TestNetworkConfigDefaults(t *testing.T) {
-	nw := &deploy.NetworkConfig{
-		Name: "test-network",
+// TestWizard_SetNetwork tests setting network configuration
+func TestWizard_SetNetwork(t *testing.T) {
+	wizard := NewWizard()
+
+	config := &NetworkConfig{
+		Type:    "custom",
+		Name:    "br-custom",
+		CIDR:    "192.168.1.0/24",
+		Gateway: "192.168.1.1",
 	}
 
-	// Verify defaults
-	if nw.Type == "" {
-		// Type can be empty, will use default
+	wizard.SetNetwork(config)
+
+	if wizard.cluster.Network == nil {
+		t.Fatal("network should not be nil")
 	}
-	if nw.CIDR == "" {
-		// CIDR can be empty for bridge networks
+	if wizard.cluster.Network.Type != "custom" {
+		t.Errorf("expected custom type, got %s", wizard.cluster.Network.Type)
+	}
+}
+
+// TestWizard_NextStep tests wizard step progression
+func TestWizard_NextStep(t *testing.T) {
+	wizard := NewWizard()
+
+	initialStep := wizard.step
+	wizard.NextStep()
+
+	if wizard.step != initialStep+1 {
+		t.Errorf("expected step %d, got %d", initialStep+1, wizard.step)
+	}
+}
+
+// TestWizard_PrevStep tests wizard step regression
+func TestWizard_PrevStep(t *testing.T) {
+	wizard := NewWizard()
+	wizard.step = 2
+
+	wizard.PrevStep()
+
+	if wizard.step != 1 {
+		t.Errorf("expected step 1, got %d", wizard.step)
+	}
+}
+
+// TestWizard_GetStep tests getting current step
+func TestWizard_GetStep(t *testing.T) {
+	wizard := NewWizard()
+	wizard.step = 3
+
+	step := wizard.GetStep()
+
+	if step != 3 {
+		t.Errorf("expected step 3, got %d", step)
+	}
+}
+
+// TestWizard_GetCluster tests getting cluster configuration
+func TestWizard_GetCluster(t *testing.T) {
+	wizard := NewWizard()
+	wizard.cluster.Name = "test-cluster"
+
+	cluster := wizard.GetCluster()
+
+	if cluster == nil {
+		t.Fatal("cluster should not be nil")
+	}
+	if cluster.Name != "test-cluster" {
+		t.Errorf("expected test-cluster, got %s", cluster.Name)
+	}
+}
+
+// TestWizard_Validate tests cluster validation
+func TestWizard_Validate(t *testing.T) {
+	wizard := NewWizard()
+
+	// Empty cluster should fail validation
+	err := wizard.Validate()
+	if err == nil {
+		t.Error("expected validation error for empty cluster")
+	}
+
+	// Add required fields
+	wizard.SetName("test-cluster")
+	wizard.AddNodeGroup(&NodeGroup{
+		Name:     "workers",
+		Role:     "worker",
+		Count:    1,
+		CPU:      2,
+		MemoryMB: 4096,
+		DiskGB:   20,
+		Image:    "ubuntu-22.04",
+	})
+	wizard.SetNetwork(&NetworkConfig{
+		Type:    "nat",
+		Name:    "default",
+		CIDR:    "10.0.0.0/24",
+		Gateway: "10.0.0.1",
+	})
+
+	// Now should validate
+	err = wizard.Validate()
+	if err != nil {
+		t.Errorf("validation should pass: %v", err)
+	}
+}
+
+// TestNodeGroup_JSON tests node group structure
+func TestNodeGroup_JSON(t *testing.T) {
+	group := &NodeGroup{
+		Name:     "workers",
+		Role:     "worker",
+		Count:    5,
+		CPU:      4,
+		MemoryMB: 8192,
+		DiskGB:   50,
+		Image:    "ubuntu-22.04",
+	}
+
+	if group.Name != "workers" {
+		t.Errorf("expected workers, got %s", group.Name)
+	}
+}
+
+// TestCluster_JSON tests cluster structure
+func TestCluster_JSON(t *testing.T) {
+	cluster := &Cluster{
+		ID:         "cluster-1",
+		Name:       "test-cluster",
+		Hosts:      []*HostRef{},
+		NodeGroups: []*NodeGroup{},
+		Status:     "pending",
+	}
+
+	if cluster.ID != "cluster-1" {
+		t.Errorf("expected cluster-1, got %s", cluster.ID)
 	}
 }

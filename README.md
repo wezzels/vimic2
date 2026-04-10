@@ -2,6 +2,13 @@
 
 **A comprehensive VM-based CI/CD orchestration system with ephemeral build environments**
 
+## Repositories
+
+| Remote | URL |
+|--------|-----|
+| **IDM (origin)** | `git@idm.wezzel.com:crab-meat-repos/vimic2.git` |
+| **GitHub** | `https://github.com/wezzels/vimic2` |
+
 ## Overview
 
 Vimic2 is a complete CI/CD orchestration platform that creates isolated, ephemeral build environments using QEMU backing files, Open vSwitch network virtualization, and multi-platform runner support.

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stsgym/vimic2/internal/network"
 	"github.com/stsgym/vimic2/internal/pipeline"
 	"github.com/stsgym/vimic2/internal/pool"
-	"github.com/stsgym/vimic2/internal/network"
 	"github.com/stsgym/vimic2/internal/runner"
 	"github.com/stsgym/vimic2/internal/types"
 )
@@ -29,6 +29,7 @@ type Server struct {
 	runnerManager  *runner.RunnerManager
 	httpServer     *http.Server
 	router         *http.ServeMux
+	ws             *WebSocketServer
 	authEnabled    bool
 	authToken      string
 	ws             *WebSocketServer
@@ -215,10 +216,6 @@ func (s *Server) handleListPipelines(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pipelines := s.coordinator.ListPipelines()
-	// Apply limit filtering
-	if len(pipelines) > limit {
-		pipelines = pipelines[:limit]
-	}
 	s.writeJSON(w, http.StatusOK, pipelines)
 }
 
@@ -253,10 +250,9 @@ func (s *Server) handleCreatePipeline(w http.ResponseWriter, r *http.Request) {
 		req.RunnerCount = 1
 	}
 
-	platform := types.RunnerPlatform(req.Platform)
 	pipelineState, err := s.coordinator.CreatePipeline(
 		r.Context(),
-		platform,
+		types.RunnerPlatform(req.Platform),
 		req.Repository,
 		req.Branch,
 	)
@@ -278,7 +274,11 @@ func (s *Server) handleCreatePipeline(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleStartPipeline(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if err := s.coordinator.StartPipeline(r.Context(), id, 1); err != nil {
+	runnerCount := 1
+	if count := r.URL.Query().Get("runners"); count != "" {
+		fmt.Sscanf(count, "%d", &runnerCount)
+	}
+	if err := s.coordinator.StartPipeline(r.Context(), id, runnerCount); err != nil {
 		s.writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -287,15 +287,19 @@ func (s *Server) handleStartPipeline(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleStopPipeline(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	// StopPipeline not implemented - just return success
-	_ = id
+	if err := s.coordinator.CancelPipeline(r.Context(), id); err != nil {
+		s.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	s.writeJSON(w, http.StatusOK, map[string]string{"status": "stopped"})
 }
 
 func (s *Server) handleDestroyPipeline(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	// DestroyPipeline not implemented - just return success
-	_ = id
+	if err := s.coordinator.DeletePipeline(id); err != nil {
+		s.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	s.writeJSON(w, http.StatusOK, map[string]string{"status": "destroyed"})
 }
 
@@ -368,23 +372,25 @@ func (s *Server) handleRetryJob(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleListRunners(w http.ResponseWriter, r *http.Request) {
 	platform := r.URL.Query().Get("platform")
-	var runners interface{}
 
-	if platform != "" {
-		allRunners, _ := s.runnerManager.ListRunners()
-		// Filter by platform
-		var filtered []*runner.RunnerInfo
-		for _, r := range allRunners {
-			if string(r.Platform) == platform {
-				filtered = append(filtered, r)
-			}
-		}
-		runners = filtered
-	} else {
-		runners, _ = s.runnerManager.ListRunners()
+	runners, err := s.runnerManager.ListRunners()
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 
-	s.writeJSON(w, http.StatusOK, runners)
+	if platform != "" {
+		// Filter by platform
+		filtered := make([]*runner.RunnerInfo, 0)
+		for _, runner := range runners {
+			if string(runner.Platform) == platform {
+				filtered = append(filtered, runner)
+			}
+		}
+		s.writeJSON(w, http.StatusOK, filtered)
+	} else {
+		s.writeJSON(w, http.StatusOK, runners)
+	}
 }
 
 func (s *Server) handleGetRunner(w http.ResponseWriter, r *http.Request) {
@@ -427,17 +433,24 @@ func (s *Server) handleCreateRunner(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleStartRunner(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	// StartRunner method not implemented in runner manager
-	// For now, just return success
-	_ = id
-	s.writeJSON(w, http.StatusOK, map[string]string{"status": "started"})
+	// Get VM IP from runner info
+	runnerInfo, err := s.runnerManager.GetRunner(id)
+	if err != nil {
+		s.writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	// VM IP would be obtained from pool manager in full implementation
+	// For now, return success
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "started", "runner_id": runnerInfo.ID})
 }
 
 func (s *Server) handleStopRunner(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	// StopRunner method not implemented in runner manager
-	// For now, just return success
-	_ = id
+	if err := s.runnerManager.DestroyRunner(r.Context(), id); err != nil {
+		s.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	s.writeJSON(w, http.StatusOK, map[string]string{"status": "stopped"})
 }
 
@@ -453,7 +466,11 @@ func (s *Server) handleDestroyRunner(w http.ResponseWriter, r *http.Request) {
 // Pool handlers
 
 func (s *Server) handleListPools(w http.ResponseWriter, r *http.Request) {
-	pools, _ := s.poolManager.ListPools()
+	pools, err := s.poolManager.ListPools()
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	s.writeJSON(w, http.StatusOK, pools)
 }
 
@@ -501,13 +518,8 @@ func (s *Server) handleCreatePool(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleListPoolVMs(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	pool, err := s.poolManager.GetPool(name)
-	if err != nil {
-		s.writeError(w, http.StatusNotFound, err.Error())
-		return
-	}
-	// Get VMs from pool state
-	_ = pool
+	_ = name // TODO: implement pool VM listing
+	// ListVMs is not implemented yet - return empty list
 	s.writeJSON(w, http.StatusOK, []interface{}{})
 }
 
@@ -541,7 +553,11 @@ func (s *Server) handleReleaseVM(w http.ResponseWriter, r *http.Request) {
 // Network handlers
 
 func (s *Server) handleListNetworks(w http.ResponseWriter, r *http.Request) {
-	networks, _ := s.networkManager.ListNetworks()
+	networks, err := s.networkManager.ListNetworks()
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	s.writeJSON(w, http.StatusOK, networks)
 }
 
@@ -740,15 +756,25 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 // Stats handler
 
 func (s *Server) handleGetStats(w http.ResponseWriter, r *http.Request) {
-	// GetStats methods not implemented - return placeholder stats
+	// Get pipeline stats
+	pipelines := s.coordinator.ListPipelines()
+	
+	// Get runner stats
+	runners, _ := s.runnerManager.ListRunners()
+	
+	// Get pool stats
+	pools, _ := s.poolManager.ListPools()
+	
+	// Get network stats
+	networks, _ := s.networkManager.ListNetworks()
+
 	stats := map[string]interface{}{
-		"pipelines": map[string]int{"total": 0, "running": 0},
-		"jobs":      map[string]int{"total": 0, "running": 0},
-		"runners":   map[string]int{"total": 0, "online": 0},
-		"pools":     map[string]int{"total": 0, "available": 0},
-		"networks":  map[string]int{"total": 0, "active": 0},
-		"artifacts": map[string]int{"total": 0},
-		"logs":      map[string]int{"total": 0},
+		"pipelines": len(pipelines),
+		"runners":   len(runners),
+		"pools":     len(pools),
+		"networks": len(networks),
+		"artifacts": s.artifacts != nil,
+		"logs":      s.logs != nil,
 	}
 
 	s.writeJSON(w, http.StatusOK, stats)

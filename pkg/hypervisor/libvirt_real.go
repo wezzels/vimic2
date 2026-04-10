@@ -69,7 +69,7 @@ const domainXMLTemplate = `<domain type='kvm'>
   <currentMemory unit='MiB'>{{.MemoryMB}}</currentMemory>
   <vcpu placement='static'>{{.CPU}}</vcpu>
   <os>
-    <type arch='x86_64' machine='pc-q35-rhel8.2.0'>hvm</type>
+    <type arch='x86_64' machine='q35'>hvm</type>
     <boot dev='hd'/>
   </os>
   <cpu mode='host-model'/>
@@ -91,7 +91,6 @@ const domainXMLTemplate = `<domain type='kvm'>
       <driver name='qemu' type='qcow2'/>
       <source file='{{.DiskPath}}'/>
       <target dev='vda' bus='virtio'/>
-      <address type='drive' controller='0' bus='0' target='0' unit='0'/>
     </disk>
     <controller type='usb' index='0' model='qemu-xhci'>
       <address type='usb' bus='0' port='1'/>
@@ -126,7 +125,7 @@ const domainXMLTemplate = `<domain type='kvm'>
       <model type='qxl' ram='65536' vram='65536' vgamem='16384' heads='1' primary='yes'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
     </video>
-    <memballoon model='virtioserial'>
+    <memballoon model='virtio'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>
     </memballoon>
   </devices>
@@ -175,16 +174,16 @@ func (h *LibvirtHypervisor) CreateNode(ctx context.Context, cfg *NodeConfig) (*N
 	}
 
 	// Define and start the domain
-	domain, err := h.conn.DomainCreateXML(xmlBuf.String(), libvirt.DomainStartPaused)
+	domain, err := h.conn.DomainDefineXML(xmlBuf.String())
 	if err != nil {
 		os.Remove(diskPath)
-		return nil, fmt.Errorf("failed to create domain: %w", err)
+		return nil, fmt.Errorf("failed to define domain: %w", err)
 	}
 	defer domain.Free()
 
 	// Start the domain
-	if err := domain.Resume(); err != nil {
-		domain.Destroy()
+	if err := domain.Create(); err != nil {
+		domain.Undefine()
 		os.Remove(diskPath)
 		return nil, fmt.Errorf("failed to start domain: %w", err)
 	}
@@ -236,13 +235,20 @@ func (h *LibvirtHypervisor) waitForIP(name string, timeout time.Duration) (strin
 	deadline := time.Now().Add(timeout)
 	
 	for time.Now().Before(deadline) {
-		// Try to get IP via DHCP leases
-		leases, err := h.conn.GetDHCPLeases(name, nil)
-		if err == nil && len(leases) > 0 {
-			for _, lease := range leases {
-				if lease.IPAddr != "" {
-					return lease.IPAddr, nil
+		// Try to get IP via DHCP leases from network
+		networks, err := h.conn.ListAllNetworks(0)
+		if err == nil {
+			for _, net := range networks {
+				leases, err := net.GetDHCPLeases()
+				if err == nil {
+					for _, lease := range leases {
+						if lease.Hostname == name && lease.IPaddr != "" {
+							net.Free()
+							return lease.IPaddr, nil
+						}
+					}
 				}
+				net.Free()
 			}
 		}
 		
@@ -260,7 +266,7 @@ func (h *LibvirtHypervisor) waitForIP(name string, timeout time.Duration) (strin
 func (h *LibvirtHypervisor) getVirshIP(name string) string {
 	cmd := exec.Command("virsh", "domifaddr", name, "--source", "lease")
 	var out bytes.Buffer
-	cmd.Output = &out
+	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
 		return ""
 	}
@@ -344,7 +350,7 @@ func (h *LibvirtHypervisor) StartNode(ctx context.Context, id string) error {
 		return err
 	}
 
-	if state == libvirt.DomainRunning {
+	if state == libvirt.DOMAIN_RUNNING {
 		return nil
 	}
 
@@ -363,7 +369,7 @@ func (h *LibvirtHypervisor) StopNode(ctx context.Context, id string) error {
 		return err
 	}
 
-	if state == libvirt.DomainShutoff {
+	if state == libvirt.DOMAIN_SHUTOFF {
 		return nil
 	}
 
@@ -374,7 +380,7 @@ func (h *LibvirtHypervisor) StopNode(ctx context.Context, id string) error {
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
 		state, _, _ := domain.GetState()
-		if state == libvirt.DomainShutoff {
+		if state == libvirt.DOMAIN_SHUTOFF {
 			return nil
 		}
 		time.Sleep(500 * time.Millisecond)
@@ -425,9 +431,9 @@ func (h *LibvirtHypervisor) domainToNode(domain *libvirt.Domain) (*Node, error) 
 	state, _, _ := domain.GetState()
 
 	nodeState := NodeStopped
-	if state == libvirt.DomainRunning || state == libvirt.DomainPaused {
+	if state == libvirt.DOMAIN_RUNNING || state == libvirt.DOMAIN_PAUSED {
 		nodeState = NodeRunning
-	} else if state == libvirt.DomainShutoff {
+	} else if state == libvirt.DOMAIN_SHUTOFF {
 		nodeState = NodeStopped
 	} else {
 		nodeState = NodeError
@@ -435,7 +441,7 @@ func (h *LibvirtHypervisor) domainToNode(domain *libvirt.Domain) (*Node, error) 
 
 	// Get IP if running
 	ip := ""
-	if state == libvirt.DomainRunning {
+	if state == libvirt.DOMAIN_RUNNING {
 		ip = h.getVirshIP(name)
 	}
 
@@ -468,25 +474,27 @@ func (h *LibvirtHypervisor) GetNodeStatus(ctx context.Context, id string) (*Node
 
 	nodeState := NodeStopped
 	switch state {
-	case libvirt.DomainRunning:
+	case libvirt.DOMAIN_RUNNING:
 		nodeState = NodeRunning
-	case libvirt.DomainPaused:
+	case libvirt.DOMAIN_PAUSED:
 		nodeState = NodeRunning
-	case libvirt.DomainShutoff:
+	case libvirt.DOMAIN_SHUTOFF:
 		nodeState = NodeStopped
 	default:
 		nodeState = NodeError
 	}
 
+	name, _ := domain.GetName()
+
 	return &NodeStatus{
 		State:       nodeState,
-		Uptime:      time.Duration(info[0].CpuTime) * time.Nanosecond,
-		CPUPercent:  float64(info[0].Cpu) / float64(info[0].MaxMem) * 100,
-		MemUsed:     info[0].Memory * 1024,
-		MemTotal:    info[0].MaxMem * 1024,
+		Uptime:      time.Duration(info.CpuTime) * time.Nanosecond,
+		CPUPercent:  0, // Would need to calculate over time
+		MemUsed:     info.Memory * 1024,
+		MemTotal:    info.MaxMem * 1024,
 		DiskUsedGB:  0,
 		DiskTotalGB: 0,
-		IP:          h.getVirshIP(info[0].Name),
+		IP:          h.getVirshIP(name),
 	}, nil
 }
 
@@ -510,5 +518,6 @@ func (h *LibvirtHypervisor) Close() error {
 	for _, net := range h.networks {
 		net.Free()
 	}
-	return h.conn.Close()
+	_, err := h.conn.Close()
+	return err
 }

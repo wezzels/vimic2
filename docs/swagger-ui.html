@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vimic2 API - Swagger UI</title>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        .topbar {
+            background: #2d3748;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+        }
+        .topbar .logo {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            margin-right: 30px;
+        }
+        .topbar .version {
+            color: #a0aec0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <span class="logo">Vimic2 API</span>
+        <span class="version">v1.0.0</span>
+    </div>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5.10.0/swagger-ui-bundle.js"></script>
+    <script>
+        window.onload = function() {
+            SwaggerUIBundle({
+                url: "openapi.yaml",
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIBundle.SwaggerUIStandalonePreset
+                ],
+                layout: "StandaloneLayout",
+                defaultModelsExpandDepth: 1,
+                defaultModelExpandDepth: 1,
+                docExpansion: "list",
+                filter: true,
+                showExtensions: true,
+                showCommonExtensions: true,
+                oauth2RedirectUrl: window.location.origin + "/oauth2-redirect.html",
+                requestInterceptor: function(request) {
+                    // Add auth header if token exists
+                    var token = localStorage.getItem('vimic2_token');
+                    if (token) {
+                        request.headers['Authorization'] = 'Bearer ' + token;
+                    }
+                    return request;
+                }
+            });
+        };
+    </script>
+</body>
+</html>
