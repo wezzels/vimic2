@@ -148,36 +148,122 @@ vimic2/
 
 ### Prerequisites
 
-- Go 1.23+
-- QEMU/KVM
-- Open vSwitch
-- libvirt (optional)
+- Go 1.22+
+- QEMU/KVM (for VM operations)
+- Open vSwitch (for network isolation)
+- libvirt-dev (optional, for libvirt integration)
 - SQLite3
 
 ### Installation
 
 ```bash
 # Clone repository
-git clone https://idm.wezzel.com/crab-meat-repos/stsgym-work.git
-cd stsgym-work/vimic2
+git clone https://github.com/wezzels/vimic2.git
+cd vimic2
 
 # Install dependencies
 go mod download
 
 # Build
 make build
+# or: go build -o vimic2 ./cmd/vimic2
 
-# Create VM templates
-./scripts/create-templates.sh all
+# Verify build
+./vimic2 --version
+```
 
-# Run
-./vimic2 --config config.yaml
+### Running Tests
+
+```bash
+# Unit tests (fast, no external dependencies)
+go test -short ./...
+
+# Integration tests (requires OVS + libvirt)
+sudo apt-get install openvswitch-switch libvirt-dev
+go test ./internal/realutil/... -tags=integration
+
+# Coverage report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out -o coverage.html
+```
+
+### Quick Demo
+
+```bash
+# 1. Start vimic2 with stub hypervisor (no VMs needed)
+./vimic2 --config config.example.yaml &
+
+# 2. Create a pipeline
+curl -X POST http://localhost:8080/api/pipelines \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "gitlab",
+    "repository": "https://gitlab.example.com/demo/project",
+    "branch": "main",
+    "commit_sha": "abc123",
+    "commit_message": "Demo commit",
+    "author": "demo@example.com",
+    "runner_count": 1
+  }'
+
+# 3. Check pipeline status
+curl http://localhost:8080/api/pipelines
+
+# 4. View stats
+curl http://localhost:8080/api/stats
 ```
 
 ### Configuration
 
+```bash
+# Copy example config
+cp config.example.yaml config.yaml
+
+# Edit for your environment
+vim config.yaml
+```
+
+### Minimal Configuration
+
+Create `config.yaml` for quick testing:
+
 ```yaml
-# config.yaml
+# Minimal config for testing (uses stub hypervisor)
+database:
+  path: ~/.vimic2/pipeline.db
+
+hypervisor:
+  type: stub
+
+templates:
+  base_path: ~/.vimic2/templates
+  default_template: base.qcow2
+
+platforms:
+  gitlab:
+    url: https://gitlab.example.com
+    enabled: false
+
+  github:
+    url: https://github.com
+    enabled: false
+
+pools:
+  default:
+    template: base.qcow2
+    min_size: 0
+    max_size: 5
+
+networks:
+  base_cidr: 10.100.0.0/16
+  vlan_start: 1000
+  vlan_end: 2000
+```
+
+### Full Configuration
+
+```yaml
+# config.yaml - Full configuration
 database:
   path: ~/.vimic2/pipeline.db
 
@@ -187,7 +273,7 @@ hypervisor:
 
 templates:
   base_path: /var/lib/vimic2/templates
-  default_template: base-go-1.23.qcow2
+  default_template: base-go-1.22.qcow2
 
 platforms:
   gitlab:
@@ -204,7 +290,7 @@ platforms:
 
 pools:
   builder:
-    template: base-go-1.23.qcow2
+    template: base-go-1.22.qcow2
     min_size: 2
     max_size: 10
     cpu: 4
@@ -267,15 +353,19 @@ Features:
 ### Running Tests
 
 ```bash
-# Unit tests
-go test ./... -tags='!integration'
+# Unit tests (fast, no external dependencies)
+go test -short ./...
 
-# Integration tests (requires OVS/libvirt)
-go test ./... -tags=integration
+# Integration tests (requires OVS + libvirt)
+sudo apt-get install openvswitch-switch libvirt-dev
+go test ./internal/realutil/... -tags=integration
 
 # With coverage
 go test ./... -coverprofile=coverage.out
 go tool cover -html=coverage.out
+
+# Test specific package
+ go test ./internal/network/... -v
 ```
 
 ### Building
@@ -283,9 +373,14 @@ go tool cover -html=coverage.out
 ```bash
 # Build for current platform
 make build
+# or
+go build -o vimic2 ./cmd/vimic2
 
 # Build for all platforms
 make build-all
+
+# Cross-compile for Linux
+GOOS=linux GOARCH=amd64 go build -o vimic2-linux-amd64 ./cmd/vimic2
 
 # Create release
 make release
@@ -293,10 +388,39 @@ make release
 
 ### Code Structure
 
-- **API Layer**: REST endpoints + WebSocket
-- **Service Layer**: Business logic (coordinator, dispatcher)
-- **Repository Layer**: Database operations
-- **Infrastructure**: External services (QEMU, OVS, CI/CD platforms)
+- **API Layer** (`internal/api/`): REST endpoints + WebSocket
+- **Service Layer** (`internal/pipeline/`, `internal/runner/`): Business logic
+- **Repository Layer** (`internal/database/`): Database operations
+- **Infrastructure** (`internal/network/`, `internal/pool/`): External services
+
+### Project Structure
+
+```
+vimic2/
+├── cmd/vimic2/          # Main application entry point
+├── internal/
+│   ├── api/             # REST API + WebSocket server
+│   ├── cluster/         # Cluster management
+│   ├── container/       # Container runtime integration
+│   ├── database/        # Database operations
+│   ├── deploy/         # Deployment logic
+│   ├── host/           # Host machine management
+│   ├── monitor/        # Metrics + monitoring
+│   ├── network/        # OVS, VLAN, IPAM, firewall
+│   ├── orchestrator/   # Pipeline orchestration
+│   ├── pipeline/       # Job dispatch, logs, artifacts
+│   ├── pool/           # VM pool management
+│   ├── realutil/       # Real integration tests
+│   ├── runner/         # Multi-platform CI/CD runners
+│   └── ui/             # Web UI components
+├── pkg/
+│   ├── hypervisor/     # Hypervisor abstraction
+│   └── types/          # Shared types
+├── docs/               # Documentation
+├── scripts/            # Utility scripts
+├── Makefile            # Build targets
+└── README.md           # This file
+```
 
 ## Performance
 
@@ -317,15 +441,52 @@ make release
 | Allocate CIDR | ~1ms |
 | Create firewall rules | ~50ms |
 
-### Runner Creation
+### Test Coverage
 
-| Platform | Registration | Start |
-|----------|-------------|-------|
-| GitLab | ~2s | ~5s |
-| GitHub | ~3s | ~10s |
-| Jenkins | ~1s | ~3s |
-| CircleCI | ~2s | ~5s |
-| Drone | ~1s | ~2s |
+| Package | Coverage | Status |
+|---------|----------|--------|
+| realdb | 85.1% | ✅ Unit tests pass |
+| realfs | 87.4% | ✅ Unit tests pass |
+| realovs | 87.1% | ✅ Unit tests pass |
+| realhv | 59.4% | ⚠️ Needs libvirt VMs |
+
+## Troubleshooting
+
+### Build Issues
+
+```bash
+# Go version mismatch
+go version  # Should be 1.22+
+
+# Missing dependencies
+go mod tidy
+go mod download
+
+# Build errors
+go build ./...  # Check for compile errors
+```
+
+### Test Issues
+
+```bash
+# Integration tests fail
+sudo apt-get install openvswitch-switch libvirt-dev
+
+# OVS tests fail
+ovs-vsctl --version  # Verify OVS installed
+
+# libvirt tests fail
+virsh list  # Verify libvirt running
+```
+
+### Common Errors
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `executable file not found: ovs-vsctl` | OVS not installed | `sudo apt-get install openvswitch-switch` |
+| `no IP address available` | No qemu-guest-agent | Install agent in VM or use ARP fallback |
+| `failed to connect to libvirt` | libvirt not running | `sudo systemctl start libvirtd` |
+| `connection refused` | vimic2 not running | Start with `./vimic2 --config config.yaml` |
 
 ## License
 
@@ -336,28 +497,18 @@ MIT License - See LICENSE file for details
 1. Fork the repository
 2. Create a feature branch
 3. Make changes
-4. Run tests
+4. Run tests: `go test -short ./...`
 5. Submit pull request
 
 ## Support
 
-- **Issues**: https://idm.wezzel.com/crab-meat-repos/stsgym-work/-/issues
+- **Issues**: https://github.com/wezzels/vimic2/issues
 - **Documentation**: `docs/`
-- **Wiki**: https://idm.wezzel.com/crab-meat-repos/stsgym-work/-/wikis
+- **Wiki**: https://github.com/wezzels/vimic2/wiki
 
 ## Authors
 
 - Wesley Robbins (wez@stsgym.com)
-
-## Acknowledgments
-
-- Open vSwitch for network virtualization
-- QEMU/KVM for VM management
-- GitLab Runner for GitLab CI integration
-- GitHub Actions Runner for GitHub integration
-- Jenkins Agent for Jenkins integration
-- CircleCI Runner for CircleCI integration
-- Drone Runner for Drone integration
 
 ---
 
