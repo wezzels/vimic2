@@ -1121,3 +1121,93 @@ func TestRealFilesystem_Copy_DstExists(t *testing.T) {
 		t.Error("destination should have source content")
 	}
 }
+
+// TestRealFilesystem_Lock_CreateDir tests Lock creates parent directory
+func TestRealFilesystem_Lock_CreateDir(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+	lockPath := filepath.Join(tmpDir, "subdir", "deep", "test.lock")
+
+	lock, err := fs.Lock(lockPath)
+	if err != nil {
+		t.Fatalf("Lock failed: %v", err)
+	}
+	defer lock.Unlock()
+
+	// Verify directory was created
+	dir := filepath.Dir(lockPath)
+	if _, err := os.Stat(dir); err != nil {
+		t.Errorf("parent directory not created: %v", err)
+	}
+}
+
+// TestRealFilesystem_TryLock_CreateDir tests TryLock without creating directory
+func TestRealFilesystem_TryLock_CreateDir(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+
+	// TryLock doesn't create parent directory - need to create it first
+	lockPath := filepath.Join(tmpDir, "subdir", "test.lock")
+	
+	// This should fail because parent doesn't exist
+	_, err := fs.TryLock(lockPath)
+	if err == nil {
+		t.Error("TryLock should fail when parent directory doesn't exist")
+	}
+
+	// Create parent and try again
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	lock, err := fs.TryLock(lockPath)
+	if err != nil {
+		t.Fatalf("TryLock failed after creating parent: %v", err)
+	}
+	defer lock.Unlock()
+}
+
+// TestRealFilesystem_ReadDir_WithFiles tests ReadDir with files
+func TestRealFilesystem_ReadDir_WithFiles(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+
+	// Create files
+	for i := 0; i < 5; i++ {
+		path := filepath.Join(tmpDir, "file"+string(rune('0'+i))+".txt")
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	entries, err := fs.ReadDir(tmpDir)
+	if err != nil {
+		t.Fatalf("ReadDir failed: %v", err)
+	}
+
+	if len(entries) != 5 {
+		t.Errorf("expected 5 entries, got %d", len(entries))
+	}
+}
+
+// TestRealFilesystem_Copy_ToNewDir tests Copy to new directory
+func TestRealFilesystem_Copy_ToNewDir(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+
+	srcPath := filepath.Join(tmpDir, "src.txt")
+	dstPath := filepath.Join(tmpDir, "newdir", "dst.txt")
+
+	// Create source
+	if err := os.WriteFile(srcPath, []byte("source"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Copy should fail because destination directory doesn't exist
+	err := fs.Copy(srcPath, dstPath)
+	if err == nil {
+		t.Error("Copy should fail when destination directory doesn't exist")
+	}
+}
+
+
