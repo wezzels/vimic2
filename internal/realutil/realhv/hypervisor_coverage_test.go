@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stsgym/vimic2/internal/realutil/realhv"
+	"github.com/stsgym/vimic2/pkg/hypervisor"
 )
 
 // TestRealHypervisor_NewHypervisor_Defaults tests NewHypervisor with nil config
@@ -209,5 +210,156 @@ func TestRealHypervisor_VMConfig_Validation(t *testing.T) {
 			t.Errorf("config %d: Name should not be empty", i)
 		}
 		_ = cfg // Just validation
+	}
+}
+// TestRealHypervisor_NewHypervisor_EmptyURI tests NewHypervisor with empty URI
+func TestRealHypervisor_NewHypervisor_EmptyURI(t *testing.T) {
+	hv := realhv.NewHypervisor(&realhv.Config{
+		URI: "", // Empty URI should use default
+	})
+	if hv == nil {
+		t.Fatal("NewHypervisor should return non-nil with empty URI")
+	}
+}
+
+// TestRealHypervisor_NewHypervisor_Timeout tests NewHypervisor with timeout
+func TestRealHypervisor_NewHypervisor_Timeout(t *testing.T) {
+	hv := realhv.NewHypervisor(&realhv.Config{
+		URI:         "qemu:///system",
+		Timeout:     30 * time.Second,
+		MaxVMs:      10,
+		AutoConnect: false,
+	})
+	if hv == nil {
+		t.Fatal("NewHypervisor should return non-nil")
+	}
+}
+
+// TestRealHypervisor_VMConfig_Fields tests VMConfig field values
+func TestRealHypervisor_VMConfig_Fields(t *testing.T) {
+	config := &realhv.VMConfig{
+		Name:      "test-vm",
+		CPU:       4,
+		MemoryMB:  8192,
+		DiskGB:    100,
+		Image:     "ubuntu-22.04",
+		Network:   "default",
+		CloudInit: "#cloud-config\n",
+	}
+
+	if config.Name != "test-vm" {
+		t.Errorf("expected Name=test-vm, got %s", config.Name)
+	}
+	if config.CPU != 4 {
+		t.Errorf("expected CPU=4, got %d", config.CPU)
+	}
+	if config.MemoryMB != 8192 {
+		t.Errorf("expected MemoryMB=8192, got %d", config.MemoryMB)
+	}
+	if config.DiskGB != 100 {
+		t.Errorf("expected DiskGB=100, got %d", config.DiskGB)
+	}
+	if config.Image != "ubuntu-22.04" {
+		t.Errorf("expected Image=ubuntu-22.04, got %s", config.Image)
+	}
+}
+
+// TestRealHypervisor_VM_Fields tests VM field values
+func TestRealHypervisor_VM_Fields(t *testing.T) {
+	now := time.Now()
+	vm := &realhv.VM{
+		ID:        "vm-1",
+		Name:      "test-vm",
+		State:     hypervisor.NodeRunning,
+		IP:        "10.0.0.1",
+		Host:      "host-1",
+		Config:    &realhv.VMConfig{Name: "test", CPU: 2, MemoryMB: 4096, DiskGB: 20},
+		Created:   now,
+		UpdatedAt: now,
+	}
+
+	if vm.ID != "vm-1" {
+		t.Errorf("expected ID=vm-1, got %s", vm.ID)
+	}
+	if vm.Name != "test-vm" {
+		t.Errorf("expected Name=test-vm, got %s", vm.Name)
+	}
+	if vm.State != hypervisor.NodeRunning {
+		t.Errorf("expected State=Running, got %v", vm.State)
+	}
+	if vm.IP != "10.0.0.1" {
+		t.Errorf("expected IP=10.0.0.1, got %s", vm.IP)
+	}
+}
+
+// TestRealHypervisor_VMMetrics_Fields tests VMMetrics field values
+func TestRealHypervisor_VMMetrics_Fields(t *testing.T) {
+	now := time.Now()
+	metrics := &realhv.VMMetrics{
+		CPU:       50.5,
+		Memory:    60.2,
+		Disk:      70.8,
+		NetworkRX: 1000.0,
+		NetworkTX: 500.0,
+		Timestamp: now,
+	}
+
+	if metrics.CPU != 50.5 {
+		t.Errorf("expected CPU=50.5, got %f", metrics.CPU)
+	}
+	if metrics.Memory != 60.2 {
+		t.Errorf("expected Memory=60.2, got %f", metrics.Memory)
+	}
+	if metrics.Disk != 70.8 {
+		t.Errorf("expected Disk=70.8, got %f", metrics.Disk)
+	}
+}
+
+// TestRealHypervisor_VMStatus_Fields tests VMStatus field values
+func TestRealHypervisor_VMStatus_Fields(t *testing.T) {
+	status := &realhv.VMStatus{
+		State:       hypervisor.NodeRunning,
+		Uptime:      time.Hour,
+		CPUPercent:  45.5,
+		MemUsed:     4096,
+		MemTotal:    8192,
+		DiskUsedGB:  25.5,
+		DiskTotalGB: 100.0,
+		IP:          "10.0.0.1",
+	}
+
+	if status.State != hypervisor.NodeRunning {
+		t.Errorf("expected State=Running, got %v", status.State)
+	}
+	if status.Uptime != time.Hour {
+		t.Errorf("expected Uptime=1h, got %v", status.Uptime)
+	}
+	if status.CPUPercent != 45.5 {
+		t.Errorf("expected CPUPercent=45.5, got %f", status.CPUPercent)
+	}
+}
+
+// TestRealHypervisor_Config_Defaults tests Config defaults
+func TestRealHypervisor_Config_Defaults(t *testing.T) {
+	hv := realhv.NewHypervisor(nil)
+	if hv == nil {
+		t.Fatal("NewHypervisor with nil config should return non-nil")
+	}
+}
+
+// TestRealHypervisor_Disconnect_Twice tests disconnecting twice
+func TestRealHypervisor_Disconnect_Twice(t *testing.T) {
+	hv := realhv.NewHypervisor(&realhv.Config{
+		URI: "qemu:///system",
+	})
+
+	// Disconnect when not connected
+	if err := hv.Disconnect(); err != nil {
+		t.Errorf("Disconnect when not connected should not error: %v", err)
+	}
+
+	// Disconnect again
+	if err := hv.Disconnect(); err != nil {
+		t.Errorf("Second Disconnect should not error: %v", err)
 	}
 }
