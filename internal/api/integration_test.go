@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stsgym/vimic2/internal/pipeline"
@@ -377,12 +378,48 @@ func TestIntegration_HandleRetryJob(t *testing.T) {
 
 // TestIntegration_HandleListPools tests listing pools
 func TestIntegration_HandleListPools(t *testing.T) {
-	t.Skip("requires PoolManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	poolMgr := mockpool.NewMockPoolManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetPoolManager(poolMgr)
+
+	req := httptest.NewRequest("GET", "/api/pools", nil)
+	w := httptest.NewRecorder()
+
+	s.handleListPools(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
 }
 
 // TestIntegration_HandleGetPool tests getting a pool
 func TestIntegration_HandleGetPool(t *testing.T) {
-	t.Skip("requires PoolManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	poolMgr := mockpool.NewMockPoolManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetPoolManager(poolMgr)
+
+	req := httptest.NewRequest("GET", "/api/pools/default", nil)
+	w := httptest.NewRecorder()
+
+	s.handleGetPool(w, req)
+
+	t.Logf("GetPool status: %d", w.Code)
 }
 
 // TestIntegration_HandleCreatePool tests creating a pool
@@ -392,12 +429,48 @@ func TestIntegration_HandleCreatePool(t *testing.T) {
 
 // TestIntegration_HandleAcquireVM tests acquiring a VM
 func TestIntegration_HandleAcquireVM(t *testing.T) {
-	t.Skip("requires PoolManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	poolMgr := mockpool.NewMockPoolManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetPoolManager(poolMgr)
+
+	req := httptest.NewRequest("POST", "/api/pools/default/acquire", nil)
+	w := httptest.NewRecorder()
+
+	s.handleAcquireVM(w, req)
+
+	t.Logf("AcquireVM status: %d", w.Code)
 }
 
 // TestIntegration_HandleReleaseVM tests releasing a VM
 func TestIntegration_HandleReleaseVM(t *testing.T) {
-	t.Skip("requires PoolManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	poolMgr := mockpool.NewMockPoolManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetPoolManager(poolMgr)
+
+	body := `{"vm_id":"test-vm-123"}`
+	req := httptest.NewRequest("POST", "/api/pools/default/release", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.handleReleaseVM(w, req)
+
+	t.Logf("ReleaseVM status: %d", w.Code)
 }
 
 // === Network Handler Tests ===
@@ -409,17 +482,70 @@ func TestIntegration_HandleListNetworks(t *testing.T) {
 
 // TestIntegration_HandleGetNetwork tests getting a network
 func TestIntegration_HandleGetNetwork(t *testing.T) {
-	t.Skip("requires IsolationManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	netMgr := mocknet.NewMockNetworkManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetNetworkManager(netMgr)
+
+	req := httptest.NewRequest("GET", "/api/networks/net-123", nil)
+	w := httptest.NewRecorder()
+
+	s.handleGetNetwork(w, req)
+
+	t.Logf("GetNetwork status: %d", w.Code)
 }
 
 // TestIntegration_HandleCreateNetwork tests creating a network
 func TestIntegration_HandleCreateNetwork(t *testing.T) {
-	t.Skip("requires IsolationManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	netMgr := mocknet.NewMockNetworkManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetNetworkManager(netMgr)
+
+	body := `{"pipeline_id":"test-pipeline"}`
+	req := httptest.NewRequest("POST", "/api/networks", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.handleCreateNetwork(w, req)
+
+	t.Logf("CreateNetwork status: %d", w.Code)
 }
 
 // TestIntegration_HandleDeleteNetwork tests deleting a network
 func TestIntegration_HandleDeleteNetwork(t *testing.T) {
-	t.Skip("requires IsolationManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	netMgr := mocknet.NewMockNetworkManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetNetworkManager(netMgr)
+
+	req := httptest.NewRequest("DELETE", "/api/networks/net-123", nil)
+	w := httptest.NewRecorder()
+
+	s.handleDeleteNetwork(w, req)
+
+	t.Logf("DeleteNetwork status: %d", w.Code)
 }
 
 // === Runner Handler Tests ===
@@ -431,20 +557,90 @@ func TestIntegration_HandleListRunners(t *testing.T) {
 
 // TestIntegration_HandleGetRunner tests getting a runner
 func TestIntegration_HandleGetRunner(t *testing.T) {
-	t.Skip("requires RunnerManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	runnerMgr := mockrunner.NewMockRunnerManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetRunnerManager(runnerMgr)
+
+	req := httptest.NewRequest("GET", "/api/runners/runner-123", nil)
+	w := httptest.NewRecorder()
+
+	s.handleGetRunner(w, req)
+
+	t.Logf("GetRunner status: %d", w.Code)
 }
 
 // TestIntegration_HandleCreateRunner tests creating a runner
 func TestIntegration_HandleCreateRunner(t *testing.T) {
-	t.Skip("requires RunnerManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	runnerMgr := mockrunner.NewMockRunnerManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetRunnerManager(runnerMgr)
+
+	body := `{"pool_name":"default","platform":"linux","pipeline_id":"test-pipeline","labels":["test"]}`
+	req := httptest.NewRequest("POST", "/api/runners", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.handleCreateRunner(w, req)
+
+	t.Logf("CreateRunner status: %d", w.Code)
 }
 
 // TestIntegration_HandleStopRunner tests stopping a runner
 func TestIntegration_HandleStopRunner(t *testing.T) {
-	t.Skip("requires RunnerManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	runnerMgr := mockrunner.NewMockRunnerManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetRunnerManager(runnerMgr)
+
+	req := httptest.NewRequest("POST", "/api/runners/runner-123/stop", nil)
+	w := httptest.NewRecorder()
+
+	s.handleStopRunner(w, req)
+
+	t.Logf("StopRunner status: %d", w.Code)
 }
 
 // TestIntegration_HandleDestroyRunner tests destroying a runner
 func TestIntegration_HandleDestroyRunner(t *testing.T) {
-	t.Skip("requires RunnerManager")
+	db, cleanup := realdb.NewTestDB(t)
+	defer cleanup()
+
+	runnerMgr := mockrunner.NewMockRunnerManager()
+
+	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	s.SetRunnerManager(runnerMgr)
+
+	req := httptest.NewRequest("DELETE", "/api/runners/runner-123", nil)
+	w := httptest.NewRecorder()
+
+	s.handleDestroyRunner(w, req)
+
+	t.Logf("DestroyRunner status: %d", w.Code)
 }
