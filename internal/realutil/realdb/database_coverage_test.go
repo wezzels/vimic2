@@ -1389,3 +1389,165 @@ func TestRealDatabase_HostTypes(t *testing.T) {
 		}
 	}
 }
+
+// TestRealDatabase_MultipleMetrics tests multiple metrics for different nodes
+func TestRealDatabase_MultipleMetrics(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create metrics for multiple nodes
+	for nodeNum := 0; nodeNum < 3; nodeNum++ {
+		for i := 0; i < 5; i++ {
+			metric := &realdb.Metric{
+				NodeID:     string(rune('a' + nodeNum)),
+				CPU:        float64(50 + i),
+				Memory:     float64(60 + i),
+				Disk:       float64(70 + i),
+				NetworkRX:  float64(1000 + i),
+				NetworkTX:  float64(500 + i),
+				RecordedAt: time.Now().Add(-time.Duration(i) * time.Minute),
+			}
+			if err := db.SaveMetric(metric); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	// Get metrics for each node
+	for nodeNum := 0; nodeNum < 3; nodeNum++ {
+		metrics, err := db.GetNodeMetrics(string(rune('a'+nodeNum)), time.Now().Add(-time.Hour))
+		if err != nil {
+			t.Fatalf("GetNodeMetrics failed: %v", err)
+		}
+		if len(metrics) != 5 {
+			t.Errorf("expected 5 metrics for node %c, got %d", rune('a'+nodeNum), len(metrics))
+		}
+	}
+}
+
+// TestRealDatabase_AlertSeverities tests different alert severities
+func TestRealDatabase_AlertSeverities(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	severities := []string{"info", "warning", "error", "critical"}
+
+	for _, sev := range severities {
+		alert := &realdb.Alert{
+			ID:        "alert-" + sev,
+			NodeID:    "node-1",
+			Type:      "test",
+			Message:   "test message",
+			Severity:  sev,
+			CreatedAt: time.Now(),
+		}
+		if err := db.SaveAlert(alert); err != nil {
+			t.Fatal(err)
+		}
+
+		retrieved, err := db.GetAlert("alert-" + sev)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if retrieved.Severity != sev {
+			t.Errorf("expected severity %s, got %s", sev, retrieved.Severity)
+		}
+	}
+}
+
+// TestRealDatabase_PoolAvailability tests pool available/busy counts
+func TestRealDatabase_PoolAvailability(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create pool with various available/busy counts
+	pools := []struct {
+		available int
+		busy      int
+	}{
+		{available: 10, busy: 0},
+		{available: 5, busy: 5},
+		{available: 0, busy: 10},
+	}
+
+	for i, p := range pools {
+		pool := &realdb.Pool{
+			ID:        string(rune('a' + i)),
+			Name:      string(rune('a' + i)),
+			Available: p.available,
+			Busy:      p.busy,
+		}
+		if err := db.SavePool(pool); err != nil {
+			t.Fatal(err)
+		}
+
+		retrieved, err := db.GetPool(string(rune('a' + i)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if retrieved.Available != p.available {
+			t.Errorf("expected Available=%d, got %d", p.available, retrieved.Available)
+		}
+		if retrieved.Busy != p.busy {
+			t.Errorf("expected Busy=%d, got %d", p.busy, retrieved.Busy)
+		}
+	}
+}
+
+// TestRealDatabase_MultipleListOperations tests multiple list operations
+func TestRealDatabase_MultipleListOperations(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create multiple entities
+	for i := 0; i < 5; i++ {
+		cluster := &realdb.Cluster{ID: string(rune('a' + i)), Name: string(rune('a' + i)), Status: "running"}
+		if err := db.SaveCluster(cluster); err != nil {
+			t.Fatal(err)
+		}
+		host := &realdb.Host{ID: string(rune('a' + i)), Name: string(rune('a' + i)), Address: "10.0.0." + string(rune('1'+i))}
+		if err := db.SaveHost(host); err != nil {
+			t.Fatal(err)
+		}
+		pool := &realdb.Pool{ID: string(rune('a' + i)), Name: string(rune('a' + i)), Available: 10, Busy: 0}
+		if err := db.SavePool(pool); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	clusters, err := db.ListClusters()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(clusters) != 5 {
+		t.Errorf("expected 5 clusters, got %d", len(clusters))
+	}
+
+	hosts, err := db.ListHosts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hosts) != 5 {
+		t.Errorf("expected 5 hosts, got %d", len(hosts))
+	}
+
+	pools, err := db.ListPools()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pools) != 5 {
+		t.Errorf("expected 5 pools, got %d", len(pools))
+	}
+}
