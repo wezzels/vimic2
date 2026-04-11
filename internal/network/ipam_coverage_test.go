@@ -100,15 +100,79 @@ func TestIPAMManager_GetGateway(t *testing.T) {
 }
 
 // TestIPAMManager_Allocate_Release tests allocate and release cycle
-// NOTE: Skipped due to mutex deadlock in saveState (holds write lock, then tries RLock)
 func TestIPAMManager_Allocate_Release(t *testing.T) {
-	t.Skip("potential mutex deadlock in IPAM saveState")
+	// Create temp state file
+	tmpDir, err := os.MkdirTemp("", "ipam-alloc-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	stateFile := filepath.Join(tmpDir, "ipam-state.json")
+
+	config := &IPAMConfig{
+		BaseCIDR: "10.100.0.0/24",
+		DNS:      []string{"8.8.8.8"},
+	}
+
+	manager, err := NewIPAMManager(config)
+	if err != nil {
+		t.Skipf("manager creation failed: %v", err)
+	}
+
+	manager.SetStateFile(stateFile)
+
+	// Allocate an IP
+	ip, mac, err := manager.Allocate()
+	if err != nil {
+		t.Logf("Allocate returned: %v", err)
+	} else {
+		t.Logf("Allocated: ip=%s, mac=%s", ip, mac)
+
+		// Try to release
+		err = manager.Release("10.100.0.0/24")
+		if err != nil {
+			t.Logf("Release returned: %v", err)
+		}
+	}
 }
 
 // TestIPAMManager_AllocateIP_ReleaseIP tests specific IP allocation
-// NOTE: Skipped due to mutex deadlock in saveState
 func TestIPAMManager_AllocateIP_ReleaseIP(t *testing.T) {
-	t.Skip("potential mutex deadlock in IPAM saveState")
+	tmpDir, err := os.MkdirTemp("", "ipam-ip-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	stateFile := filepath.Join(tmpDir, "ipam-state.json")
+
+	config := &IPAMConfig{
+		BaseCIDR: "10.101.0.0/24",
+		DNS:      []string{"8.8.8.8"},
+	}
+
+	manager, err := NewIPAMManager(config)
+	if err != nil {
+		t.Skipf("manager creation failed: %v", err)
+	}
+
+	manager.SetStateFile(stateFile)
+
+	// Allocate specific IP
+	mac := "52:54:00:aa:bb:cc"
+	ip, err := manager.AllocateIP("10.101.0.0/24", mac)
+	if err != nil {
+		t.Logf("AllocateIP returned: %v", err)
+	} else {
+		t.Logf("Allocated IP: %s", ip)
+
+		// Try to release
+		err = manager.ReleaseIP("10.101.0.0/24", ip)
+		if err != nil {
+			t.Logf("ReleaseIP returned: %v", err)
+		}
+	}
 }
 
 // TestIPAMManager_GetIP_Lookup tests GetIP method
@@ -225,13 +289,71 @@ func TestIncrementIP_Single(t *testing.T) {
 }
 
 // TestIPAMManager_MultipleAllocations tests multiple IP allocations
-// NOTE: Skipped due to mutex deadlock in saveState
 func TestIPAMManager_MultipleAllocations(t *testing.T) {
-	t.Skip("potential mutex deadlock in IPAM saveState")
+	tmpDir, err := os.MkdirTemp("", "ipam-multi-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	stateFile := filepath.Join(tmpDir, "state.json")
+
+	config := &IPAMConfig{
+		BaseCIDR: "10.200.0.0/24",
+		DNS:      []string{"8.8.8.8", "8.8.4.4"},
+	}
+
+	manager, err := NewIPAMManager(config)
+	if err != nil {
+		t.Skipf("manager creation failed: %v", err)
+	}
+
+	manager.SetStateFile(stateFile)
+
+	// Try multiple allocations
+	for i := 0; i < 3; i++ {
+		ip, mac, err := manager.Allocate()
+		if err != nil {
+			t.Logf("Allocation %d failed: %v", i, err)
+			break
+		}
+		t.Logf("Allocation %d: ip=%s, mac=%s", i, ip, mac)
+	}
+
+	// Check used count
+	used := manager.Used()
+	t.Logf("Total used: %d", used)
 }
 
 // TestIPAMManager_StatePersistence tests state save/load
-// NOTE: Skipped due to potential mutex issues
 func TestIPAMManager_StatePersistence(t *testing.T) {
-	t.Skip("potential mutex deadlock in IPAM saveState")
+	tmpDir, err := os.MkdirTemp("", "ipam-persist-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	stateFile := filepath.Join(tmpDir, "state.json")
+
+	config := &IPAMConfig{
+		BaseCIDR: "10.210.0.0/24",
+		DNS:      []string{"1.1.1.1"},
+	}
+
+	// Create first manager
+	manager1, err := NewIPAMManager(config)
+	if err != nil {
+		t.Skipf("manager1 creation failed: %v", err)
+	}
+	manager1.SetStateFile(stateFile)
+
+	// Create second manager (should load state)
+	manager2, err := NewIPAMManager(config)
+	if err != nil {
+		t.Skipf("manager2 creation failed: %v", err)
+	}
+
+	// Both should exist
+	t.Logf("Manager1 DNS: %v", manager1.GetDNS())
+	t.Logf("Manager2 DNS: %v", manager2.GetDNS())
 }

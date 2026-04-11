@@ -109,9 +109,10 @@ func (im *IPAMManager) loadState() error {
 }
 
 // saveState saves IPAM state to disk
+// NOTE: Caller must hold the lock (im.mu.Lock or im.mu.RLock) before calling
 func (im *IPAMManager) saveState() error {
-	im.mu.RLock()
-	defer im.mu.RUnlock()
+	// No lock here - caller must hold the lock
+	// This avoids deadlock when called from methods that already hold im.mu.Lock()
 
 	state := struct {
 		Pools       map[string]*CIDRPool    `json:"pools"`
