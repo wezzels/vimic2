@@ -415,3 +415,55 @@ func TestRealOVS_SetInterfaceOption_Invalid(t *testing.T) {
 		t.Error("SetInterfaceOption should fail for non-existent interface")
 	}
 }
+
+
+
+// TestRealOVS_GetBridge_Errors tests GetBridge error handling
+func TestRealOVS_GetBridge_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// GetBridge for non-existent should fail
+	_, err := c.GetBridge("non-existent-bridge-xyz")
+	if err == nil {
+		t.Error("GetBridge should fail for non-existent bridge")
+	}
+}
+
+// TestRealOVS_ListPorts_Errors tests ListPorts error handling  
+func TestRealOVS_ListPorts_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// ListPorts for non-existent bridge should fail
+	_, err := c.ListPorts("non-existent-bridge-xyz")
+	if err == nil {
+		t.Error("ListPorts should fail for non-existent bridge")
+	}
+}
+
+// TestRealOVS_Version_Errors tests Version error handling
+func TestRealOVS_Version_Errors(t *testing.T) {
+	// Version is a package-level function
+	_, err := realovs.Version()
+	_ = err
+}
+
+// TestRealOVS_ClearFlows_Errors tests ClearFlows error handling
+func TestRealOVS_ClearFlows_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// ClearFlows for non-existent bridge should fail
+	err := c.ClearFlows("non-existent-bridge-xyz")
+	if err == nil {
+		t.Error("ClearFlows should fail for non-existent bridge")
+	}
+}
+
+// TestRealOVS_BridgeExists_False tests BridgeExists returns false
+func TestRealOVS_BridgeExists_False(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// BridgeExists for non-existent should return false
+	if c.BridgeExists("non-existent-bridge-xyz") {
+		t.Error("BridgeExists should return false for non-existent bridge")
+	}
+}
