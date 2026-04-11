@@ -1206,3 +1206,186 @@ func TestRealDatabase_SaveAlert_Update(t *testing.T) {
 		t.Errorf("expected 'CPU critical', got %s", retrieved.Message)
 	}
 }
+
+// TestRealDatabase_DoubleClose tests closing database twice
+func TestRealDatabase_DoubleClose(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+
+	// Close once
+	if err := db.Close(); err != nil {
+		t.Fatalf("first Close failed: %v", err)
+	}
+
+	// Close again - should not error
+	if err := db.Close(); err != nil {
+		t.Fatalf("second Close failed: %v", err)
+	}
+}
+
+// TestRealDatabase_PingAfterClose tests Ping after close
+func TestRealDatabase_PingAfterClose(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+
+	// Close
+	if err := db.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	// Ping after close should fail
+	if err := db.Ping(); err == nil {
+		t.Error("Ping should fail after Close")
+	}
+}
+
+// TestRealDatabase_ClusterStatus tests cluster status updates
+func TestRealDatabase_ClusterStatus(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	statuses := []string{"created", "running", "stopped", "error"}
+
+	for _, status := range statuses {
+		cluster := &realdb.Cluster{
+			ID:     "cluster-" + status,
+			Name:   "test-" + status,
+			Status: status,
+		}
+		if err := db.SaveCluster(cluster); err != nil {
+			t.Fatal(err)
+		}
+
+		retrieved, err := db.GetCluster("cluster-" + status)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if retrieved.Status != status {
+			t.Errorf("expected status %s, got %s", status, retrieved.Status)
+		}
+	}
+}
+
+// TestRealDatabase_NodeStates tests node state updates
+func TestRealDatabase_NodeStates(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create host and cluster
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	states := []string{"created", "running", "stopped", "error"}
+
+	for _, state := range states {
+		node := &realdb.Node{
+			ID:        "node-" + state,
+			ClusterID: "cluster-1",
+			HostID:    "host-1",
+			Name:      "test-" + state,
+			Role:      "worker",
+			State:     state,
+		}
+		if err := db.SaveNode(node); err != nil {
+			t.Fatal(err)
+		}
+
+		retrieved, err := db.GetNode("node-" + state)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if retrieved.State != state {
+			t.Errorf("expected state %s, got %s", state, retrieved.State)
+		}
+	}
+}
+
+// TestRealDatabase_NodeRoles tests node roles
+func TestRealDatabase_NodeRoles(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create host and cluster
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	roles := []string{"worker", "master", "controller"}
+
+	for _, role := range roles {
+		node := &realdb.Node{
+			ID:        "node-" + role,
+			ClusterID: "cluster-1",
+			HostID:    "host-1",
+			Name:      "test-" + role,
+			Role:      role,
+			State:     "running",
+		}
+		if err := db.SaveNode(node); err != nil {
+			t.Fatal(err)
+		}
+
+		retrieved, err := db.GetNode("node-" + role)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if retrieved.Role != role {
+			t.Errorf("expected role %s, got %s", role, retrieved.Role)
+		}
+	}
+}
+
+// TestRealDatabase_HostTypes tests host HV types
+func TestRealDatabase_HostTypes(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	hvTypes := []string{"libvirt", "kvm", "qemu"}
+
+	for _, hvType := range hvTypes {
+		host := &realdb.Host{
+			ID:      "host-" + hvType,
+			Name:    "test-" + hvType,
+			Address: "10.0.0.1",
+			HVType:  hvType,
+		}
+		if err := db.SaveHost(host); err != nil {
+			t.Fatal(err)
+		}
+
+		retrieved, err := db.GetHost("host-" + hvType)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if retrieved.HVType != hvType {
+			t.Errorf("expected HVType %s, got %s", hvType, retrieved.HVType)
+		}
+	}
+}

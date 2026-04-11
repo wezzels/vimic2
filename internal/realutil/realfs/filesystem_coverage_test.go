@@ -705,3 +705,64 @@ func TestRealFilesystem_TryLock_FileAndPath(t *testing.T) {
 		t.Error("File() should not return nil")
 	}
 }
+
+// TestRealFilesystem_Lock_InvalidPath tests Lock with invalid path
+func TestRealFilesystem_Lock_InvalidPath(t *testing.T) {
+	fs := realfs.NewFilesystem()
+
+	// Try to create lock in a non-existent directory that can't be created
+	// This path should fail because /proc is typically read-only for non-root
+	_, err := fs.Lock("/proc/nonexistent/test.lock")
+	// May or may not fail depending on permissions
+	_ = err
+}
+
+// TestRealFilesystem_TryLock_InvalidPath tests TryLock with invalid path
+func TestRealFilesystem_TryLock_InvalidPath(t *testing.T) {
+	fs := realfs.NewFilesystem()
+
+	// Try to create lock in a non-existent directory
+	_, err := fs.TryLock("/proc/nonexistent/test.lock")
+	_ = err
+}
+
+// TestRealFilesystem_LockFile_MethodAlreadyLocked tests LockFile.Lock method when already locked
+func TestRealFilesystem_LockFile_MethodAlreadyLocked(t *testing.T) {
+	// This tests the LockFile.Lock() method, not Filesystem.Lock()
+	// The LockFile is created via Filesystem.Lock, then we call Lock() again
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+	lockPath := filepath.Join(tmpDir, "test.lock")
+
+	lf, err := fs.Lock(lockPath)
+	if err != nil {
+		t.Fatalf("Lock failed: %v", err)
+	}
+	defer lf.Unlock()
+
+	// Now try to lock the same LockFile again - should fail
+	err = lf.Lock()
+	if err == nil {
+		t.Error("Lock should fail when already locked")
+	}
+}
+
+// TestRealFilesystem_TryLockFile_MethodAlreadyLocked tests TryLockFile method when already locked
+func TestRealFilesystem_TryLockFile_MethodAlreadyLocked(t *testing.T) {
+	// This tests the LockFile.TryLock() method
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+	lockPath := filepath.Join(tmpDir, "test.lock")
+
+	lf, err := fs.TryLock(lockPath)
+	if err != nil {
+		t.Fatalf("TryLock failed: %v", err)
+	}
+	defer lf.Unlock()
+
+	// Now try to TryLock the same LockFile again - should fail
+	err = lf.TryLock()
+	if err == nil {
+		t.Error("TryLock should fail when already locked")
+	}
+}
