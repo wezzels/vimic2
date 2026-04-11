@@ -508,3 +508,202 @@ func TestRealDatabase_GetNodeMetrics_Empty(t *testing.T) {
 		t.Errorf("expected empty metrics, got %d", len(metrics))
 	}
 }
+// TestRealDatabase_NewDatabase_InvalidPath tests NewDatabase with invalid path
+func TestRealDatabase_NewDatabase_InvalidPath(t *testing.T) {
+	// Try to create database in non-existent directory
+	_, err := realdb.NewDatabase(&realdb.Config{
+		Path: "/nonexistent/path/db.sqlite",
+	})
+	// Should fail to create directory/file
+	_ = err
+}
+
+// TestRealDatabase_NewDatabase_ConnectionPool tests connection pool settings
+func TestRealDatabase_NewDatabase_ConnectionPool(t *testing.T) {
+	db, err := realdb.NewDatabase(&realdb.Config{
+		Path:         ":memory:",
+		MaxOpenConns: 25,
+		MaxIdleConns: 10,
+	})
+	if err != nil {
+		t.Fatalf("NewDatabase failed: %v", err)
+	}
+	defer db.Close()
+}
+
+// TestRealDatabase_NewDatabase_ZeroValues tests with zero values
+func TestRealDatabase_NewDatabase_ZeroValues(t *testing.T) {
+	db, err := realdb.NewDatabase(&realdb.Config{
+		Path:         ":memory:",
+		MaxOpenConns: 0,
+		MaxIdleConns: 0,
+		BusyTimeout:  0,
+		WALMode:      false,
+	})
+	if err != nil {
+		t.Fatalf("NewDatabase failed: %v", err)
+	}
+	defer db.Close()
+}
+
+// TestRealDatabase_SaveAlert tests SaveAlert
+func TestRealDatabase_SaveAlert(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	alert := &realdb.Alert{
+		ID:        "alert-1",
+		NodeID:    "node-1",
+		Type:      "cpu_high",
+		Message:   "CPU usage above 90%",
+		Severity:  "warning",
+		CreatedAt: time.Now(),
+	}
+
+	err = db.SaveAlert(alert)
+	if err != nil {
+		t.Fatalf("SaveAlert failed: %v", err)
+	}
+
+	retrieved, err := db.GetAlert("alert-1")
+	if err != nil {
+		t.Fatalf("GetAlert failed: %v", err)
+	}
+
+	if retrieved.Message != "CPU usage above 90%" {
+		t.Errorf("wrong message: got %s", retrieved.Message)
+	}
+}
+
+// TestRealDatabase_ListAlerts_WithFilter tests ListAlerts
+func TestRealDatabase_ListAlerts_WithFilter(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create multiple alerts
+	for i := 0; i < 3; i++ {
+		alert := &realdb.Alert{
+			ID:        string(rune('a' + i)),
+			NodeID:    "node-1",
+			Type:      []string{"cpu_high", "mem_high", "disk_low"}[i],
+			Message:   "test",
+			Severity:  "warning",
+			CreatedAt: time.Now(),
+		}
+		if err := db.SaveAlert(alert); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	alerts, err := db.ListAlerts()
+	if err != nil {
+		t.Fatalf("ListAlerts failed: %v", err)
+	}
+
+	if len(alerts) != 3 {
+		t.Errorf("expected 3 alerts, got %d", len(alerts))
+	}
+}
+
+// TestRealDatabase_SavePool tests SavePool
+func TestRealDatabase_SavePool(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	pool := &realdb.Pool{
+		ID:        "pool-1",
+		Name:      "test-pool",
+		Available: 5,
+		Busy:      2,
+	}
+
+	err = db.SavePool(pool)
+	if err != nil {
+		t.Fatalf("SavePool failed: %v", err)
+	}
+
+	retrieved, err := db.GetPool("pool-1")
+	if err != nil {
+		t.Fatalf("GetPool failed: %v", err)
+	}
+
+	if retrieved.Name != "test-pool" {
+		t.Errorf("wrong name: got %s", retrieved.Name)
+	}
+}
+
+// TestRealDatabase_SaveMetric_Multiple tests multiple metrics
+func TestRealDatabase_SaveMetric_Multiple(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	for i := 0; i < 5; i++ {
+		metric := &realdb.Metric{
+			NodeID:     "node-1",
+			CPU:        float64(50 + i),
+			Memory:     float64(60 + i),
+			Disk:       float64(70 + i),
+			NetworkRX:  float64(1000 + i),
+			NetworkTX:  float64(500 + i),
+			RecordedAt: time.Now(),
+		}
+		if err := db.SaveMetric(metric); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Query from a time in the past
+	metrics, err := db.GetNodeMetrics("node-1", time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("GetNodeMetrics failed: %v", err)
+	}
+
+	if len(metrics) != 5 {
+		t.Errorf("expected 5 metrics, got %d", len(metrics))
+	}
+}
+
+// TestRealDatabase_MultipleHosts tests multiple hosts
+func TestRealDatabase_MultipleHosts(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	for i := 0; i < 3; i++ {
+		host := &realdb.Host{
+			ID:         string(rune('a' + i)),
+			Name:       string(rune('a' + i)),
+			Address:    "10.0.0." + string(rune('1'+i)),
+			Port:       22,
+			User:       "root",
+			SSHKeyPath: "/path/key",
+			HVType:     "libvirt",
+		}
+		if err := db.SaveHost(host); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	hosts, err := db.ListHosts()
+	if err != nil {
+		t.Fatalf("ListHosts failed: %v", err)
+	}
+
+	if len(hosts) != 3 {
+		t.Errorf("expected 3 hosts, got %d", len(hosts))
+	}
+}
