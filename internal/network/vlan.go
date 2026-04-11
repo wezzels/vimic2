@@ -67,9 +67,10 @@ func (va *VLANAllocator) loadState() error {
 }
 
 // saveState saves VLAN state to disk
+// NOTE: Caller must hold the lock (va.mu.Lock or va.mu.RLock) before calling
 func (va *VLANAllocator) saveState() error {
-	va.mu.RLock()
-	defer va.mu.RUnlock()
+	// No lock here - caller must hold the lock
+	// This avoids deadlock when called from methods that already hold va.mu.Lock()
 
 	data, err := json.MarshalIndent(va.used, "", "  ")
 	if err != nil {
