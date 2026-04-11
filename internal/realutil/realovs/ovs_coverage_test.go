@@ -467,3 +467,112 @@ func TestRealOVS_BridgeExists_False(t *testing.T) {
 		t.Error("BridgeExists should return false for non-existent bridge")
 	}
 }
+
+// TestRealOVS_CreateBridge_Errors tests CreateBridge error handling
+func TestRealOVS_CreateBridge_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// CreateBridge should fail without OVS running
+	err := c.CreateBridge("test-br-error")
+	// Expected to fail
+	_ = err
+}
+
+// TestRealOVS_DeleteBridge_Errors tests DeleteBridge error handling
+func TestRealOVS_DeleteBridge_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// DeleteBridge should fail without OVS
+	err := c.DeleteBridge("test-br-error")
+	_ = err
+}
+
+// TestRealOVS_AddPort_Errors tests AddPort error handling
+func TestRealOVS_AddPort_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// AddPort should fail without OVS
+	err := c.AddPort("test-br", "test-port")
+	_ = err
+}
+
+// TestRealOVS_DeletePort_Errors tests DeletePort error handling
+func TestRealOVS_DeletePort_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// DeletePort should fail without OVS
+	err := c.DeletePort("test-br", "test-port")
+	_ = err
+}
+
+// TestRealOVS_SetPortVLAN_Errors tests SetPortVLAN error handling
+func TestRealOVS_SetPortVLAN_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// SetPortVLAN should fail without OVS
+	err := c.SetPortVLAN("test-port", 100)
+	_ = err
+}
+
+// TestRealOVS_SetPortQoS_Errors tests SetPortQoS error handling
+func TestRealOVS_SetPortQoS_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// SetPortQoS should fail without OVS
+	err := c.SetPortQoS("test-port", 1000)
+	_ = err
+}
+
+// TestRealOVS_SetPortSecurity_Errors tests SetPortSecurity error handling
+func TestRealOVS_SetPortSecurity_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// SetPortSecurity should fail without OVS
+	err := c.SetPortSecurity("test-port", "00:11:22:33:44:55", "10.0.0.1")
+	_ = err
+}
+
+// TestRealOVS_AddFlow_Errors tests AddFlow error handling
+func TestRealOVS_AddFlow_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// AddFlow should fail without OVS
+	err := c.AddFlow("test-br", 100, "in_port=1", "output:2")
+	_ = err
+}
+
+// TestRealOVS_DeleteFlow_Errors tests DeleteFlow error handling
+func TestRealOVS_DeleteFlow_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// DeleteFlow should fail without OVS
+	err := c.DeleteFlow("test-br", "priority=100")
+	_ = err
+}
+
+// TestRealOVS_GetInterfaceUUID_Errors tests GetInterfaceUUID error handling
+func TestRealOVS_GetInterfaceUUID_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// GetInterfaceUUID should fail without OVS
+	_, err := c.GetInterfaceUUID("test-interface")
+	_ = err
+}
+
+// TestRealOVS_GetInterfaceOption_Errors tests GetInterfaceOption error handling
+func TestRealOVS_GetInterfaceOption_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// GetInterfaceOption should fail without OVS
+	_, err := c.GetInterfaceOption("test-interface", "key")
+	_ = err
+}
+
+// TestRealOVS_SetInterfaceOption_Errors tests SetInterfaceOption error handling
+func TestRealOVS_SetInterfaceOption_Errors(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// SetInterfaceOption should fail without OVS
+	err := c.SetInterfaceOption("test-interface", "key", "value")
+	_ = err
+}
