@@ -707,3 +707,270 @@ func TestRealDatabase_MultipleHosts(t *testing.T) {
 		t.Errorf("expected 3 hosts, got %d", len(hosts))
 	}
 }
+
+// TestRealDatabase_SaveCluster_Update tests updating existing cluster
+func TestRealDatabase_SaveCluster_Update(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create cluster
+	cluster := &realdb.Cluster{
+		ID:     "cluster-1",
+		Name:   "test-cluster",
+		Status: "created",
+	}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	// Update cluster
+	cluster.Status = "running"
+	cluster.Name = "updated-cluster"
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify update
+	retrieved, err := db.GetCluster("cluster-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retrieved.Name != "updated-cluster" {
+		t.Errorf("expected updated-cluster, got %s", retrieved.Name)
+	}
+	if retrieved.Status != "running" {
+		t.Errorf("expected running status, got %s", retrieved.Status)
+	}
+}
+
+// TestRealDatabase_SaveHost_Update tests updating existing host
+func TestRealDatabase_SaveHost_Update(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create host
+	host := &realdb.Host{
+		ID:      "host-1",
+		Name:    "test-host",
+		Address: "10.0.0.1",
+	}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+
+	// Update host
+	host.Name = "updated-host"
+	host.Address = "10.0.0.2"
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify update
+	retrieved, err := db.GetHost("host-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retrieved.Name != "updated-host" {
+		t.Errorf("expected updated-host, got %s", retrieved.Name)
+	}
+}
+
+// TestRealDatabase_SaveNode_Update tests updating existing node
+func TestRealDatabase_SaveNode_Update(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create host and cluster
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create node
+	node := &realdb.Node{
+		ID:        "node-1",
+		ClusterID: "cluster-1",
+		HostID:    "host-1",
+		Name:      "test-node",
+		Role:      "worker",
+		State:     "created",
+	}
+	if err := db.SaveNode(node); err != nil {
+		t.Fatal(err)
+	}
+
+	// Update node
+	node.State = "running"
+	node.IP = "10.0.1.1"
+	if err := db.SaveNode(node); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify update
+	retrieved, err := db.GetNode("node-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retrieved.State != "running" {
+		t.Errorf("expected running state, got %s", retrieved.State)
+	}
+}
+
+// TestRealDatabase_DeleteHost tests deleting host
+func TestRealDatabase_DeleteHost(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create host
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+
+	// Delete host
+	if err := db.DeleteHost("host-1"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify deleted
+	_, err = db.GetHost("host-1")
+	if err == nil {
+		t.Error("expected error for deleted host")
+	}
+}
+
+// TestRealDatabase_DeleteNode tests deleting node
+func TestRealDatabase_DeleteNode(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create host, cluster, and node
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+	node := &realdb.Node{ID: "node-1", ClusterID: "cluster-1", HostID: "host-1", Name: "test", Role: "worker", State: "running"}
+	if err := db.SaveNode(node); err != nil {
+		t.Fatal(err)
+	}
+
+	// Delete node
+	if err := db.DeleteNode("node-1"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify deleted
+	_, err = db.GetNode("node-1")
+	if err == nil {
+		t.Error("expected error for deleted node")
+	}
+}
+
+// TestRealDatabase_DeletePool tests deleting pool
+func TestRealDatabase_DeletePool(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create pool
+	pool := &realdb.Pool{ID: "pool-1", Name: "test", Available: 5, Busy: 2}
+	if err := db.SavePool(pool); err != nil {
+		t.Fatal(err)
+	}
+
+	// Delete pool
+	if err := db.DeletePool("pool-1"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify deleted
+	_, err = db.GetPool("pool-1")
+	if err == nil {
+		t.Error("expected error for deleted pool")
+	}
+}
+
+// TestRealDatabase_SavePool_Update tests updating pool
+func TestRealDatabase_SavePool_Update(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create pool
+	pool := &realdb.Pool{ID: "pool-1", Name: "test", Available: 5, Busy: 2}
+	if err := db.SavePool(pool); err != nil {
+		t.Fatal(err)
+	}
+
+	// Update pool
+	pool.Available = 10
+	pool.Busy = 3
+	if err := db.SavePool(pool); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify update
+	retrieved, err := db.GetPool("pool-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retrieved.Available != 10 {
+		t.Errorf("expected Available=10, got %d", retrieved.Available)
+	}
+}
+
+// TestRealDatabase_Count_WithData tests Count with actual data
+func TestRealDatabase_Count_WithData(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create some data
+	for i := 0; i < 3; i++ {
+		cluster := &realdb.Cluster{ID: string(rune('a' + i)), Name: string(rune('a' + i)), Status: "running"}
+		if err := db.SaveCluster(cluster); err != nil {
+			t.Fatal(err)
+		}
+		host := &realdb.Host{ID: string(rune('a' + i)), Name: string(rune('a' + i)), Address: "10.0.0.1"}
+		if err := db.SaveHost(host); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	counts := db.Count()
+	if counts["clusters"] != 3 {
+		t.Errorf("expected 3 clusters, got %d", counts["clusters"])
+	}
+	if counts["hosts"] != 3 {
+		t.Errorf("expected 3 hosts, got %d", counts["hosts"])
+	}
+}
