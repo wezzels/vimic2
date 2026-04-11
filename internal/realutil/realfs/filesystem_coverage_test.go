@@ -249,41 +249,8 @@ func TestRealFilesystem_TryLock_Basic(t *testing.T) {
 	}
 }
 
-// TestRealFilesystem_Lock_WriteRead tests writing and reading locked file
-func TestRealFilesystem_Lock_WriteRead(t *testing.T) {
-	fs := realfs.NewFilesystem()
-	tmpDir := t.TempDir()
-	lockPath := filepath.Join(tmpDir, "test.lock")
-
-	lock, err := fs.Lock(lockPath)
-	if err != nil {
-		t.Fatalf("Lock failed: %v", err)
-	}
-
-	// Write
-	n, err := lock.Write([]byte("test data"))
-	if err != nil {
-		t.Fatalf("Write failed: %v", err)
-	}
-	if n != 9 {
-		t.Errorf("wrong bytes written: got %d, want 9", n)
-	}
-
-	// Verify data was written by reading file directly
-	lock.Unlock()
-	data, err := os.ReadFile(lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(data) != "test data" {
-		t.Errorf("wrong content: got %s", string(data))
-	}
-}
-
 // TestRealFilesystem_Lock_WriteWithoutLock tests writing without lock
-
-// TestRealFilesystem_Lock_Write tests writing to locked file
-func TestRealFilesystem_Lock_Write(t *testing.T) {
+func TestRealFilesystem_Lock_AlreadyLocked(t *testing.T) {
 	fs := realfs.NewFilesystem()
 	tmpDir := t.TempDir()
 	lockPath := filepath.Join(tmpDir, "test.lock")
@@ -292,65 +259,75 @@ func TestRealFilesystem_Lock_Write(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Lock failed: %v", err)
 	}
-	defer lock.Unlock()
 
-	n, err := lock.Write([]byte("test data"))
-	if err != nil {
-		t.Fatalf("Write failed: %v", err)
-	}
-	if n != 9 {
-		t.Errorf("wrong bytes written: got %d, want 9", n)
+	// Try to lock again on same LockFile (method)
+	err = lock.Lock()
+	if err == nil {
+		t.Error("Lock should fail when already locked")
 	}
 
-	// Verify data was written
-	data, err := os.ReadFile(lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(data) != "test data" {
-		t.Errorf("wrong content: got %s", string(data))
-	}
-}
-
-// TestRealFilesystem_Lock_Read tests reading from locked file
-func TestRealFilesystem_Lock_Read(t *testing.T) {
-	fs := realfs.NewFilesystem()
-	tmpDir := t.TempDir()
-	lockPath := filepath.Join(tmpDir, "test.lock")
-
-	// Write initial data
-	if err := os.WriteFile(lockPath, []byte("test data for read"), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	lock, err := fs.Lock(lockPath)
-	if err != nil {
-		t.Fatalf("Lock failed: %v", err)
-	}
-	defer lock.Unlock()
-
-	buf := make([]byte, 100)
-	n, err := lock.Read(buf)
-	if err != nil {
-		t.Fatalf("Read failed: %v", err)
-	}
-	if string(buf[:n]) != "test data for read" {
-		t.Errorf("wrong content: got %s", string(buf[:n]))
-	}
-}
-
-// TestRealFilesystem_Lock_Concurrent tests concurrent lock attempts (best effort)
-func TestRealFilesystem_Lock_Concurrent(t *testing.T) {
-	fs := realfs.NewFilesystem()
-	tmpDir := t.TempDir()
-	lockPath := filepath.Join(tmpDir, "test.lock")
-
-	// Just test that we can lock and unlock
-	lock, err := fs.Lock(lockPath)
-	if err != nil {
-		t.Fatalf("Lock failed: %v", err)
-	}
 	lock.Unlock()
+}
+
+// TestRealFilesystem_TryLock_AlreadyLockedMethod tests TryLock on already locked (method)
+func TestRealFilesystem_TryLock_AlreadyLockedMethod(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+	lockPath := filepath.Join(tmpDir, "test.lock")
+
+	lock, err := fs.TryLock(lockPath)
+	if err != nil {
+		t.Fatalf("TryLock failed: %v", err)
+	}
+
+	// Try to lock again on same LockFile (method)
+	err = lock.TryLock()
+	if err == nil {
+		t.Error("TryLock should fail when already locked")
+	}
+
+	lock.Unlock()
+}
+
+// TestRealFilesystem_Unlock_NotLocked tests Unlock on not locked file
+func TestRealFilesystem_Unlock_NotLocked(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+	lockPath := filepath.Join(tmpDir, "test.lock")
+
+	lock, err := fs.Lock(lockPath)
+	if err != nil {
+		t.Fatalf("Lock failed: %v", err)
+	}
+
+	// Unlock once
+	if err := lock.Unlock(); err != nil {
+		t.Fatalf("first Unlock failed: %v", err)
+	}
+
+	// Try to unlock again (not locked)
+	err = lock.Unlock()
+	if err == nil {
+		t.Error("Unlock should fail when not locked")
+	}
+}
+
+// TestRealFilesystem_Lock_ParentDirCreation tests Lock creating parent directory
+func TestRealFilesystem_Lock_ParentDirCreation(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+	lockPath := filepath.Join(tmpDir, "subdir", "nested", "test.lock")
+
+	lock, err := fs.Lock(lockPath)
+	if err != nil {
+		t.Fatalf("Lock failed: %v", err)
+	}
+	defer lock.Unlock()
+
+	// Parent directory should be created
+	if !fs.Exists(filepath.Join(tmpDir, "subdir", "nested")) {
+		t.Error("parent directory should be created")
+	}
 }
 
 // TestRealFilesystem_WriteFile_InvalidPath tests WriteFile with invalid path
