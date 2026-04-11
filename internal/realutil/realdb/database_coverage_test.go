@@ -2195,3 +2195,240 @@ func TestRealDatabase_VacuumOperation(t *testing.T) {
 	counts := db.Count()
 	_ = counts
 }
+
+// TestRealDatabase_SaveCluster_LargeConfig tests SaveCluster with large config
+func TestRealDatabase_SaveCluster_LargeConfig(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Large config
+	largeConfig := make(map[string]string)
+	for i := 0; i < 100; i++ {
+		largeConfig[string(rune('a'+i%26))] = "value-" + string(rune('a'+i%26))
+	}
+
+	cluster := &realdb.Cluster{
+		ID:        "cluster-large",
+		Name:      "large-config-cluster",
+		Status:    "running",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatalf("SaveCluster failed: %v", err)
+	}
+
+	retrieved, err := db.GetCluster("cluster-large")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retrieved.Name != "large-config-cluster" {
+		t.Errorf("wrong name: %s", retrieved.Name)
+	}
+}
+
+// TestRealDatabase_SaveNode_LargeConfig tests SaveNode with large config
+func TestRealDatabase_SaveNode_LargeConfig(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	node := &realdb.Node{
+		ID:        "node-large",
+		ClusterID: "cluster-1",
+		HostID:    "host-1",
+		Name:      "large-config-node",
+		Role:      "worker",
+		State:     "running",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.SaveNode(node); err != nil {
+		t.Fatalf("SaveNode failed: %v", err)
+	}
+
+	retrieved, err := db.GetNode("node-large")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retrieved.Name != "large-config-node" {
+		t.Errorf("wrong name: %s", retrieved.Name)
+	}
+}
+
+// TestRealDatabase_NewDatabase_MaxConns tests connection pool settings
+func TestRealDatabase_NewDatabase_MaxConns(t *testing.T) {
+	cfg := &realdb.Config{
+		Path:         ":memory:",
+		MaxOpenConns: 100,
+		MaxIdleConns: 50,
+		WALMode:      true,
+		BusyTimeout:  30 * time.Second,
+	}
+
+	db, err := realdb.NewDatabase(cfg)
+	if err != nil {
+		t.Fatalf("NewDatabase failed: %v", err)
+	}
+	defer db.Close()
+
+	// Verify database is functional
+	if err := db.Ping(); err != nil {
+		t.Errorf("Ping failed: %v", err)
+	}
+}
+
+// TestRealDatabase_NewDatabaseWithDefaults_File tests file-based database
+func TestRealDatabase_NewDatabaseWithDefaults_File(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := tmpDir + "/test.db"
+
+	db, err := realdb.NewDatabaseWithDefaults(dbPath)
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create some data
+	cluster := &realdb.Cluster{ID: "test", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify file exists
+	if _, err := os.Stat(dbPath); err != nil {
+		t.Errorf("database file not created: %v", err)
+	}
+}
+
+// TestRealDatabase_ListClusters_JSONHandling tests ListClusters JSON handling
+func TestRealDatabase_ListClusters_JSONHandling(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create clusters with and without config
+	for i := 0; i < 5; i++ {
+		var config *realdb.ClusterConfig
+		if i%2 == 0 {
+			config = &realdb.ClusterConfig{MinNodes: i, MaxNodes: i * 2, AutoScale: true}
+		}
+		cluster := &realdb.Cluster{
+			ID:        string(rune('a' + i)),
+			Name:      "cluster-" + string(rune('a'+i)),
+			Status:    "running",
+			Config:    config,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := db.SaveCluster(cluster); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	clusters, err := db.ListClusters()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(clusters) != 5 {
+		t.Errorf("expected 5 clusters, got %d", len(clusters))
+	}
+}
+
+// TestRealDatabase_ListHosts_JSONHandling tests ListHosts
+func TestRealDatabase_ListHosts_JSONHandling(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	for i := 0; i < 5; i++ {
+		host := &realdb.Host{
+			ID:         string(rune('a' + i)),
+			Name:       "host-" + string(rune('a'+i)),
+			Address:    "10.0.0." + string(rune('1'+i)),
+			Port:       22,
+			User:       "root",
+			SSHKeyPath: "/path/key",
+			HVType:     "libvirt",
+		}
+		if err := db.SaveHost(host); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	hosts, err := db.ListHosts()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(hosts) != 5 {
+		t.Errorf("expected 5 hosts, got %d", len(hosts))
+	}
+}
+
+// TestRealDatabase_ListClusterNodes_JSONHandling tests ListClusterNodes JSON
+func TestRealDatabase_ListClusterNodes_JSONHandling(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 5; i++ {
+		var config *realdb.NodeConfig
+		if i%2 == 0 {
+			config = &realdb.NodeConfig{CPU: i + 1, Memory: 1024 * (i + 1), Disk: 10 * (i + 1)}
+		}
+		node := &realdb.Node{
+			ID:        string(rune('a' + i)),
+			ClusterID: "cluster-1",
+			HostID:    "host-1",
+			Name:      "node-" + string(rune('a'+i)),
+			Role:      "worker",
+			State:     "running",
+			Config:    config,
+		}
+		if err := db.SaveNode(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	nodes, err := db.ListClusterNodes("cluster-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(nodes) != 5 {
+		t.Errorf("expected 5 nodes, got %d", len(nodes))
+	}
+}
