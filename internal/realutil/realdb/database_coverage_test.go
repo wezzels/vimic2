@@ -1551,3 +1551,252 @@ func TestRealDatabase_MultipleListOperations(t *testing.T) {
 		t.Errorf("expected 5 pools, got %d", len(pools))
 	}
 }
+
+// TestRealDatabase_NewDatabase_WALModeError tests NewDatabase WAL mode error handling
+func TestRealDatabase_NewDatabase_WALModeError(t *testing.T) {
+	// Create database with WAL mode enabled (default)
+	db, err := realdb.NewDatabase(&realdb.Config{
+		Path:    ":memory:",
+		WALMode: true,
+	})
+	if err != nil {
+		t.Fatalf("NewDatabase with WALMode failed: %v", err)
+	}
+	defer db.Close()
+}
+
+// TestRealDatabase_NewDatabase_BusyTimeoutSetting tests busy timeout setting
+func TestRealDatabase_NewDatabase_BusyTimeoutSetting(t *testing.T) {
+	db, err := realdb.NewDatabase(&realdb.Config{
+		Path:        ":memory:",
+		BusyTimeout: 10 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("NewDatabase with BusyTimeout failed: %v", err)
+	}
+	defer db.Close()
+}
+
+// TestRealDatabase_SaveMetric_WithValidData tests SaveMetric with various data
+func TestRealDatabase_SaveMetric_WithValidData(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Test with various metric values
+	testCases := []struct {
+		cpu    float64
+		memory float64
+		disk   float64
+	}{
+		{0.0, 0.0, 0.0},
+		{100.0, 100.0, 100.0},
+		{50.5, 75.25, 25.75},
+		{-1.0, -1.0, -1.0}, // Negative values should be handled
+	}
+
+	for i, tc := range testCases {
+		metric := &realdb.Metric{
+			NodeID:     "test-node",
+			CPU:        tc.cpu,
+			Memory:     tc.memory,
+			Disk:       tc.disk,
+			NetworkRX:  1000.0,
+			NetworkTX:  500.0,
+			RecordedAt: time.Now(),
+		}
+		if err := db.SaveMetric(metric); err != nil {
+			t.Errorf("SaveMetric[%d] failed: %v", i, err)
+		}
+	}
+}
+
+// TestRealDatabase_IntegrityCheck_Corruption tests IntegrityCheck behavior
+func TestRealDatabase_IntegrityCheck_Corruption(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Basic integrity check should pass
+	if err := db.IntegrityCheck(); err != nil {
+		t.Errorf("IntegrityCheck failed: %v", err)
+	}
+}
+
+// TestRealDatabase_ListClusters_Order tests ListClusters ordering
+func TestRealDatabase_ListClusters_Order(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create clusters in order
+	clusterNames := []string{"cluster-a", "cluster-b", "cluster-c"}
+	for _, name := range clusterNames {
+		cluster := &realdb.Cluster{ID: name, Name: name, Status: "running"}
+		if err := db.SaveCluster(cluster); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	clusters, err := db.ListClusters()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(clusters) != 3 {
+		t.Errorf("expected 3 clusters, got %d", len(clusters))
+	}
+}
+
+// TestRealDatabase_ListHosts_Order tests ListHosts ordering
+func TestRealDatabase_ListHosts_Order(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create hosts
+	hostNames := []string{"host-a", "host-b", "host-c"}
+	for _, name := range hostNames {
+		host := &realdb.Host{ID: name, Name: name, Address: "10.0.0.1"}
+		if err := db.SaveHost(host); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	hosts, err := db.ListHosts()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(hosts) != 3 {
+		t.Errorf("expected 3 hosts, got %d", len(hosts))
+	}
+}
+
+// TestRealDatabase_ListPools_Order tests ListPools ordering
+func TestRealDatabase_ListPools_Order(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create pools
+	poolNames := []string{"pool-a", "pool-b", "pool-c"}
+	for _, name := range poolNames {
+		pool := &realdb.Pool{ID: name, Name: name, Available: 10, Busy: 0}
+		if err := db.SavePool(pool); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	pools, err := db.ListPools()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(pools) != 3 {
+		t.Errorf("expected 3 pools, got %d", len(pools))
+	}
+}
+
+// TestRealDatabase_ListAlerts_Order tests ListAlerts ordering
+func TestRealDatabase_ListAlerts_Order(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create alerts
+	alertIDs := []string{"alert-a", "alert-b", "alert-c"}
+	for _, id := range alertIDs {
+		alert := &realdb.Alert{
+			ID:        id,
+			NodeID:    "node-1",
+			Type:      "test",
+			Message:   "test message",
+			Severity:  "warning",
+			CreatedAt: time.Now(),
+		}
+		if err := db.SaveAlert(alert); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	alerts, err := db.ListAlerts()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(alerts) != 3 {
+		t.Errorf("expected 3 alerts, got %d", len(alerts))
+	}
+}
+
+// TestRealDatabase_Count_WithMultipleEntities tests Count with various entities
+func TestRealDatabase_Count_WithMultipleEntities(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create 5 clusters, 10 hosts, 20 nodes
+	for i := 0; i < 5; i++ {
+		cluster := &realdb.Cluster{ID: string(rune('a' + i)), Name: string(rune('a' + i)), Status: "running"}
+		if err := db.SaveCluster(cluster); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for i := 0; i < 10; i++ {
+		host := &realdb.Host{ID: string(rune('a' + i)), Name: string(rune('a' + i)), Address: "10.0.0.1"}
+		if err := db.SaveHost(host); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Create cluster and host for nodes
+	cluster := &realdb.Cluster{ID: "cluster-for-nodes", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+	host := &realdb.Host{ID: "host-for-nodes", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 20; i++ {
+		node := &realdb.Node{
+			ID:        string(rune('a' + i)),
+			ClusterID: "cluster-for-nodes",
+			HostID:    "host-for-nodes",
+			Name:      string(rune('a' + i)),
+			Role:      "worker",
+			State:     "running",
+		}
+		if err := db.SaveNode(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	counts := db.Count()
+	if counts["clusters"] != 6 { // 5 + 1 for cluster-for-nodes
+		t.Errorf("expected 6 clusters, got %d", counts["clusters"])
+	}
+	if counts["hosts"] != 11 { // 10 + 1 for host-for-nodes
+		t.Errorf("expected 11 hosts, got %d", counts["hosts"])
+	}
+	if counts["nodes"] != 20 {
+		t.Errorf("expected 20 nodes, got %d", counts["nodes"])
+	}
+}
