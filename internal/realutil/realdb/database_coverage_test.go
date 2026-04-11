@@ -2527,3 +2527,212 @@ func TestRealDatabase_Count_AfterOperations(t *testing.T) {
 		t.Errorf("expected 3 pools, got %d", counts["pools"])
 	}
 }
+
+// TestRealDatabase_GetNodeMetrics_WithResults tests GetNodeMetrics with actual data
+func TestRealDatabase_GetNodeMetrics_WithResults(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create metrics
+	now := time.Now()
+	for i := 0; i < 5; i++ {
+		metric := &realdb.Metric{
+			NodeID:     "node-1",
+			CPU:        float64(i * 10),
+			Memory:     float64(i * 20),
+			Disk:       float64(i * 5),
+			NetworkRX:  float64(i * 100),
+			NetworkTX:  float64(i * 50),
+			RecordedAt: now.Add(-time.Duration(i) * time.Minute),
+		}
+		if err := db.SaveMetric(metric); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Query for metrics
+	metrics, err := db.GetNodeMetrics("node-1", now.Add(-10*time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(metrics) != 5 {
+		t.Errorf("expected 5 metrics, got %d", len(metrics))
+	}
+
+	// Verify first metric (most recent)
+	if metrics[0].CPU != 0 {
+		t.Errorf("expected first metric CPU=0, got %f", metrics[0].CPU)
+	}
+}
+
+// TestRealDatabase_SaveHost_WithAllFields tests SaveHost with all fields
+func TestRealDatabase_SaveHost_WithAllFields(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	host := &realdb.Host{
+		ID:         "host-full",
+		Name:       "full-host",
+		Address:    "192.168.1.100",
+		Port:       22,
+		User:       "admin",
+		SSHKeyPath: "/home/admin/.ssh/id_rsa",
+		HVType:     "libvirt",
+	}
+
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+
+	retrieved, err := db.GetHost("host-full")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if retrieved.Address != "192.168.1.100" {
+		t.Errorf("expected Address=192.168.1.100, got %s", retrieved.Address)
+	}
+	if retrieved.Port != 22 {
+		t.Errorf("expected Port=22, got %d", retrieved.Port)
+	}
+	if retrieved.User != "admin" {
+		t.Errorf("expected User=admin, got %s", retrieved.User)
+	}
+	if retrieved.HVType != "libvirt" {
+		t.Errorf("expected HVType=libvirt, got %s", retrieved.HVType)
+	}
+}
+
+// TestRealDatabase_SaveAlert_WithAllFields tests SaveAlert with all fields
+func TestRealDatabase_SaveAlert_WithAllFields(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	alert := &realdb.Alert{
+		ID:        "alert-full",
+		NodeID:    "node-1",
+		Type:      "cpu_high",
+		Message:   "CPU usage exceeded 90%",
+		Severity:  "critical",
+		CreatedAt: time.Now(),
+	}
+
+	if err := db.SaveAlert(alert); err != nil {
+		t.Fatal(err)
+	}
+
+	retrieved, err := db.GetAlert("alert-full")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if retrieved.Type != "cpu_high" {
+		t.Errorf("expected Type=cpu_high, got %s", retrieved.Type)
+	}
+	if retrieved.Severity != "critical" {
+		t.Errorf("expected Severity=critical, got %s", retrieved.Severity)
+	}
+}
+
+// TestRealDatabase_SavePool_WithAllFields tests SavePool with all fields
+func TestRealDatabase_SavePool_WithAllFields(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	pool := &realdb.Pool{
+		ID:        "pool-full",
+		Name:      "test-pool",
+		Available: 100,
+		Busy:      25,
+	}
+
+	if err := db.SavePool(pool); err != nil {
+		t.Fatal(err)
+	}
+
+	retrieved, err := db.GetPool("pool-full")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if retrieved.Available != 100 {
+		t.Errorf("expected Available=100, got %d", retrieved.Available)
+	}
+	if retrieved.Busy != 25 {
+		t.Errorf("expected Busy=25, got %d", retrieved.Busy)
+	}
+}
+
+// TestRealDatabase_ListHosts_WithData tests ListHosts with multiple hosts
+func TestRealDatabase_ListHosts_WithData(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create hosts
+	for i := 0; i < 10; i++ {
+		host := &realdb.Host{
+			ID:      string(rune('a' + i)),
+			Name:    "host-" + string(rune('a'+i)),
+			Address: "10.0.0." + string(rune('1'+i)),
+		}
+		if err := db.SaveHost(host); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	hosts, err := db.ListHosts()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(hosts) != 10 {
+		t.Errorf("expected 10 hosts, got %d", len(hosts))
+	}
+}
+
+// TestRealDatabase_ListPools_WithData tests ListPools with multiple pools
+func TestRealDatabase_ListPools_WithData(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create pools
+	for i := 0; i < 5; i++ {
+		pool := &realdb.Pool{
+			ID:        string(rune('a' + i)),
+			Name:      "pool-" + string(rune('a'+i)),
+			Available: i * 10,
+			Busy:      i,
+		}
+		if err := db.SavePool(pool); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	pools, err := db.ListPools()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(pools) != 5 {
+		t.Errorf("expected 5 pools, got %d", len(pools))
+	}
+}
