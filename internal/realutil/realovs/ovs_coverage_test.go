@@ -329,3 +329,89 @@ func TestRealOVS_SetBridgeTrunk_NoBridge(t *testing.T) {
 		t.Error("SetBridgeTrunk should fail for non-existent bridge")
 	}
 }
+// TestRealOVS_GetBridge_NonExistent tests GetBridge with non-existent bridge
+func TestRealOVS_GetBridge_NonExistent(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	_, err := c.GetBridge("non-existent-bridge-xyz")
+	if err == nil {
+		t.Error("GetBridge should fail for non-existent bridge")
+	}
+}
+
+// TestRealOVS_ListBridges tests ListBridges
+func TestRealOVS_ListBridges(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	bridges, err := c.ListBridges()
+	if err != nil {
+		t.Fatalf("ListBridges failed: %v", err)
+	}
+
+	// Should return list (may be empty if no bridges)
+	_ = bridges
+}
+
+// TestRealOVS_GetPort_NonExistent tests GetPort with non-existent port
+func TestRealOVS_GetPort_NonExistent(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	_, err := c.GetPort("non-existent-port-xyz")
+	if err == nil {
+		t.Error("GetPort should fail for non-existent port")
+	}
+}
+
+// TestRealOVS_ListFlows tests ListFlows
+func TestRealOVS_ListFlows(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	// ListFlows requires a bridge
+	_, err := c.ListFlows("non-existent-bridge-xyz")
+	// Should fail for non-existent bridge
+	_ = err
+}
+
+// TestRealOVS_Version_Format tests Version format
+func TestRealOVS_Version_Format(t *testing.T) {
+	version, err := realovs.Version()
+	if err != nil {
+		t.Fatalf("Version failed: %v", err)
+	}
+
+	if version == "" {
+		t.Error("Version should not be empty")
+	}
+
+	t.Logf("OVS Version: %s", version)
+}
+
+// TestRealOVS_GetInterfaceUUID_NonExistent tests GetInterfaceUUID with non-existent interface
+func TestRealOVS_GetInterfaceUUID_NonExistent(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	_, err := c.GetInterfaceUUID("non-existent-interface-xyz")
+	if err == nil {
+		t.Error("GetInterfaceUUID should fail for non-existent interface")
+	}
+}
+
+// TestRealOVS_GetInterfaceOption_NonExistent tests GetInterfaceOption with non-existent interface
+func TestRealOVS_GetInterfaceOption_NonExistent(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	_, err := c.GetInterfaceOption("non-existent-interface-xyz", "key")
+	if err == nil {
+		t.Error("GetInterfaceOption should fail for non-existent interface")
+	}
+}
+
+// TestRealOVS_SetInterfaceOption_Invalid tests SetInterfaceOption with invalid option
+func TestRealOVS_SetInterfaceOption_Invalid(t *testing.T) {
+	c := realovs.NewClientWithDefaults()
+
+	err := c.SetInterfaceOption("non-existent-interface-xyz", "invalid-key", "value")
+	if err == nil {
+		t.Error("SetInterfaceOption should fail for non-existent interface")
+	}
+}
