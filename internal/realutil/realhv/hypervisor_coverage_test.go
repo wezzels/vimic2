@@ -363,3 +363,93 @@ func TestRealHypervisor_Disconnect_Twice(t *testing.T) {
 		t.Errorf("Second Disconnect should not error: %v", err)
 	}
 }
+
+// TestRealHypervisor_StartNode tests StartNode
+func TestRealHypervisor_StartNode(t *testing.T) {
+	cfg := &realhv.Config{
+		URI: "qemu+tcp://127.0.0.1/system",
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	// Without connection, this should fail
+	err := hv.StartNode(ctx, "test-vm")
+	if err == nil {
+		t.Error("StartNode should fail without connection")
+	}
+}
+
+// TestRealHypervisor_StopNode tests StopNode
+func TestRealHypervisor_StopNode(t *testing.T) {
+	cfg := &realhv.Config{
+		URI: "qemu+tcp://127.0.0.1/system",
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	// Without connection, this should fail
+	err := hv.StopNode(ctx, "test-vm")
+	if err == nil {
+		t.Error("StopNode should fail without connection")
+	}
+}
+
+// TestRealHypervisor_RestartNode tests RestartNode
+func TestRealHypervisor_RestartNode(t *testing.T) {
+	cfg := &realhv.Config{
+		URI: "qemu+tcp://127.0.0.1/system",
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	// Without connection, this should fail
+	err := hv.RestartNode(ctx, "test-vm")
+	if err == nil {
+		t.Error("RestartNode should fail without connection")
+	}
+}
+
+// TestRealHypervisor_GetNode tests GetNode
+func TestRealHypervisor_GetNode(t *testing.T) {
+	cfg := &realhv.Config{
+		URI: "qemu+tcp://127.0.0.1/system",
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	// Without connection, this should fail
+	_, err := hv.GetNode(ctx, "test-vm")
+	if err == nil {
+		t.Error("GetNode should fail without connection")
+	}
+}
+
+// TestRealHypervisor_GetNodeStatus tests GetNodeStatus
+func TestRealHypervisor_GetNodeStatus(t *testing.T) {
+	cfg := &realhv.Config{
+		URI: "qemu+tcp://127.0.0.1/system",
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	// Without connection, this should fail
+	_, err := hv.GetNodeStatus(ctx, "test-vm")
+	if err == nil {
+		t.Error("GetNodeStatus should fail without connection")
+	}
+}
+
+// TestRealHypervisor_GetMetrics tests GetMetrics
+func TestRealHypervisor_GetMetrics(t *testing.T) {
+	cfg := &realhv.Config{
+		URI: "qemu+tcp://127.0.0.1/system",
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	// Without connection, this should fail
+	_, err := hv.GetMetrics(ctx, "test-vm")
+	if err == nil {
+		t.Error("GetMetrics should fail without connection")
+	}
+}
