@@ -42,7 +42,6 @@ func (m *MockPoolManager) AllocateVM(poolName string) (*types.VMState, error) {
 	pool, ok := m.pools[poolName]
 	if !ok {
 		pool = &types.PoolState{
-			ID:        poolName,
 			Name:      poolName,
 			Available: 10,
 			Busy:      0,
@@ -61,7 +60,7 @@ func (m *MockPoolManager) ReleaseVM(vmID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	vm, ok := m.vms[vmID]
+	_, ok := m.vms[vmID]
 	if !ok {
 		return nil
 	}
@@ -84,7 +83,6 @@ func (m *MockPoolManager) GetPool(name string) (*types.PoolState, error) {
 	pool, ok := m.pools[name]
 	if !ok {
 		return &types.PoolState{
-			ID:        name,
 			Name:      name,
 			Available: 10,
 			Busy:      0,
@@ -107,7 +105,6 @@ func (m *MockPoolManager) ListPools() ([]*types.PoolState, error) {
 	// If no pools, return default
 	if len(pools) == 0 {
 		pools = append(pools, &types.PoolState{
-			ID:        "default",
 			Name:      "default",
 			Available: 10,
 			Busy:      0,
@@ -123,7 +120,6 @@ func (m *MockPoolManager) AddPool(name string, available, busy int) {
 	defer m.mu.Unlock()
 
 	m.pools[name] = &types.PoolState{
-		ID:        name,
 		Name:      name,
 		Available: available,
 		Busy:      busy,
