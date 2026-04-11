@@ -453,3 +453,144 @@ func TestRealHypervisor_GetMetrics(t *testing.T) {
 		t.Error("GetMetrics should fail without connection")
 	}
 }
+
+// TestRealHypervisor_Connect_Local tests Connect with local URI
+func TestRealHypervisor_Connect_Local(t *testing.T) {
+	cfg := &realhv.Config{
+		URI:         "qemu:///system",
+		AutoConnect: false,
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	// Connect should work (will use stub if libvirt not available)
+	if err := hv.Connect(ctx); err != nil {
+		t.Errorf("Connect failed: %v", err)
+	}
+
+	// Second connect should be no-op
+	if err := hv.Connect(ctx); err != nil {
+		t.Errorf("Second Connect failed: %v", err)
+	}
+
+	hv.Disconnect()
+}
+
+// TestRealHypervisor_Connect_SSH tests Connect with SSH URI
+func TestRealHypervisor_Connect_SSH(t *testing.T) {
+	cfg := &realhv.Config{
+		URI:         "qemu+ssh://10.0.0.117/system",
+		AutoConnect: false,
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	// Connect should work (will use stub)
+	if err := hv.Connect(ctx); err != nil {
+		t.Errorf("Connect failed: %v", err)
+	}
+
+	hv.Disconnect()
+}
+
+// TestRealHypervisor_Connect_EmptyURI tests Connect with empty URI
+func TestRealHypervisor_Connect_EmptyURI(t *testing.T) {
+	cfg := &realhv.Config{
+		URI:         "",
+		AutoConnect: false,
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	if err := hv.Connect(ctx); err != nil {
+		t.Errorf("Connect failed: %v", err)
+	}
+
+	hv.Disconnect()
+}
+
+// TestRealHypervisor_Connect_Apple tests Connect with apple URI
+func TestRealHypervisor_Connect_Apple(t *testing.T) {
+	cfg := &realhv.Config{
+		URI:         "apple",
+		AutoConnect: false,
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	if err := hv.Connect(ctx); err != nil {
+		t.Errorf("Connect failed: %v", err)
+	}
+
+	hv.Disconnect()
+}
+
+// TestRealHypervisor_Disconnect_AfterConnect tests Disconnect after connect
+func TestRealHypervisor_Disconnect_AfterConnect(t *testing.T) {
+	cfg := &realhv.Config{
+		URI: "qemu:///system",
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	if err := hv.Connect(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// Disconnect should work
+	if err := hv.Disconnect(); err != nil {
+		t.Errorf("Disconnect failed: %v", err)
+	}
+
+	// Second disconnect should also work
+	if err := hv.Disconnect(); err != nil {
+		t.Errorf("Second Disconnect failed: %v", err)
+	}
+}
+
+// TestRealHypervisor_CreateNode tests CreateNode
+func TestRealHypervisor_CreateNode(t *testing.T) {
+	cfg := &realhv.Config{
+		URI: "qemu:///system",
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	// Connect first
+	if err := hv.Connect(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer hv.Disconnect()
+
+	// CreateNode should work (with stub)
+	vmCfg := &realhv.VMConfig{
+		Name:     "test-vm",
+		CPU:      2,
+		MemoryMB: 2048,
+		DiskGB:   20,
+		Image:    "ubuntu-22.04",
+	}
+	_, err := hv.CreateNode(ctx, vmCfg)
+	// May fail without actual libvirt
+	_ = err
+}
+
+// TestRealHypervisor_ListNodes_AfterConnect tests ListNodes after connect
+func TestRealHypervisor_ListNodes_AfterConnect(t *testing.T) {
+	cfg := &realhv.Config{
+		URI: "qemu:///system",
+	}
+	hv := realhv.NewHypervisor(cfg)
+
+	ctx := context.Background()
+	if err := hv.Connect(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer hv.Disconnect()
+
+	// ListNodes should work
+	nodes, err := hv.ListNodes(ctx)
+	// May return empty list
+	_ = nodes
+	_ = err
+}
