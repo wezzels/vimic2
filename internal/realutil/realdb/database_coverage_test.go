@@ -2928,3 +2928,191 @@ func TestRealDatabase_ListClusterNodes_WithData(t *testing.T) {
 		t.Errorf("expected 10 nodes, got %d", len(nodes))
 	}
 }
+
+// TestRealDatabase_NewDatabase_AllOptions tests NewDatabase with all options
+func TestRealDatabase_NewDatabase_AllOptions(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := tmpDir + "/test_all_options.db"
+
+	cfg := &realdb.Config{
+		Path:         dbPath,
+		MaxOpenConns: 25,
+		MaxIdleConns: 10,
+		BusyTimeout:  15 * time.Second,
+		WALMode:      true,
+	}
+
+	db, err := realdb.NewDatabase(cfg)
+	if err != nil {
+		t.Fatalf("NewDatabase failed: %v", err)
+	}
+	defer db.Close()
+
+	// Verify it works
+	if err := db.Ping(); err != nil {
+		t.Errorf("Ping failed: %v", err)
+	}
+
+	// Create some data
+	cluster := &realdb.Cluster{ID: "test", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify file exists
+	if _, err := os.Stat(dbPath); err != nil {
+		t.Errorf("database file not created: %v", err)
+	}
+}
+
+// TestRealDatabase_NewDatabase_ZeroConnections tests with zero connection limits
+func TestRealDatabase_NewDatabase_ZeroConnections(t *testing.T) {
+	cfg := &realdb.Config{
+		Path:         ":memory:",
+		MaxOpenConns: 0, // Zero means unlimited
+		MaxIdleConns: 0, // Zero means unlimited
+		BusyTimeout:  0, // Skip busy timeout
+		WALMode:      false,
+	}
+
+	db, err := realdb.NewDatabase(cfg)
+	if err != nil {
+		t.Fatalf("NewDatabase failed: %v", err)
+	}
+	defer db.Close()
+
+	// Should still work
+	if err := db.Ping(); err != nil {
+		t.Errorf("Ping failed: %v", err)
+	}
+}
+
+// TestRealDatabase_IntegrityCheck_EmptyDB tests IntegrityCheck on empty database
+func TestRealDatabase_IntegrityCheck_EmptyDB(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Should pass on empty database
+	if err := db.IntegrityCheck(); err != nil {
+		t.Errorf("IntegrityCheck failed on empty database: %v", err)
+	}
+}
+
+// TestRealDatabase_IntegrityCheck_AfterOperations tests IntegrityCheck after operations
+func TestRealDatabase_IntegrityCheck_AfterOperations(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create various entities
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	db.SaveHost(host)
+
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	db.SaveCluster(cluster)
+
+	node := &realdb.Node{
+		ID:        "node-1",
+		ClusterID: "cluster-1",
+		HostID:    "host-1",
+		Name:      "test",
+		Role:      "worker",
+		State:     "running",
+	}
+	db.SaveNode(node)
+
+	metric := &realdb.Metric{
+		NodeID:     "node-1",
+		CPU:        50.0,
+		RecordedAt: time.Now(),
+	}
+	db.SaveMetric(metric)
+
+	alert := &realdb.Alert{
+		ID:        "alert-1",
+		NodeID:    "node-1",
+		Type:      "test",
+		Message:   "test",
+		Severity:  "warning",
+		CreatedAt: time.Now(),
+	}
+	db.SaveAlert(alert)
+
+	pool := &realdb.Pool{
+		ID:        "pool-1",
+		Name:      "test",
+		Available: 10,
+		Busy:      5,
+	}
+	db.SavePool(pool)
+
+	// Integrity check should pass
+	if err := db.IntegrityCheck(); err != nil {
+		t.Errorf("IntegrityCheck failed after operations: %v", err)
+	}
+}
+
+// TestRealDatabase_SaveMetric_WithAllFields tests SaveMetric with all fields
+func TestRealDatabase_SaveMetric_WithAllFields(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	metric := &realdb.Metric{
+		NodeID:     "node-1",
+		CPU:        75.5,
+		Memory:     80.2,
+		Disk:       45.0,
+		NetworkRX:  1024000.0,
+		NetworkTX:  512000.0,
+		RecordedAt: time.Now(),
+	}
+
+	if err := db.SaveMetric(metric); err != nil {
+		t.Fatalf("SaveMetric failed: %v", err)
+	}
+
+	if metric.ID == 0 {
+		t.Error("Metric ID should be set after save")
+	}
+
+	// Query back
+	metrics, err := db.GetNodeMetrics("node-1", time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(metrics) != 1 {
+		t.Fatalf("expected 1 metric, got %d", len(metrics))
+	}
+
+	if metrics[0].CPU != 75.5 {
+		t.Errorf("expected CPU=75.5, got %f", metrics[0].CPU)
+	}
+}
+
+// TestRealDatabase_GetNodeMetrics_NoMatch tests GetNodeMetrics with no matching data
+func TestRealDatabase_GetNodeMetrics_NoMatch(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Query for non-existent node
+	metrics, err := db.GetNodeMetrics("non-existent", time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("GetNodeMetrics failed: %v", err)
+	}
+
+	if len(metrics) != 0 {
+		t.Errorf("expected empty result, got %d", len(metrics))
+	}
+}
