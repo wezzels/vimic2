@@ -2438,3 +2438,92 @@ func TestRealDatabase_ListClusterNodes_JSONHandling(t *testing.T) {
 
 
 
+
+
+func TestRealDatabase_Count_AfterOperations(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create multiple entities
+	for i := 0; i < 5; i++ {
+		cluster := &realdb.Cluster{ID: string(rune('a'+i)), Name: string(rune('a'+i)), Status: "running"}
+		db.SaveCluster(cluster)
+
+		host := &realdb.Host{ID: string(rune('a'+i)), Name: string(rune('a'+i)), Address: "10.0.0.1"}
+		db.SaveHost(host)
+	}
+
+	// Create nodes
+	cluster := &realdb.Cluster{ID: "main", Name: "main", Status: "running"}
+	db.SaveCluster(cluster)
+	host := &realdb.Host{ID: "main", Name: "main", Address: "10.0.0.1"}
+	db.SaveHost(host)
+
+	for i := 0; i < 10; i++ {
+		node := &realdb.Node{
+			ID:        string(rune('a' + i)),
+			ClusterID: "main",
+			HostID:    "main",
+			Name:      string(rune('a' + i)),
+			Role:      "worker",
+			State:     "running",
+		}
+		db.SaveNode(node)
+	}
+
+	// Create metrics
+	for i := 0; i < 20; i++ {
+		metric := &realdb.Metric{
+			NodeID:     string(rune('a' + i%10)),
+			CPU:        float64(i),
+			RecordedAt: time.Now(),
+		}
+		db.SaveMetric(metric)
+	}
+
+	// Create alerts
+	for i := 0; i < 5; i++ {
+		alert := &realdb.Alert{
+			ID:        string(rune('a' + i)),
+			NodeID:    string(rune('a' + i)),
+			Type:      "test",
+			Message:   "test alert",
+			Severity:  "warning",
+			CreatedAt: time.Now(),
+		}
+		db.SaveAlert(alert)
+	}
+
+	// Create pools
+	for i := 0; i < 3; i++ {
+		pool := &realdb.Pool{
+			ID:        string(rune('a' + i)),
+			Name:      string(rune('a' + i)),
+			Available: 10,
+			Busy:      i,
+		}
+		db.SavePool(pool)
+	}
+
+	counts := db.Count()
+	// Count only returns clusters, hosts, nodes, alerts, pools
+	if counts["clusters"] != 6 {
+		t.Errorf("expected 6 clusters, got %d", counts["clusters"])
+	}
+	if counts["hosts"] != 6 {
+		t.Errorf("expected 6 hosts, got %d", counts["hosts"])
+	}
+	if counts["nodes"] != 10 {
+		t.Errorf("expected 10 nodes, got %d", counts["nodes"])
+	}
+	// metrics not in Count()
+	if counts["alerts"] != 5 {
+		t.Errorf("expected 5 alerts, got %d", counts["alerts"])
+	}
+	if counts["pools"] != 3 {
+		t.Errorf("expected 3 pools, got %d", counts["pools"])
+	}
+}
