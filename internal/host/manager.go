@@ -127,6 +127,10 @@ func (m *Manager) connectSSH(conn *HostConnection) error {
 
 // isLocalAddress checks if an address refers to the local machine
 func (m *Manager) isLocalAddress(addr string) bool {
+	// Empty address means local libvirt (qemu:///system)
+	if addr == "" {
+		return true
+	}
 	if addr == "localhost" || addr == "127.0.0.1" || addr == "::1" {
 		return true
 	}
