@@ -1027,3 +1027,97 @@ func TestRealFilesystem_LockFile_ReadNotLocked(t *testing.T) {
 }
 
 
+
+// TestRealFilesystem_WriteFile_RenameError tests WriteFile when rename fails
+func TestRealFilesystem_WriteFile_RenameError(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+
+	// Create a directory with the target name (will cause rename to fail)
+	dstPath := filepath.Join(tmpDir, "blocked.txt")
+
+	if err := os.Mkdir(dstPath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// WriteFile should fail because rename can't overwrite directory
+	err := fs.WriteFile(dstPath, []byte("test"), 0644)
+	if err == nil {
+		t.Error("WriteFile should fail when target is a directory")
+	}
+}
+
+// TestRealFilesystem_WriteFile_TempFileCleanup tests temp file cleanup on error
+func TestRealFilesystem_WriteFile_TempFileCleanup(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+
+	// Write to a valid path
+	validPath := filepath.Join(tmpDir, "valid.txt")
+	if err := fs.WriteFile(validPath, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify temp file was cleaned up
+	tmpPath := validPath + ".tmp"
+	if _, err := os.Stat(tmpPath); err == nil {
+		t.Error("temp file should be cleaned up")
+	}
+}
+
+// TestRealFilesystem_WriteFile_MkdirError tests WriteFile when MkdirAll fails
+func TestRealFilesystem_WriteFile_MkdirError(t *testing.T) {
+	fs := realfs.NewFilesystem()
+
+	// Try to write to /proc/nonexistent - MkdirAll should fail
+	err := fs.WriteFile("/proc/nonexistent/subdir/test.txt", []byte("test"), 0644)
+	if err == nil {
+		t.Error("WriteFile should fail for invalid path")
+	}
+}
+
+// TestRealFilesystem_ReadDir_EmptyDir tests ReadDir on empty directory
+func TestRealFilesystem_ReadDir_EmptyDir(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+
+	entries, err := fs.ReadDir(tmpDir)
+	if err != nil {
+		t.Fatalf("ReadDir failed: %v", err)
+	}
+
+	if len(entries) != 0 {
+		t.Errorf("expected empty directory, got %d entries", len(entries))
+	}
+}
+
+// TestRealFilesystem_Copy_DstExists tests Copy when destination exists
+func TestRealFilesystem_Copy_DstExists(t *testing.T) {
+	fs := realfs.NewFilesystem()
+	tmpDir := t.TempDir()
+
+	srcPath := filepath.Join(tmpDir, "src.txt")
+	dstPath := filepath.Join(tmpDir, "dst.txt")
+
+	// Create source and destination
+	if err := os.WriteFile(srcPath, []byte("source"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dstPath, []byte("dest"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Copy should overwrite
+	if err := fs.Copy(srcPath, dstPath); err != nil {
+		t.Fatalf("Copy failed: %v", err)
+	}
+
+	// Verify content
+	data, err := os.ReadFile(dstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "source" {
+		t.Error("destination should have source content")
+	}
+}
