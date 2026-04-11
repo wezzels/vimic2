@@ -123,9 +123,9 @@ func TestFirewallManager_DenyTraffic(t *testing.T) {
 	t.Skip("requires iptables/nftables")
 }
 
-// Helper function tests
+// Helper function tests - with offset parameter
 
-func TestIncrementIP(t *testing.T) {
+func TestIncrementIP_WithOffset(t *testing.T) {
 	tests := []struct {
 		ip       string
 		offset   int
@@ -138,10 +138,12 @@ func TestIncrementIP(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := incrementIP(test.ip, test.offset)
-		if result != test.expected {
-			t.Errorf("incrementIP(%s, %d) = %s, expected %s", test.ip, test.offset, result, test.expected)
-		}
+		t.Run(test.ip+"+"+string(rune('0'+test.offset)), func(t *testing.T) {
+			result := incrementIP(test.ip, test.offset)
+			if result != test.expected {
+				t.Errorf("incrementIP(%s, %d) = %s, expected %s", test.ip, test.offset, result, test.expected)
+			}
+		})
 	}
 }
 
