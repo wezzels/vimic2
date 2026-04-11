@@ -65,6 +65,19 @@ func TestFirewallManager_Close(t *testing.T) {
 	}
 }
 
+// TestFirewallManager_GetBackend tests GetBackend
+func TestFirewallManager_GetBackend(t *testing.T) {
+	fm, err := NewFirewallManager(FirewallBackendStub)
+	if err != nil {
+		t.Fatalf("failed to create firewall manager: %v", err)
+	}
+
+	backend := fm.GetBackend()
+	if backend != FirewallBackendStub {
+		t.Errorf("expected stub, got %s", backend)
+	}
+}
+
 // TestIsolationManager_Struct tests isolation manager struct
 func TestIsolationManager_Struct(t *testing.T) {
 	// Just verify struct fields exist
