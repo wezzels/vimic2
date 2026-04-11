@@ -187,21 +187,6 @@ func TestIntegration_HandleDestroyPipeline(t *testing.T) {
 	t.Logf("DestroyPipeline status: %d", w.Code)
 }
 
-// TestIntegration_HandleListRunners tests listing runners
-func TestIntegration_HandleListRunners(t *testing.T) {
-	t.Skip("requires runner manager with database")
-}
-
-// TestIntegration_HandleListPools tests listing pools
-func TestIntegration_HandleListPools(t *testing.T) {
-	t.Skip("requires pool manager with database")
-}
-
-// TestIntegration_HandleListNetworks tests listing networks
-func TestIntegration_HandleListNetworks(t *testing.T) {
-	t.Skip("requires network manager with database")
-}
-
 // TestIntegration_HandleListArtifacts tests listing artifacts
 func TestIntegration_HandleListArtifacts(t *testing.T) {
 	t.Skip("requires artifact manager with database")
@@ -359,4 +344,107 @@ func TestIntegration_NewServer_WithConfig(t *testing.T) {
 	if s.httpServer.Addr != ":9090" {
 		t.Errorf("expected :9090, got %s", s.httpServer.Addr)
 	}
+}
+
+// === Job Handler Tests ===
+
+// TestIntegration_HandleListJobs tests listing jobs
+func TestIntegration_HandleListJobs(t *testing.T) {
+	t.Skip("requires JobDispatcher with runner manager")
+}
+
+// TestIntegration_HandleGetJob tests getting a job
+func TestIntegration_HandleGetJob(t *testing.T) {
+	t.Skip("requires JobDispatcher with runner manager")
+}
+
+// TestIntegration_HandleEnqueueJob tests enqueueing a job
+func TestIntegration_HandleEnqueueJob(t *testing.T) {
+	t.Skip("requires JobDispatcher with runner manager")
+}
+
+// TestIntegration_HandleCancelJob tests canceling a job
+func TestIntegration_HandleCancelJob(t *testing.T) {
+	t.Skip("requires JobDispatcher with runner manager")
+}
+
+// TestIntegration_HandleRetryJob tests retrying a job
+func TestIntegration_HandleRetryJob(t *testing.T) {
+	t.Skip("requires JobDispatcher with runner manager")
+}
+
+// === Pool Handler Tests ===
+
+// TestIntegration_HandleListPools tests listing pools
+func TestIntegration_HandleListPools(t *testing.T) {
+	t.Skip("requires PoolManager")
+}
+
+// TestIntegration_HandleGetPool tests getting a pool
+func TestIntegration_HandleGetPool(t *testing.T) {
+	t.Skip("requires PoolManager")
+}
+
+// TestIntegration_HandleCreatePool tests creating a pool
+func TestIntegration_HandleCreatePool(t *testing.T) {
+	t.Skip("requires PoolManager")
+}
+
+// TestIntegration_HandleAcquireVM tests acquiring a VM
+func TestIntegration_HandleAcquireVM(t *testing.T) {
+	t.Skip("requires PoolManager")
+}
+
+// TestIntegration_HandleReleaseVM tests releasing a VM
+func TestIntegration_HandleReleaseVM(t *testing.T) {
+	t.Skip("requires PoolManager")
+}
+
+// === Network Handler Tests ===
+
+// TestIntegration_HandleListNetworks tests listing networks
+func TestIntegration_HandleListNetworks(t *testing.T) {
+	t.Skip("requires IsolationManager")
+}
+
+// TestIntegration_HandleGetNetwork tests getting a network
+func TestIntegration_HandleGetNetwork(t *testing.T) {
+	t.Skip("requires IsolationManager")
+}
+
+// TestIntegration_HandleCreateNetwork tests creating a network
+func TestIntegration_HandleCreateNetwork(t *testing.T) {
+	t.Skip("requires IsolationManager")
+}
+
+// TestIntegration_HandleDeleteNetwork tests deleting a network
+func TestIntegration_HandleDeleteNetwork(t *testing.T) {
+	t.Skip("requires IsolationManager")
+}
+
+// === Runner Handler Tests ===
+
+// TestIntegration_HandleListRunners tests listing runners
+func TestIntegration_HandleListRunners(t *testing.T) {
+	t.Skip("requires RunnerManager")
+}
+
+// TestIntegration_HandleGetRunner tests getting a runner
+func TestIntegration_HandleGetRunner(t *testing.T) {
+	t.Skip("requires RunnerManager")
+}
+
+// TestIntegration_HandleCreateRunner tests creating a runner
+func TestIntegration_HandleCreateRunner(t *testing.T) {
+	t.Skip("requires RunnerManager")
+}
+
+// TestIntegration_HandleStopRunner tests stopping a runner
+func TestIntegration_HandleStopRunner(t *testing.T) {
+	t.Skip("requires RunnerManager")
+}
+
+// TestIntegration_HandleDestroyRunner tests destroying a runner
+func TestIntegration_HandleDestroyRunner(t *testing.T) {
+	t.Skip("requires RunnerManager")
 }
