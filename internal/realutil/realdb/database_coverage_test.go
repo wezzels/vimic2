@@ -974,3 +974,235 @@ func TestRealDatabase_Count_WithData(t *testing.T) {
 		t.Errorf("expected 3 hosts, got %d", counts["hosts"])
 	}
 }
+
+// TestRealDatabase_ClusterConfig tests cluster config JSON handling
+func TestRealDatabase_ClusterConfig(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	config := &realdb.ClusterConfig{
+		MinNodes:  3,
+		MaxNodes:  10,
+		AutoScale: true,
+	}
+
+	cluster := &realdb.Cluster{
+		ID:        "cluster-1",
+		Name:      "test-cluster",
+		Status:    "running",
+		Config:    config,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatalf("SaveCluster failed: %v", err)
+	}
+
+	retrieved, err := db.GetCluster("cluster-1")
+	if err != nil {
+		t.Fatalf("GetCluster failed: %v", err)
+	}
+
+	if retrieved.Config == nil {
+		t.Fatal("Config should not be nil")
+	}
+	if retrieved.Config.MinNodes != 3 {
+		t.Errorf("expected MinNodes=3, got %d", retrieved.Config.MinNodes)
+	}
+	if retrieved.Config.MaxNodes != 10 {
+		t.Errorf("expected MaxNodes=10, got %d", retrieved.Config.MaxNodes)
+	}
+	if !retrieved.Config.AutoScale {
+		t.Error("expected AutoScale=true")
+	}
+}
+
+// TestRealDatabase_NodeConfig tests node config JSON handling
+func TestRealDatabase_NodeConfig(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create host and cluster
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	config := &realdb.NodeConfig{
+		CPU:    4,
+		Memory: 8192,
+		Disk:   100,
+		Image:  "ubuntu-22.04",
+	}
+
+	node := &realdb.Node{
+		ID:        "node-1",
+		ClusterID: "cluster-1",
+		HostID:    "host-1",
+		Name:      "test-node",
+		Role:      "worker",
+		State:     "running",
+		Config:    config,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.SaveNode(node); err != nil {
+		t.Fatalf("SaveNode failed: %v", err)
+	}
+
+	retrieved, err := db.GetNode("node-1")
+	if err != nil {
+		t.Fatalf("GetNode failed: %v", err)
+	}
+
+	if retrieved.Config == nil {
+		t.Fatal("Config should not be nil")
+	}
+	if retrieved.Config.CPU != 4 {
+		t.Errorf("expected CPU=4, got %d", retrieved.Config.CPU)
+	}
+	if retrieved.Config.Memory != 8192 {
+		t.Errorf("expected Memory=8192, got %d", retrieved.Config.Memory)
+	}
+	if retrieved.Config.Image != "ubuntu-22.04" {
+		t.Errorf("expected Image=ubuntu-22.04, got %s", retrieved.Config.Image)
+	}
+}
+
+// TestRealDatabase_ListClusterNodes_WithNodes tests listing cluster nodes
+func TestRealDatabase_ListClusterNodes_WithNodes(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create host and cluster
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create nodes
+	for i := 0; i < 3; i++ {
+		node := &realdb.Node{
+			ID:        string(rune('a' + i)),
+			ClusterID: "cluster-1",
+			HostID:    "host-1",
+			Name:      string(rune('a' + i)),
+			Role:      "worker",
+			State:     "running",
+		}
+		if err := db.SaveNode(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	nodes, err := db.ListClusterNodes("cluster-1")
+	if err != nil {
+		t.Fatalf("ListClusterNodes failed: %v", err)
+	}
+
+	if len(nodes) != 3 {
+		t.Errorf("expected 3 nodes, got %d", len(nodes))
+	}
+}
+
+// TestRealDatabase_DeleteAlert tests deleting alerts
+func TestRealDatabase_DeleteAlert(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create alert
+	alert := &realdb.Alert{
+		ID:        "alert-1",
+		NodeID:    "node-1",
+		Type:      "cpu_high",
+		Message:   "test",
+		Severity:  "warning",
+		CreatedAt: time.Now(),
+	}
+	if err := db.SaveAlert(alert); err != nil {
+		t.Fatal(err)
+	}
+
+	// Delete alert
+	if err := db.DeleteAlert("alert-1"); err != nil {
+		t.Fatalf("DeleteAlert failed: %v", err)
+	}
+
+	// Verify deleted
+	_, err = db.GetAlert("alert-1")
+	if err == nil {
+		t.Error("expected error for deleted alert")
+	}
+}
+
+// TestRealDatabase_DeleteAlert_NotFound tests deleting non-existent alert
+func TestRealDatabase_DeleteAlert_NotFound(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	err = db.DeleteAlert("non-existent")
+	_ = err
+}
+
+// TestRealDatabase_SaveAlert_Update tests updating alert
+func TestRealDatabase_SaveAlert_Update(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create alert
+	alert := &realdb.Alert{
+		ID:        "alert-1",
+		NodeID:    "node-1",
+		Type:      "cpu_high",
+		Message:   "CPU high",
+		Severity:  "warning",
+		CreatedAt: time.Now(),
+	}
+	if err := db.SaveAlert(alert); err != nil {
+		t.Fatal(err)
+	}
+
+	// Update alert
+	alert.Message = "CPU critical"
+	alert.Severity = "critical"
+	if err := db.SaveAlert(alert); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify update
+	retrieved, err := db.GetAlert("alert-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retrieved.Message != "CPU critical" {
+		t.Errorf("expected 'CPU critical', got %s", retrieved.Message)
+	}
+}
