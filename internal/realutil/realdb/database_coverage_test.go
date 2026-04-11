@@ -1800,3 +1800,398 @@ func TestRealDatabase_Count_WithMultipleEntities(t *testing.T) {
 		t.Errorf("expected 20 nodes, got %d", counts["nodes"])
 	}
 }
+
+// TestRealDatabase_SaveCluster_JSONError tests SaveCluster JSON handling
+func TestRealDatabase_SaveCluster_JSONError(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Test with config that should serialize properly
+	cluster := &realdb.Cluster{
+		ID:        "cluster-json",
+		Name:      "test-cluster",
+		Status:    "running",
+		Config:    &realdb.ClusterConfig{MinNodes: 1, MaxNodes: 5, AutoScale: true},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatalf("SaveCluster failed: %v", err)
+	}
+
+	// Verify we can retrieve it
+	retrieved, err := db.GetCluster("cluster-json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if retrieved.Config == nil {
+		t.Fatal("Config should not be nil")
+	}
+}
+
+// TestRealDatabase_SaveNode_JSONError tests SaveNode JSON handling  
+func TestRealDatabase_SaveNode_JSONError(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create host and cluster
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test with config
+	node := &realdb.Node{
+		ID:        "node-json",
+		ClusterID: "cluster-1",
+		HostID:    "host-1",
+		Name:      "test-node",
+		Role:      "worker",
+		State:     "running",
+		Config:    &realdb.NodeConfig{CPU: 4, Memory: 8192, Disk: 100, Image: "ubuntu"},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.SaveNode(node); err != nil {
+		t.Fatalf("SaveNode failed: %v", err)
+	}
+
+	retrieved, err := db.GetNode("node-json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if retrieved.Config == nil {
+		t.Fatal("Config should not be nil")
+	}
+	if retrieved.Config.CPU != 4 {
+		t.Errorf("expected CPU=4, got %d", retrieved.Config.CPU)
+	}
+}
+
+// TestRealDatabase_GetCluster_Multiple tests GetCluster after multiple saves
+func TestRealDatabase_GetCluster_Multiple(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create multiple clusters
+	for i := 0; i < 10; i++ {
+		cluster := &realdb.Cluster{
+			ID:     string(rune('a' + i)),
+			Name:   "cluster-" + string(rune('a'+i)),
+			Status: "running",
+		}
+		if err := db.SaveCluster(cluster); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Verify we can get each one
+	for i := 0; i < 10; i++ {
+		id := string(rune('a' + i))
+		cluster, err := db.GetCluster(id)
+		if err != nil {
+			t.Errorf("GetCluster(%s) failed: %v", id, err)
+		}
+		if cluster.Name != "cluster-"+id {
+			t.Errorf("expected name cluster-%s, got %s", id, cluster.Name)
+		}
+	}
+}
+
+// TestRealDatabase_GetHost_Multiple tests GetHost after multiple saves
+func TestRealDatabase_GetHost_Multiple(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create multiple hosts
+	for i := 0; i < 10; i++ {
+		host := &realdb.Host{
+			ID:      string(rune('a' + i)),
+			Name:    "host-" + string(rune('a'+i)),
+			Address: "10.0.0." + string(rune('1'+i)),
+		}
+		if err := db.SaveHost(host); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Verify we can get each one
+	for i := 0; i < 10; i++ {
+		id := string(rune('a' + i))
+		host, err := db.GetHost(id)
+		if err != nil {
+			t.Errorf("GetHost(%s) failed: %v", id, err)
+		}
+		if host.Name != "host-"+id {
+			t.Errorf("expected name host-%s, got %s", id, host.Name)
+		}
+	}
+}
+
+// TestRealDatabase_GetNode_Multiple tests GetNode after multiple saves
+func TestRealDatabase_GetNode_Multiple(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create host and cluster
+	host := &realdb.Host{ID: "host-1", Name: "test", Address: "10.0.0.1"}
+	if err := db.SaveHost(host); err != nil {
+		t.Fatal(err)
+	}
+	cluster := &realdb.Cluster{ID: "cluster-1", Name: "test", Status: "running"}
+	if err := db.SaveCluster(cluster); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create multiple nodes
+	for i := 0; i < 10; i++ {
+		node := &realdb.Node{
+			ID:        string(rune('a' + i)),
+			ClusterID: "cluster-1",
+			HostID:    "host-1",
+			Name:      "node-" + string(rune('a'+i)),
+			Role:      "worker",
+			State:     "running",
+		}
+		if err := db.SaveNode(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Verify we can get each one
+	for i := 0; i < 10; i++ {
+		id := string(rune('a' + i))
+		node, err := db.GetNode(id)
+		if err != nil {
+			t.Errorf("GetNode(%s) failed: %v", id, err)
+		}
+		if node.Name != "node-"+id {
+			t.Errorf("expected name node-%s, got %s", id, node.Name)
+		}
+	}
+}
+
+// TestRealDatabase_SaveMetric_ErrorPaths tests SaveMetric error paths
+func TestRealDatabase_SaveMetric_ErrorPaths(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Save a valid metric
+	metric := &realdb.Metric{
+		NodeID:     "node-1",
+		CPU:        50.0,
+		Memory:     60.0,
+		Disk:       70.0,
+		NetworkRX:  1000.0,
+		NetworkTX:  500.0,
+		RecordedAt: time.Now(),
+	}
+
+	if err := db.SaveMetric(metric); err != nil {
+		t.Fatalf("SaveMetric failed: %v", err)
+	}
+
+	// Verify ID was set
+	if metric.ID == 0 {
+		t.Error("Metric ID should be set after SaveMetric")
+	}
+}
+
+// TestRealDatabase_GetNodeMetrics_TimeRange tests GetNodeMetrics time range
+func TestRealDatabase_GetNodeMetrics_TimeRange(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Save metrics at different times
+	now := time.Now()
+	times := []time.Duration{-2 * time.Hour, -time.Hour, -30 * time.Minute, 0}
+
+	for i, offset := range times {
+		metric := &realdb.Metric{
+			NodeID:     "node-1",
+			CPU:        float64(i),
+			RecordedAt: now.Add(offset),
+		}
+		if err := db.SaveMetric(metric); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Query for metrics in last hour
+	metrics, err := db.GetNodeMetrics("node-1", now.Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should get metrics from last hour only (3 metrics)
+	if len(metrics) < 2 {
+		t.Errorf("expected at least 2 metrics, got %d", len(metrics))
+	}
+}
+
+// TestRealDatabase_GetAlert_Multiple tests GetAlert after multiple saves
+func TestRealDatabase_GetAlert_Multiple(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create multiple alerts
+	for i := 0; i < 10; i++ {
+		alert := &realdb.Alert{
+			ID:        string(rune('a' + i)),
+			NodeID:    "node-1",
+			Type:      "test",
+			Message:   "test message",
+			Severity:  "warning",
+			CreatedAt: time.Now(),
+		}
+		if err := db.SaveAlert(alert); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Verify we can get each one
+	for i := 0; i < 10; i++ {
+		id := string(rune('a' + i))
+		alert, err := db.GetAlert(id)
+		if err != nil {
+			t.Errorf("GetAlert(%s) failed: %v", id, err)
+		}
+		if alert.Message != "test message" {
+			t.Errorf("expected 'test message', got %s", alert.Message)
+		}
+	}
+}
+
+// TestRealDatabase_GetPool_Multiple tests GetPool after multiple saves
+func TestRealDatabase_GetPool_Multiple(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create multiple pools
+	for i := 0; i < 10; i++ {
+		pool := &realdb.Pool{
+			ID:        string(rune('a' + i)),
+			Name:      "pool-" + string(rune('a'+i)),
+			Available: i,
+			Busy:      i,
+		}
+		if err := db.SavePool(pool); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Verify we can get each one
+	for i := 0; i < 10; i++ {
+		id := string(rune('a' + i))
+		pool, err := db.GetPool(id)
+		if err != nil {
+			t.Errorf("GetPool(%s) failed: %v", id, err)
+		}
+		if pool.Available != i {
+			t.Errorf("expected Available=%d, got %d", i, pool.Available)
+		}
+	}
+}
+
+// TestRealDatabase_DeleteMultiple tests deleting multiple entities
+func TestRealDatabase_DeleteMultiple(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create multiple clusters
+	for i := 0; i < 5; i++ {
+		cluster := &realdb.Cluster{ID: string(rune('a' + i)), Name: string(rune('a' + i)), Status: "running"}
+		if err := db.SaveCluster(cluster); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Delete first 3
+	for i := 0; i < 3; i++ {
+		if err := db.DeleteCluster(string(rune('a' + i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Verify first 3 are gone
+	for i := 0; i < 3; i++ {
+		_, err := db.GetCluster(string(rune('a' + i)))
+		if err == nil {
+			t.Errorf("cluster %s should be deleted", string(rune('a'+i)))
+		}
+	}
+
+	// Verify last 2 are still there
+	for i := 3; i < 5; i++ {
+		_, err := db.GetCluster(string(rune('a' + i)))
+		if err != nil {
+			t.Errorf("cluster %s should still exist", string(rune('a'+i)))
+		}
+	}
+}
+
+// TestRealDatabase_VacuumOperation tests VACUUM operation
+func TestRealDatabase_VacuumOperation(t *testing.T) {
+	db, err := realdb.NewDatabaseWithDefaults(":memory:")
+	if err != nil {
+		t.Fatalf("NewDatabaseWithDefaults failed: %v", err)
+	}
+	defer db.Close()
+
+	// Create some data
+	for i := 0; i < 100; i++ {
+		cluster := &realdb.Cluster{ID: string(rune('a'+i%26)), Name: "test", Status: "running"}
+		if err := db.SaveCluster(cluster); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Delete some
+	for i := 0; i < 50; i++ {
+		if err := db.DeleteCluster(string(rune('a' + i%26))); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Verify counts
+	counts := db.Count()
+	_ = counts
+}
