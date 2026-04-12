@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/stsgym/vimic2/internal/cluster"
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/monitor"
 	"github.com/stsgym/vimic2/internal/orchestrator"
 	"github.com/stsgym/vimic2/pkg/hypervisor"
-	"go.uber.org/zap"
 )
 
 // createTestAutoScaler creates a test auto-scaler with mocks
@@ -48,10 +49,10 @@ func createTestAutoScaler(t *testing.T) (*orchestrator.AutoScaler, *database.DB)
 		"test-host": stubHV,
 	}
 	clusterMgr := cluster.NewManager(db, hosts)
-	
+
 	// Create monitor manager
 	monitorMgr := monitor.NewManager(db, nil)
-	
+
 	// Create logger
 	sugar := zap.NewExample().Sugar()
 

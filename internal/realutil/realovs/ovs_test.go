@@ -279,15 +279,15 @@ func TestRealOVSClient_Types(t *testing.T) {
 
 	// Test Port
 	port := &realovs.Port{
-		Name:        "vnet0",
-		Bridge:      "br-test",
-		VLAN:        100,
-		Trunk:       []int{200, 300},
-		QoS:         1000,
-		MAC:         "52:54:00:12:34:56",
-		IPAddress:   "10.100.1.10",
+		Name:         "vnet0",
+		Bridge:       "br-test",
+		VLAN:         100,
+		Trunk:        []int{200, 300},
+		QoS:          1000,
+		MAC:          "52:54:00:12:34:56",
+		IPAddress:    "10.100.1.10",
 		PortSecurity: true,
-		Options:     map[string]string{"key": "value"},
+		Options:      map[string]string{"key": "value"},
 	}
 	if port.Name != "vnet0" {
 		t.Error("port name mismatch")

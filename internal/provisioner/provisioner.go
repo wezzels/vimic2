@@ -37,7 +37,7 @@ func NewManager(imageDir string) *Manager {
 // EnsureImage ensures a base image exists
 func (m *Manager) EnsureImage(name, distro, version string) (string, error) {
 	path := filepath.Join(m.imageDir, name+".qcow2")
-	
+
 	if _, err := os.Stat(path); err == nil {
 		return path, nil // Exists
 	}
@@ -61,10 +61,10 @@ func (m *Manager) createUbuntuImage(path, version string) (string, error) {
 	if version == "" {
 		version = "22.04"
 	}
-	
+
 	// Use cloud-init image
 	url := fmt.Sprintf("https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img")
-	
+
 	// Download with curl
 	cmd := exec.Command("curl", "-L", "-o", path, url)
 	if err := cmd.Run(); err != nil {
@@ -79,7 +79,7 @@ func (m *Manager) createDebianImage(path, version string) (string, error) {
 	if version == "" {
 		version = "12"
 	}
-	cmd := exec.Command("qemu-img", "create", "-f", "qcow2", "-b", 
+	cmd := exec.Command("qemu-img", "create", "-f", "qcow2", "-b",
 		"/var/lib/libvirt/images/debian-base.qcow2", "-F", "qcow2", path)
 	return path, cmd.Run()
 }
@@ -108,12 +108,12 @@ func (m *Manager) createGenericImage(path, distro, version string) (string, erro
 // CloneImage clones a base image for a new node
 func (m *Manager) CloneImage(basePath, nodeName string) (string, error) {
 	nodePath := filepath.Join(m.imageDir, nodeName+".qcow2")
-	
+
 	cmd := exec.Command("qemu-img", "create", "-f", "qcow2", "-b", basePath, "-F", "qcow2", nodePath)
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("failed to clone image: %w", err)
 	}
-	
+
 	return nodePath, nil
 }
 
@@ -142,11 +142,11 @@ func (nm *NetworkManager) EnsureNetwork(ctx context.Context, name, netType, cidr
 
 	// Create network XML
 	xml := nm.generateNetworkXML(name, netType, cidr)
-	
+
 	// Define network
 	cmd = exec.Command("virsh", "net-define", "--file", "-")
 	cmd.Stdin = nil
-	
+
 	// Use virsh net-create for active creation
 	cmd = exec.Command("virsh", "net-create", xml)
 	return cmd.Run()

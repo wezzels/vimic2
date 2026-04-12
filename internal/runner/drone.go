@@ -28,7 +28,7 @@ func NewDroneRunner(config *DroneConfig) (*DroneRunner, error) {
 	if config.APIToken == "" {
 		return nil, fmt.Errorf("drone api token is required")
 	}
-	
+
 	runner := &DroneRunner{
 		BaseRunner: BaseRunner{
 			id:       generateID("drone"),
@@ -44,7 +44,7 @@ func NewDroneRunner(config *DroneConfig) (*DroneRunner, error) {
 			Timeout: 30 * time.Second,
 		},
 	}
-	
+
 	return runner, nil
 }
 
@@ -60,13 +60,13 @@ func (r *DroneRunner) Start(ctx context.Context) error {
 	if !r.registered {
 		return fmt.Errorf("runner must be registered before starting")
 	}
-	
+
 	r.SetStatus(types.RunnerStatusOnline)
 	r.health = &HealthStatus{
 		Healthy:   true,
 		LastCheck: time.Now(),
 	}
-	
+
 	return nil
 }
 
@@ -87,30 +87,30 @@ func (r *DroneRunner) Unregister(ctx context.Context) error {
 // ListDroneRunners lists all runners in Drone.
 func (r *DroneRunner) ListDroneRunners(ctx context.Context) ([]RunnerInfo, error) {
 	runnersURL := fmt.Sprintf("%s/api/system/runners", r.url)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", runnersURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list runners request: %w", err)
 	}
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", r.apiToken))
-	
+
 	resp, err := r.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list runners: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	var runners []struct {
 		ID      int64  `json:"id"`
 		Name    string `json:"name"`
 		Address string `json:"address"`
 		Status  string `json:"status"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&runners); err != nil {
 		return nil, fmt.Errorf("failed to parse runners response: %w", err)
 	}
-	
+
 	result := make([]RunnerInfo, 0, len(runners))
 	for _, r := range runners {
 		result = append(result, RunnerInfo{
@@ -119,6 +119,6 @@ func (r *DroneRunner) ListDroneRunners(ctx context.Context) ([]RunnerInfo, error
 			Status: types.RunnerStatus(r.Status),
 		})
 	}
-	
+
 	return result, nil
 }

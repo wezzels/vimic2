@@ -126,7 +126,7 @@ func TestManager_AddHost_LocalLibvirt(t *testing.T) {
 	host := &database.Host{
 		ID:      "libvirt-local",
 		Name:    "local-hypervisor",
-		Address: "",  // Empty = qemu:///system directly
+		Address: "", // Empty = qemu:///system directly
 		HVType:  "libvirt",
 	}
 

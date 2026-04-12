@@ -6,9 +6,10 @@ import (
 	"os"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/orchestrator"
-	"go.uber.org/zap"
 )
 
 // createTestUpdater creates a test rolling updater
@@ -71,7 +72,7 @@ func TestRollingUpdaterUpdateStrategy(t *testing.T) {
 
 	// Verify nodes are handled correctly
 	nodes := []string{"node-1", "node-2", "node-3", "node-4", "node-5"}
-	
+
 	// Calculate batches
 	batches := updater.CalculateBatches(nodes, 2)
 	if len(batches) != 3 {

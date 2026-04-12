@@ -25,31 +25,31 @@ type LogCollector struct {
 
 // LogStream represents a log stream
 type LogStream struct {
-	ID          string      `json:"id"`
-	PipelineID  string      `json:"pipeline_id"`
-	RunnerID    string      `json:"runner_id"`
-	Stage       string      `json:"stage"`
-	JobID       string      `json:"job_id"`
-	LineCount   int         `json:"line_count"`
-	Offset      int64       `json:"offset"`
-	StartTime   time.Time    `json:"start_time"`
-	EndTime     *time.Time   `json:"end_time,omitempty"`
-	Live        bool        `json:"live"`
+	ID          string             `json:"id"`
+	PipelineID  string             `json:"pipeline_id"`
+	RunnerID    string             `json:"runner_id"`
+	Stage       string             `json:"stage"`
+	JobID       string             `json:"job_id"`
+	LineCount   int                `json:"line_count"`
+	Offset      int64              `json:"offset"`
+	StartTime   time.Time          `json:"start_time"`
+	EndTime     *time.Time         `json:"end_time,omitempty"`
+	Live        bool               `json:"live"`
 	Subscribers []chan<- *LogEntry `json:"-"`
 	file        *os.File
 }
 
 // LogEntry represents a log line
 type LogEntry struct {
-	ID          string    `json:"id"`
-	PipelineID  string    `json:"pipeline_id"`
-	RunnerID    string    `json:"runner_id"`
-	Stage       string    `json:"stage"`
-	JobID       string    `json:"job_id"`
-	Timestamp   time.Time `json:"timestamp"`
-	Level       string    `json:"level"`
-	Message     string    `json:"message"`
-	Duration    int64     `json:"duration_ms"`
+	ID         string    `json:"id"`
+	PipelineID string    `json:"pipeline_id"`
+	RunnerID   string    `json:"runner_id"`
+	Stage      string    `json:"stage"`
+	JobID      string    `json:"job_id"`
+	Timestamp  time.Time `json:"timestamp"`
+	Level      string    `json:"level"`
+	Message    string    `json:"message"`
+	Duration   int64     `json:"duration_ms"`
 }
 
 // LogConfig represents log collector configuration
@@ -471,8 +471,8 @@ func (lc *LogCollector) GetStats() map[string]int {
 	return map[string]int{
 		"total_streams": len(lc.logs),
 		"live_streams":  liveStreams,
-		"total_lines":  totalLines,
-		"total_size":   int(totalSize),
+		"total_lines":   totalLines,
+		"total_size":    int(totalSize),
 	}
 }
 

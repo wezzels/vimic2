@@ -8,44 +8,44 @@ import (
 
 // MockOVSClient provides a mock OVS client for testing
 type MockOVSClient struct {
-	bridges   map[string]*Bridge
-	ports     map[string]*Port
-	flows     map[string][]*Flow
-	mu        sync.RWMutex
-	errMode   bool
-	failNext  bool
+	bridges  map[string]*Bridge
+	ports    map[string]*Port
+	flows    map[string][]*Flow
+	mu       sync.RWMutex
+	errMode  bool
+	failNext bool
 	// Behavior controls
 	CommandDelay int64 // milliseconds
 }
 
 // Bridge represents an OVS bridge
 type Bridge struct {
-	Name    string
-	VLAN    int
-	Ports   []string
-	Trunk   []int
+	Name  string
+	VLAN  int
+	Ports []string
+	Trunk []int
 }
 
 // Port represents an OVS port
 type Port struct {
-	Name      string
-	Bridge    string
-	VLAN      int
-	Trunk     []int
-	QoS       int64 // Mbps
-	MAC       string
-	IPAddress  string
+	Name         string
+	Bridge       string
+	VLAN         int
+	Trunk        []int
+	QoS          int64 // Mbps
+	MAC          string
+	IPAddress    string
 	PortSecurity bool
 }
 
 // Flow represents an OpenFlow rule
 type Flow struct {
-	ID        string
-	Bridge    string
-	Priority  int
-	Match     string
-	Actions   string
-	Enabled   bool
+	ID       string
+	Bridge   string
+	Priority int
+	Match    string
+	Actions  string
+	Enabled  bool
 }
 
 // NewMockOVSClient creates a new mock OVS client

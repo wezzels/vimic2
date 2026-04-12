@@ -139,12 +139,12 @@ func TestHost_HVTypes(t *testing.T) {
 // TestMetric_ResourceUsage tests metric resource usage
 func TestMetric_ResourceUsage(t *testing.T) {
 	metric := &database.Metric{
-		NodeID:     "node-1",
-		CPU:        45.5,
-		Memory:     60.2,
-		Disk:       30.1,
-		NetworkRX:  1024000,
-		NetworkTX:  512000,
+		NodeID:    "node-1",
+		CPU:       45.5,
+		Memory:    60.2,
+		Disk:      30.1,
+		NetworkRX: 1024000,
+		NetworkTX: 512000,
 	}
 
 	if metric.CPU < 0 || metric.CPU > 100 {

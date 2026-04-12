@@ -98,13 +98,13 @@ func TestManager_ListHosts_Multiple(t *testing.T) {
 // TestHostConnection_AllFields tests all fields
 func TestHostConnection_AllFields(t *testing.T) {
 	conn := &HostConnection{
-		ID:       "conn-1",
-		Name:     "test-connection",
-		Address:  "10.0.0.1",
-		Port:     22,
-		User:     "admin",
-		SSHKey:   "/home/admin/.ssh/id_rsa",
-		IsLocal:  false,
+		ID:      "conn-1",
+		Name:    "test-connection",
+		Address: "10.0.0.1",
+		Port:    22,
+		User:    "admin",
+		SSHKey:  "/home/admin/.ssh/id_rsa",
+		IsLocal: false,
 	}
 
 	if conn.ID != "conn-1" {

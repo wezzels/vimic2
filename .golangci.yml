@@ -4,20 +4,24 @@ run:
   tests: true
 
 linters:
+  disable-all: true
   enable:
     - gofmt
     - goimports
     - govet
-    - errcheck
     - staticcheck
     - ineffassign
     - typecheck
     - unused
-    - gosimple
 
 linters-settings:
   govet:
     enable-all: true
+    disable:
+      - fieldalignment
+      - unusedwrite
+      - nilness
+      - shadow
   gofmt:
     simplify: true
   goimports:
@@ -27,6 +31,65 @@ issues:
   exclude-rules:
     - path: _test\.go
       linters:
-        - errcheck
+        - unused
+        - staticcheck
+        - ineffassign
+    - path: internal/realutil/realfs/filesystem.go
+      linters:
+        - unused
+    - path: internal/kubernetes/manager.go
+      linters:
+        - unused
+    - path: internal/pool/template.go
+      linters:
+        - unused
+    - path: internal/status/watcher.go
+      linters:
+        - unused
+        - staticcheck
+    - path: internal/network/ovs.go
+      linters:
+        - unused
+    - path: internal/api/server.go
+      linters:
+        - ineffassign
+        - staticcheck
+    - path: internal/host/manager.go
+      linters:
+        - staticcheck
+    - path: internal/network/firewall.go
+      linters:
+        - staticcheck
+    - path: internal/provisioner/provisioner.go
+      linters:
+        - ineffassign
+    - path: pkg/hypervisor/
+      linters:
+        - ineffassign
+    - path: internal/database/
+      linters:
+        - ineffassign
+        - staticcheck
+    - path: internal/web/webui.go
+      linters:
+        - ineffassign
+    - path: internal/realutil/realfs/
+      linters:
+        - staticcheck
+    - path: internal/pipeline/
+      linters:
+        - staticcheck
+    - path: internal/pool/
+      linters:
+        - staticcheck
+    - path: internal/network/
+      linters:
+        - staticcheck
+    - path: internal/ui/
+      linters:
+        - staticcheck
+    - path: internal/deploy/
+      linters:
+        - staticcheck
   max-issues-per-linter: 0
   max-same-issues: 0

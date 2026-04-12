@@ -98,12 +98,12 @@ func TestIsolationManager_Struct(t *testing.T) {
 // TestIsolatedNetwork_Struct tests isolated network struct
 func TestIsolatedNetwork_Struct(t *testing.T) {
 	in := &IsolatedNetwork{
-		ID:        "net-1",
+		ID:         "net-1",
 		BridgeName: "isolated",
-		CIDR:      "10.0.0.0/24",
-		Gateway:   "10.0.0.1",
-		VLANID:    100,
-		VMs:       []string{},
+		CIDR:       "10.0.0.0/24",
+		Gateway:    "10.0.0.1",
+		VLANID:     100,
+		VMs:        []string{},
 	}
 
 	if in.ID != "net-1" {
@@ -117,9 +117,9 @@ func TestIsolatedNetwork_Struct(t *testing.T) {
 // TestNetworkConfig_Struct tests network config struct
 func TestNetworkConfig_Struct(t *testing.T) {
 	nc := &NetworkConfig{
-		BaseCIDR:        "192.168.0.0/24",
-		VLANStart:      100,
-		DNS:             []string{"8.8.8.8"},
+		BaseCIDR:  "192.168.0.0/24",
+		VLANStart: 100,
+		DNS:       []string{"8.8.8.8"},
 	}
 
 	if nc.BaseCIDR != "192.168.0.0/24" {

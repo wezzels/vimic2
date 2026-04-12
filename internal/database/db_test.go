@@ -183,7 +183,7 @@ func TestDB(t *testing.T) {
 		Value:     95.0,
 		Threshold: 90.0,
 		Message:   "High CPU on test-node (95%)",
-		FiredAt:  time.Now(),
+		FiredAt:   time.Now(),
 	}
 
 	err = db.SaveAlert(alert)

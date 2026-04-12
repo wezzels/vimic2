@@ -144,11 +144,11 @@ func TestTemplateManager_ImportTemplate(t *testing.T) {
 func TestGenerateID(t *testing.T) {
 	id1 := generateID("vm")
 	id2 := generateID("vm")
-	
+
 	if id1 == id2 {
 		t.Error("generated IDs should be unique")
 	}
-	
+
 	if len(id1) < 10 {
 		t.Errorf("generated ID too short: %s", id1)
 	}
@@ -160,16 +160,16 @@ func TestGenerateID(t *testing.T) {
 func TestGenerateMAC(t *testing.T) {
 	mac1 := generateMAC()
 	mac2 := generateMAC()
-	
+
 	if mac1 == mac2 {
 		t.Error("generated MACs should be unique")
 	}
-	
+
 	// Check format: 52:54:00:xx:xx:xx
 	if len(mac1) != 17 {
 		t.Errorf("invalid MAC length: %s", mac1)
 	}
-	
+
 	if mac1[:8] != "52:54:00" {
 		t.Errorf("invalid MAC prefix: %s", mac1)
 	}
@@ -178,11 +178,11 @@ func TestGenerateMAC(t *testing.T) {
 func TestRandomString(t *testing.T) {
 	s1 := randomString(8)
 	s2 := randomString(8)
-	
+
 	if s1 == s2 {
 		t.Error("random strings should be unique")
 	}
-	
+
 	if len(s1) != 8 {
 		t.Errorf("invalid random string length: %d", len(s1))
 	}

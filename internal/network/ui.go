@@ -15,14 +15,14 @@ import (
 
 // NetworkTab provides the UI for network management
 type NetworkTab struct {
-	manager       *NetworkManager
-	window        fyne.Window
-	app           fyne.App
+	manager *NetworkManager
+	window  fyne.Window
+	app     fyne.App
 
 	// Network list
-	networkList   *widget.List
-	networks      []*Network
-	selectedNet   *Network
+	networkList *widget.List
+	networks    []*Network
+	selectedNet *Network
 
 	// Router list
 	routerList     *widget.List
@@ -30,8 +30,8 @@ type NetworkTab struct {
 	selectedRouter *Router
 
 	// Tunnel list
-	tunnelList    *widget.List
-	tunnels       []*Tunnel
+	tunnelList     *widget.List
+	tunnels        []*Tunnel
 	selectedTunnel *Tunnel
 
 	// Interface list
@@ -40,10 +40,10 @@ type NetworkTab struct {
 	selectedIface *VMInterface
 
 	// Bindings
-	networkCount  binding.Int
-	routerCount   binding.Int
-	tunnelCount   binding.Int
-	ifaceCount    binding.Int
+	networkCount binding.Int
+	routerCount  binding.Int
+	tunnelCount  binding.Int
+	ifaceCount   binding.Int
 }
 
 // NewNetworkTab creates a new network management tab

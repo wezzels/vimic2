@@ -70,8 +70,8 @@ func TestMetricThresholds(t *testing.T) {
 	}
 
 	tests := []struct {
-		metric    string
-		value     float64
+		metric      string
+		value       float64
 		shouldAlert bool
 	}{
 		{"cpu", 75.0, false},

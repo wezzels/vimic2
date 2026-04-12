@@ -34,8 +34,8 @@ func TestNetworkStruct(t *testing.T) {
 // TestRouterStruct tests Router struct creation
 func TestRouterStruct(t *testing.T) {
 	router := &Router{
-		ID:       "router-1",
-		Name:     "test-router",
+		ID:   "router-1",
+		Name: "test-router",
 		Interfaces: []RouterInterface{
 			{ID: "iface-1", NetworkID: "net-1"},
 		},
@@ -65,12 +65,12 @@ func TestFirewallStruct(t *testing.T) {
 // TestTunnelStruct tests Tunnel struct creation
 func TestTunnelStruct(t *testing.T) {
 	tunnel := &Tunnel{
-		ID:         "tunnel-1",
-		Name:       "vxlan-tunnel",
-		Protocol:  "vxlan",
-		LocalIP:   "10.0.0.1",
-		RemoteIP:  "10.0.0.2",
-		VNI:       5000,
+		ID:       "tunnel-1",
+		Name:     "vxlan-tunnel",
+		Protocol: "vxlan",
+		LocalIP:  "10.0.0.1",
+		RemoteIP: "10.0.0.2",
+		VNI:      5000,
 	}
 
 	if tunnel.ID != "tunnel-1" {
@@ -109,8 +109,8 @@ func TestVMInterfaceStruct(t *testing.T) {
 // TestIPAMAllocation tests IPAM allocation logic
 func TestIPAMAllocation(t *testing.T) {
 	ipam := &IPAM{
-		Pool:    "192.168.1.0/24",
-		Gateway: "192.168.1.1",
+		Pool:      "192.168.1.0/24",
+		Gateway:   "192.168.1.1",
 		Allocated: make(map[string]string),
 	}
 
@@ -210,11 +210,11 @@ func TestNetworkValidation(t *testing.T) {
 // TestFirewallRule tests firewall rule struct
 func TestFirewallRule(t *testing.T) {
 	rule := FirewallRule{
-		Action:      "accept",
-		Direction:   "ingress",
-		Protocol:    "tcp",
-		DestPort:    22,
-		SourceCIDR:  "10.0.0.0/8",
+		Action:     "accept",
+		Direction:  "ingress",
+		Protocol:   "tcp",
+		DestPort:   22,
+		SourceCIDR: "10.0.0.0/8",
 	}
 
 	if rule.Action != "accept" {

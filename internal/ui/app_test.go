@@ -18,7 +18,7 @@ func TestAppCreation(t *testing.T) {
 // TestApp_Fields tests app field defaults
 func TestApp_Fields(t *testing.T) {
 	app := &App{}
-	
+
 	// Fields should be nil by default
 	if app.db != nil {
 		t.Error("expected db to be nil")
@@ -34,15 +34,15 @@ func TestApp_Fields(t *testing.T) {
 // TestApp_SelectedCluster tests selected cluster management
 func TestApp_SelectedCluster(t *testing.T) {
 	app := &App{}
-	
+
 	// No selection initially
 	if app.selectedCluster != nil {
 		t.Error("expected no selected cluster")
 	}
-	
+
 	// Set selection
 	app.selectedCluster = &database.Cluster{ID: "cluster-1", Name: "test"}
-	
+
 	if app.selectedCluster == nil {
 		t.Fatal("expected selected cluster")
 	}
@@ -54,15 +54,15 @@ func TestApp_SelectedCluster(t *testing.T) {
 // TestApp_SelectedNode tests selected node management
 func TestApp_SelectedNode(t *testing.T) {
 	app := &App{}
-	
+
 	// No selection initially
 	if app.selectedNode != nil {
 		t.Error("expected no selected node")
 	}
-	
+
 	// Set selection
 	app.selectedNode = &database.Node{ID: "node-1", Name: "worker-1"}
-	
+
 	if app.selectedNode == nil {
 		t.Fatal("expected selected node")
 	}
@@ -74,18 +74,18 @@ func TestApp_SelectedNode(t *testing.T) {
 // TestApp_Clusters tests clusters list management
 func TestApp_Clusters(t *testing.T) {
 	app := &App{}
-	
+
 	// Initialize clusters list
 	app.clusters = []*database.Cluster{
 		{ID: "c1", Name: "cluster-1"},
 		{ID: "c2", Name: "cluster-2"},
 		{ID: "c3", Name: "cluster-3"},
 	}
-	
+
 	if len(app.clusters) != 3 {
 		t.Errorf("expected 3 clusters, got %d", len(app.clusters))
 	}
-	
+
 	// Verify cluster names
 	expected := []string{"cluster-1", "cluster-2", "cluster-3"}
 	for i, c := range app.clusters {
@@ -102,7 +102,7 @@ func TestClusterStruct(t *testing.T) {
 		Name:   "production",
 		Status: "running",
 	}
-	
+
 	if cluster.ID != "cluster-1" {
 		t.Errorf("expected cluster-1, got %s", cluster.ID)
 	}
@@ -123,7 +123,7 @@ func TestNodeStruct(t *testing.T) {
 		State:     "running",
 		IP:        "192.168.1.100",
 	}
-	
+
 	if node.ID != "node-1" {
 		t.Errorf("expected node-1, got %s", node.ID)
 	}

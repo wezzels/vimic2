@@ -13,16 +13,16 @@ import (
 
 // Template represents a VM template
 type Template struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Path         string    `json:"path"`
-	BaseImage    string    `json:"base_image"`
-	Size         int64     `json:"size"`
-	OS           string    `json:"os"`
-	Arch         string    `json:"arch"`
-	DefaultCPU   int       `json:"default_cpu"`
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Path          string    `json:"path"`
+	BaseImage     string    `json:"base_image"`
+	Size          int64     `json:"size"`
+	OS            string    `json:"os"`
+	Arch          string    `json:"arch"`
+	DefaultCPU    int       `json:"default_cpu"`
 	DefaultMemory int       `json:"default_memory"`
-	CreatedAt    time.Time `json:"created_at"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // TemplateManager manages QEMU backing file templates
@@ -125,11 +125,11 @@ func (tm *TemplateManager) CreateTemplate(name, baseImage string, size int64, pa
 	defer tm.mu.Unlock()
 
 	template := &Template{
-		ID:           generateID("tpl"),
-		Name:         name,
-		BaseImage:    baseImage,
-		Size:         size,
-		CreatedAt:    time.Now(),
+		ID:        generateID("tpl"),
+		Name:      name,
+		BaseImage: baseImage,
+		Size:      size,
+		CreatedAt: time.Now(),
 	}
 
 	tm.templates[template.ID] = template

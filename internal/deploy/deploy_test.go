@@ -17,7 +17,7 @@ func TestDockerfileGeneration(t *testing.T) {
 			config: &DockerfileConfig{
 				BaseImage:  "golang:1.22",
 				BinaryName: "vimic2",
-				Port:      8080,
+				Port:       8080,
 			},
 			contains: []string{
 				"FROM golang:1.22",
@@ -133,7 +133,7 @@ func TestHelmChartGeneration(t *testing.T) {
 func TestEnvFileGeneration(t *testing.T) {
 	config := &EnvConfig{
 		Vars: map[string]string{
-			"DATABASE_URL":  "postgres://localhost:5432/db",
+			"DATABASE_URL": "postgres://localhost:5432/db",
 			"API_KEY":      "secret-key",
 			"LOG_LEVEL":    "info",
 			"PORT":         "8080",
@@ -155,11 +155,11 @@ func TestComposeFileGeneration(t *testing.T) {
 	config := &ComposeConfig{
 		Services: []ComposeService{
 			{
-				Name:       "api",
-				Image:      "vimic2:latest",
-				Ports:      []string{"8080:8080"},
-				EnvFile:    ".env",
-				DependsOn:  []string{"db"},
+				Name:      "api",
+				Image:     "vimic2:latest",
+				Ports:     []string{"8080:8080"},
+				EnvFile:   ".env",
+				DependsOn: []string{"db"},
 				HealthCheck: &HealthCheck{
 					Test:     []string{"CMD", "curl", "-f", "http://localhost:8080/health"},
 					Interval: "30s",
@@ -168,8 +168,8 @@ func TestComposeFileGeneration(t *testing.T) {
 				},
 			},
 			{
-				Name:   "db",
-				Image:  "postgres:15",
+				Name:    "db",
+				Image:   "postgres:15",
 				Volumes: []string{"db-data:/var/lib/postgresql/data"},
 				Env: map[string]string{
 					"POSTGRES_PASSWORD": "password",

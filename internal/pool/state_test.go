@@ -10,14 +10,14 @@ import (
 // TestVMState_Struct tests VM state structure
 func TestVMState_Struct(t *testing.T) {
 	state := &VMState{
-		ID:         "vm-1",
-		Name:       "test-vm",
-		Status:     "running",
-		IPAddress:  "10.100.1.10",
-		PoolName:   "pool-1",
-		Template:   "ubuntu-22.04",
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		ID:        "vm-1",
+		Name:      "test-vm",
+		Status:    "running",
+		IPAddress: "10.100.1.10",
+		PoolName:  "pool-1",
+		Template:  "ubuntu-22.04",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	if state.ID != "vm-1" {
@@ -34,14 +34,14 @@ func TestVMState_Struct(t *testing.T) {
 // TestVMState_JSON tests VM state JSON marshaling
 func TestVMState_JSON(t *testing.T) {
 	state := &VMState{
-		ID:         "vm-1",
-		Name:       "test-vm",
-		Status:     "running",
-		IPAddress:  "10.100.1.10",
-		PoolName:   "pool-1",
-		Template:   "ubuntu-22.04",
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		ID:        "vm-1",
+		Name:      "test-vm",
+		Status:    "running",
+		IPAddress: "10.100.1.10",
+		PoolName:  "pool-1",
+		Template:  "ubuntu-22.04",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	data, err := json.Marshal(state)
@@ -137,12 +137,12 @@ func TestStateTracker_UpdateCachedState(t *testing.T) {
 
 	// Create initial state
 	st.cache["vm-1"] = &VMState{
-		ID:         "vm-1",
-		Name:       "test-vm",
-		Status:     "creating",
-		IPAddress:  "",
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		ID:        "vm-1",
+		Name:      "test-vm",
+		Status:    "creating",
+		IPAddress: "",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	// Update state

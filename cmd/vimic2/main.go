@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/spf13/viper"
+
 	"github.com/stsgym/vimic2/internal/cluster"
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/monitor"
@@ -96,8 +97,8 @@ type Config struct {
 }
 
 type MonitorConfig struct {
-	Interval   time.Duration
-	Retention  time.Duration
+	Interval  time.Duration
+	Retention time.Duration
 }
 
 type AutoScaleConfig struct {

@@ -63,8 +63,8 @@ func TestGetJob_Logic(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{
-			"id":     "job-456",
-			"status": "running",
+			"id":          "job-456",
+			"status":      "running",
 			"pipeline_id": "pipe-123",
 		})
 	})
@@ -119,18 +119,18 @@ func TestListRunners_Logic(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode([]map[string]interface{}{
 			{
-				"id":      "runner-1",
-				"status":  "online",
-				"type":    "docker",
-				"labels":  []string{"linux", "x64"},
-				"job_id":  nil,
+				"id":     "runner-1",
+				"status": "online",
+				"type":   "docker",
+				"labels": []string{"linux", "x64"},
+				"job_id": nil,
 			},
 			{
-				"id":      "runner-2",
-				"status":  "busy",
-				"type":    "vm",
-				"labels":  []string{"windows", "x64"},
-				"job_id":  "job-456",
+				"id":     "runner-2",
+				"status": "busy",
+				"type":   "vm",
+				"labels": []string{"windows", "x64"},
+				"job_id": "job-456",
 			},
 		})
 	})

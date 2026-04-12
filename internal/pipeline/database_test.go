@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/types"
 	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/stsgym/vimic2/internal/types"
 )
 
 // TestDatabase_Open tests database opening
@@ -134,12 +135,12 @@ func TestArtifact_Create(t *testing.T) {
 	a := &types.Artifact{
 		ID:         "artifact-1",
 		PipelineID: "pipeline-1",
-		Name:        "build.tar.gz",
-		Path:        "/artifacts/pipeline-1/build.tar.gz",
-		Size:        1024000,
-		Checksum:    "sha256:abc123",
-		TTL:         30,
-		CreatedAt:   time.Now(),
+		Name:       "build.tar.gz",
+		Path:       "/artifacts/pipeline-1/build.tar.gz",
+		Size:       1024000,
+		Checksum:   "sha256:abc123",
+		TTL:        30,
+		CreatedAt:  time.Now(),
 	}
 
 	if a.ID != "artifact-1" {

@@ -296,27 +296,27 @@ func TestFirewallRules(t *testing.T) {
 		Logging:       true,
 		Rules: []FirewallRule{
 			{
-				ID:         "rule-allow-web",
-				Name:       "allow-web",
-				Direction:  "ingress",
-				Protocol:   "tcp",
-				DestCIDR:   "10.50.0.0/24",
-				DestPort:   80,
-				Action:     "accept",
-				Priority:   100,
-				Enabled:    true,
-				Log:        true,
+				ID:        "rule-allow-web",
+				Name:      "allow-web",
+				Direction: "ingress",
+				Protocol:  "tcp",
+				DestCIDR:  "10.50.0.0/24",
+				DestPort:  80,
+				Action:    "accept",
+				Priority:  100,
+				Enabled:   true,
+				Log:       true,
 			},
 			{
-				ID:         "rule-allow-https",
-				Name:       "allow-https",
-				Direction:  "ingress",
-				Protocol:   "tcp",
-				DestCIDR:   "10.50.0.0/24",
-				DestPort:   443,
-				Action:     "accept",
-				Priority:   90,
-				Enabled:    true,
+				ID:        "rule-allow-https",
+				Name:      "allow-https",
+				Direction: "ingress",
+				Protocol:  "tcp",
+				DestCIDR:  "10.50.0.0/24",
+				DestPort:  443,
+				Action:    "accept",
+				Priority:  90,
+				Enabled:   true,
 			},
 			{
 				ID:         "rule-allow-ssh",
@@ -331,13 +331,13 @@ func TestFirewallRules(t *testing.T) {
 				Enabled:    true,
 			},
 			{
-				ID:         "rule-deny-all",
-				Name:       "deny-all-ingress",
-				Direction:  "ingress",
-				Protocol:   "all",
-				Action:     "drop",
-				Priority:   1000,
-				Enabled:    true,
+				ID:        "rule-deny-all",
+				Name:      "deny-all-ingress",
+				Direction: "ingress",
+				Protocol:  "all",
+				Action:    "drop",
+				Priority:  1000,
+				Enabled:   true,
 			},
 		},
 	}
@@ -380,12 +380,12 @@ func TestVMInterfaceAssignment(t *testing.T) {
 
 	// Create network
 	net := &Network{
-		ID:         "net-vm-test",
-		Name:       "vm-network",
-		CIDR:       "10.200.0.0/24",
-		Gateway:    "10.200.0.1",
-		Type:       NetworkTypeBridge,
-		VLANID:     200,
+		ID:      "net-vm-test",
+		Name:    "vm-network",
+		CIDR:    "10.200.0.0/24",
+		Gateway: "10.200.0.1",
+		Type:    NetworkTypeBridge,
+		VLANID:  200,
 	}
 	db.SaveNetwork(ctx, net)
 
@@ -429,14 +429,14 @@ func TestVMInterfaceAssignment(t *testing.T) {
 
 	// Create trunk interface (multiple VLANs)
 	trunkIface := &VMInterface{
-		ID:          "vif-002",
-		VMID:        "vm-001",
-		Name:        "eth1",
-		MACAddress:  "52:54:00:12:34:57",
-		NetworkID:   "net-vm-test",
-		TrunkVLANs:  []int{100, 200, 300, 400},
-		MTU:         9000, // Jumbo frames
-		State:       InterfaceUp,
+		ID:         "vif-002",
+		VMID:       "vm-001",
+		Name:       "eth1",
+		MACAddress: "52:54:00:12:34:57",
+		NetworkID:  "net-vm-test",
+		TrunkVLANs: []int{100, 200, 300, 400},
+		MTU:        9000, // Jumbo frames
+		State:      InterfaceUp,
 	}
 
 	err = db.SaveInterface(ctx, trunkIface)

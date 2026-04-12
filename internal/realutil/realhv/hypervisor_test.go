@@ -325,4 +325,3 @@ func TestRealHypervisor_GetNode_Libvirt(t *testing.T) {
 		t.Errorf("expected name %s, got %s", nodes[0].Name, node.Name)
 	}
 }
-

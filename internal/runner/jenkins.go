@@ -31,7 +31,7 @@ func NewJenkinsRunner(config *JenkinsConfig) (*JenkinsRunner, error) {
 	if config.Username == "" || config.APIToken == "" {
 		return nil, fmt.Errorf("jenkins credentials are required")
 	}
-	
+
 	runner := &JenkinsRunner{
 		BaseRunner: BaseRunner{
 			id:       generateID("jenkins"),
@@ -50,7 +50,7 @@ func NewJenkinsRunner(config *JenkinsConfig) (*JenkinsRunner, error) {
 			Timeout: 30 * time.Second,
 		},
 	}
-	
+
 	return runner, nil
 }
 
@@ -66,13 +66,13 @@ func (r *JenkinsRunner) Start(ctx context.Context) error {
 	if !r.registered {
 		return fmt.Errorf("agent must be registered before starting")
 	}
-	
+
 	r.SetStatus(types.RunnerStatusOnline)
 	r.health = &HealthStatus{
 		Healthy:   true,
 		LastCheck: time.Now(),
 	}
-	
+
 	return nil
 }
 
@@ -93,31 +93,31 @@ func (r *JenkinsRunner) Unregister(ctx context.Context) error {
 // ListJenkinsAgents lists all agents in Jenkins.
 func (r *JenkinsRunner) ListJenkinsAgents(ctx context.Context) ([]RunnerInfo, error) {
 	agentsURL := fmt.Sprintf("%s/computer/api/json", r.url)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", agentsURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list agents request: %w", err)
 	}
 	req.SetBasicAuth(r.username, r.apiToken)
-	
+
 	resp, err := r.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list agents: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	var listResp struct {
 		Computer []struct {
-			DisplayName   string `json:"displayName"`
-			Offline       bool   `json:"offline"`
-			OfflineCause  string `json:"offlineCause"`
+			DisplayName  string `json:"displayName"`
+			Offline      bool   `json:"offline"`
+			OfflineCause string `json:"offlineCause"`
 		} `json:"computer"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&listResp); err != nil {
 		return nil, fmt.Errorf("failed to parse agents response: %w", err)
 	}
-	
+
 	agents := make([]RunnerInfo, 0, len(listResp.Computer))
 	for _, c := range listResp.Computer {
 		status := types.RunnerStatusOnline
@@ -129,6 +129,6 @@ func (r *JenkinsRunner) ListJenkinsAgents(ctx context.Context) ([]RunnerInfo, er
 			Status: status,
 		})
 	}
-	
+
 	return agents, nil
 }

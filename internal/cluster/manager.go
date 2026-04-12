@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/pkg/hypervisor"
 )
@@ -415,10 +416,10 @@ func (m *Manager) GetOrCreateHost(cfg *database.Host) (hypervisor.Hypervisor, er
 	switch cfg.HVType {
 	case "libvirt", "qemu", "kvm":
 		return hypervisor.NewHypervisor(&hypervisor.HostConfig{
-			Address:    cfg.Address,
-			Port:       cfg.Port,
-			User:       cfg.User,
-			Type:       cfg.HVType,
+			Address: cfg.Address,
+			Port:    cfg.Port,
+			User:    cfg.User,
+			Type:    cfg.HVType,
 		})
 	case "stub", "mock", "test":
 		return hypervisor.NewStubHypervisor(), nil

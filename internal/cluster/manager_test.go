@@ -342,7 +342,7 @@ func TestGetOrCreateHost(t *testing.T) {
 	}
 	defer db.Close()
 
- hosts := map[string]hypervisor.Hypervisor{}
+	hosts := map[string]hypervisor.Hypervisor{}
 	mgr := cluster.NewManager(db, hosts)
 
 	_ = context.Background() // ctx available for future tests

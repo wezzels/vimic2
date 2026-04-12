@@ -117,9 +117,9 @@ func (h *Hypervisor) Connect(ctx context.Context) error {
 		// Format: qemu+ssh://host/system
 		parts := strings.Split(strings.TrimPrefix(uri, "qemu+ssh://"), "/")
 		if len(parts) > 0 && parts[0] != "" {
-				hostConfig.Address = parts[0]
-			}
-			hostConfig.Type = "libvirt"
+			hostConfig.Address = parts[0]
+		}
+		hostConfig.Type = "libvirt"
 	} else if uri == "apple" || uri == "" {
 		hostConfig.Type = "apple"
 	} else {
@@ -385,14 +385,14 @@ func (h *Hypervisor) SetMaxVMs(max int) {
 
 // HypervisorFactory creates hypervisor instances
 type HypervisorFactory struct {
-	DefaultURI string
+	DefaultURI  string
 	AutoConnect bool
 }
 
 // NewHypervisorFactory creates a factory
 func NewHypervisorFactory() *HypervisorFactory {
 	return &HypervisorFactory{
-		DefaultURI: "qemu:///system",
+		DefaultURI:  "qemu:///system",
 		AutoConnect: true,
 	}
 }

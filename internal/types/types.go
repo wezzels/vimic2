@@ -48,11 +48,11 @@ type RunnerManagerInterface interface {
 type PipelineStatus string
 
 const (
-	PipelineStatusCreating  PipelineStatus = "creating"
-	PipelineStatusRunning   PipelineStatus = "running"
-	PipelineStatusSuccess   PipelineStatus = "success"
-	PipelineStatusFailed    PipelineStatus = "failed"
-	PipelineStatusCanceled  PipelineStatus = "canceled"
+	PipelineStatusCreating PipelineStatus = "creating"
+	PipelineStatusRunning  PipelineStatus = "running"
+	PipelineStatusSuccess  PipelineStatus = "success"
+	PipelineStatusFailed   PipelineStatus = "failed"
+	PipelineStatusCanceled PipelineStatus = "canceled"
 )
 
 // RunnerPlatform represents runner platform type
@@ -70,13 +70,13 @@ const (
 type RunnerStatus string
 
 const (
-	RunnerStatusCreating     RunnerStatus = "creating"
-	RunnerStatusRegistering  RunnerStatus = "registering"
-	RunnerStatusOnline       RunnerStatus = "online"
-	RunnerStatusOffline      RunnerStatus = "offline"
-	RunnerStatusBusy         RunnerStatus = "busy"
-	RunnerStatusError        RunnerStatus = "error"
-	RunnerStatusDestroyed    RunnerStatus = "destroyed"
+	RunnerStatusCreating    RunnerStatus = "creating"
+	RunnerStatusRegistering RunnerStatus = "registering"
+	RunnerStatusOnline      RunnerStatus = "online"
+	RunnerStatusOffline     RunnerStatus = "offline"
+	RunnerStatusBusy        RunnerStatus = "busy"
+	RunnerStatusError       RunnerStatus = "error"
+	RunnerStatusDestroyed   RunnerStatus = "destroyed"
 )
 
 // VMState represents VM state
@@ -120,17 +120,17 @@ type NetworkState struct {
 
 // Runner represents a CI/CD runner
 type Runner struct {
-	ID           string         `json:"id"`
-	Platform     RunnerPlatform `json:"platform"`
-	Status       RunnerStatus   `json:"status"`
-	Name         string         `json:"name"`
-	Labels       []string       `json:"labels"`
-	PipelineID   string         `json:"pipeline_id"`
-	VMID         string         `json:"vm_id"`
-	IPAddress    string         `json:"ip_address"`
-	CurrentJob   string         `json:"current_job,omitempty"`
-	CreatedAt    time.Time      `json:"created_at"`
-	DestroyedAt  *time.Time     `json:"destroyed_at,omitempty"`
+	ID          string         `json:"id"`
+	Platform    RunnerPlatform `json:"platform"`
+	Status      RunnerStatus   `json:"status"`
+	Name        string         `json:"name"`
+	Labels      []string       `json:"labels"`
+	PipelineID  string         `json:"pipeline_id"`
+	VMID        string         `json:"vm_id"`
+	IPAddress   string         `json:"ip_address"`
+	CurrentJob  string         `json:"current_job,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
+	DestroyedAt *time.Time     `json:"destroyed_at,omitempty"`
 }
 
 // Pipeline represents a CI/CD pipeline
@@ -165,27 +165,27 @@ type Stage struct {
 
 // Job represents a pipeline job
 type Job struct {
-	ID          string         `json:"id"`
-	Name        string         `json:"name"`
-	Stage       string         `json:"stage"`
-	Status      PipelineStatus `json:"status"`
-	RunnerID    string         `json:"runner_id"`
-	StartTime   *time.Time     `json:"start_time,omitempty"`
-	EndTime     *time.Time     `json:"end_time,omitempty"`
-	Duration    int64          `json:"duration_seconds"`
-	Log         []string       `json:"log,omitempty"`
+	ID        string         `json:"id"`
+	Name      string         `json:"name"`
+	Stage     string         `json:"stage"`
+	Status    PipelineStatus `json:"status"`
+	RunnerID  string         `json:"runner_id"`
+	StartTime *time.Time     `json:"start_time,omitempty"`
+	EndTime   *time.Time     `json:"end_time,omitempty"`
+	Duration  int64          `json:"duration_seconds"`
+	Log       []string       `json:"log,omitempty"`
 }
 
 // Artifact represents a build artifact
 type Artifact struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Path        string     `json:"path"`
-	Size        int64      `json:"size"`
-	Checksum    string     `json:"checksum"`
-	PipelineID  string     `json:"pipeline_id"`
-	Downloads   int        `json:"downloads"`
-	TTL         int        `json:"ttl_days"`
-	CreatedAt   time.Time  `json:"created_at"`
-	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Path       string     `json:"path"`
+	Size       int64      `json:"size"`
+	Checksum   string     `json:"checksum"`
+	PipelineID string     `json:"pipeline_id"`
+	Downloads  int        `json:"downloads"`
+	TTL        int        `json:"ttl_days"`
+	CreatedAt  time.Time  `json:"created_at"`
+	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
 }

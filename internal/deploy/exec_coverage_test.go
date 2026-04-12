@@ -145,8 +145,8 @@ func TestExecutor_Execute_Cancel(t *testing.T) {
 	cancel()
 
 	cluster := &Cluster{
-		ID:   "cancel-test",
-		Name: "cancel-test",
+		ID:      "cancel-test",
+		Name:    "cancel-test",
 		Network: &NetworkConfig{Name: "default"},
 		NodeGroups: []*NodeGroup{
 			{Role: "worker", Count: 1, HostID: "test-host"},
@@ -166,9 +166,9 @@ func TestWizard_CompleteWorkflow(t *testing.T) {
 	// Step through wizard
 	w.SetName("test-cluster")
 	w.SetNetwork(&NetworkConfig{
-		Name:   "test-net",
-		Type:   "nat",
-		CIDR:   "10.0.0.0/24",
+		Name:    "test-net",
+		Type:    "nat",
+		CIDR:    "10.0.0.0/24",
 		Gateway: "10.0.0.1",
 	})
 
@@ -245,8 +245,8 @@ func TestCluster_Validate_Fields(t *testing.T) {
 		{
 			name: "valid cluster",
 			cluster: &Cluster{
-				ID:   "test",
-				Name: "test-cluster",
+				ID:      "test",
+				Name:    "test-cluster",
 				Network: &NetworkConfig{Name: "default"},
 				NodeGroups: []*NodeGroup{
 					{Role: "worker", Count: 1},
@@ -257,8 +257,8 @@ func TestCluster_Validate_Fields(t *testing.T) {
 		{
 			name: "empty name",
 			cluster: &Cluster{
-				ID:   "test",
-				Name: "",
+				ID:      "test",
+				Name:    "",
 				Network: &NetworkConfig{Name: "default"},
 			},
 			valid: false,
@@ -274,8 +274,8 @@ func TestCluster_Validate_Fields(t *testing.T) {
 		{
 			name: "no node groups",
 			cluster: &Cluster{
-				ID:   "test",
-				Name: "test",
+				ID:      "test",
+				Name:    "test",
 				Network: &NetworkConfig{Name: "default"},
 			},
 			valid: false,

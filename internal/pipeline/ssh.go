@@ -20,7 +20,7 @@ type SSHKeyManager struct {
 	keySize    int
 	privateKey []byte
 	publicKey  []byte
-	mu          sync.RWMutex
+	mu         sync.RWMutex
 }
 
 // NewSSHKeyManager creates a new SSH key manager

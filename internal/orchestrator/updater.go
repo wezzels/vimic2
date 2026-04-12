@@ -7,8 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/database"
 	"go.uber.org/zap"
+
+	"github.com/stsgym/vimic2/internal/database"
 )
 
 // UpdateStrategy defines the strategy for rolling updates
@@ -28,7 +29,7 @@ func (r *RollingUpdater) CalculateBatches(nodes []string, batchSize int) [][]str
 	if batchSize <= 0 || len(nodes) == 0 {
 		return nil
 	}
-	
+
 	var batches [][]string
 	for i := 0; i < len(nodes); i += batchSize {
 		end := i + batchSize
@@ -105,23 +106,23 @@ type RollingUpdater struct {
 
 // UpdateConfig holds rolling update configuration
 type UpdateConfig struct {
-	BatchSize    int           // Nodes to update at once
-	BatchPause   time.Duration // Pause between batches
-	HealthCheck  bool          // Wait for health after each batch
+	BatchSize     int           // Nodes to update at once
+	BatchPause    time.Duration // Pause between batches
+	HealthCheck   bool          // Wait for health after each batch
 	HealthTimeout time.Duration // Timeout for health check
-	NewImage     string        // New image to use
+	NewImage      string        // New image to use
 }
 
 // UpdateProgress tracks the progress of an update
 type UpdateProgress struct {
-	ClusterID     string
-	TotalNodes    int
-	UpdatedNodes  int
-	CurrentNode   string
-	Status        string // pending, updating, health-checking, complete, failed
-	Error         error
-	StartedAt     time.Time
-	CompletedAt   time.Time
+	ClusterID    string
+	TotalNodes   int
+	UpdatedNodes int
+	CurrentNode  string
+	Status       string // pending, updating, health-checking, complete, failed
+	Error        error
+	StartedAt    time.Time
+	CompletedAt  time.Time
 }
 
 // NewRollingUpdater creates a new rolling updater
@@ -149,10 +150,10 @@ func (r *RollingUpdater) Update(clusterID string, config *UpdateConfig, progress
 
 	totalNodes := len(nodes)
 	update := &UpdateProgress{
-		ClusterID:    clusterID,
-		TotalNodes:   totalNodes,
-		Status:       "pending",
-		StartedAt:    time.Now(),
+		ClusterID:  clusterID,
+		TotalNodes: totalNodes,
+		Status:     "pending",
+		StartedAt:  time.Now(),
 	}
 
 	r.sugar.Infow("Starting rolling update", "cluster", clusterID, "nodes", totalNodes)
@@ -283,12 +284,12 @@ type HealthChecker struct {
 
 // HealthStatus holds the health status of a node
 type HealthStatus struct {
-	NodeID      string
-	Healthy     bool
-	LastCheck   time.Time
-	Checks      int
-	Failures    int
-	Message     string
+	NodeID    string
+	Healthy   bool
+	LastCheck time.Time
+	Checks    int
+	Failures  int
+	Message   string
 }
 
 // NewHealthChecker creates a new health checker

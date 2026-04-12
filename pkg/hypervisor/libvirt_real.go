@@ -30,7 +30,7 @@ type LibvirtHypervisor struct {
 type LibvirtNodeConfig struct {
 	*NodeConfig
 	OSVariant string `json:"os_variant"` // e.g., "ubuntu22.04"
-	PoolName  string `json:"pool_name"`    // Storage pool
+	PoolName  string `json:"pool_name"`  // Storage pool
 }
 
 func newLibvirtHypervisor(cfg *HostConfig) (*LibvirtHypervisor, error) {
@@ -132,11 +132,11 @@ const domainXMLTemplate = `<domain type='kvm'>
 </domain>`
 
 type domainXMLData struct {
-	Name      string
-	CPU       int
-	MemoryMB  uint64
-	DiskPath  string
-	Network   string
+	Name     string
+	CPU      int
+	MemoryMB uint64
+	DiskPath string
+	Network  string
 }
 
 func (h *LibvirtHypervisor) CreateNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
@@ -233,7 +233,7 @@ func (h *LibvirtHypervisor) createDisk(path string, sizeGB int) error {
 
 func (h *LibvirtHypervisor) waitForIP(name string, timeout time.Duration) (string, error) {
 	deadline := time.Now().Add(timeout)
-	
+
 	for time.Now().Before(deadline) {
 		// Try to get IP via DHCP leases from network
 		networks, err := h.conn.ListAllNetworks(0)
@@ -251,15 +251,15 @@ func (h *LibvirtHypervisor) waitForIP(name string, timeout time.Duration) (strin
 				net.Free()
 			}
 		}
-		
+
 		// Also try virsh
 		if ip := h.getVirshIP(name); ip != "" {
 			return ip, nil
 		}
-		
+
 		time.Sleep(2 * time.Second)
 	}
-	
+
 	return "", fmt.Errorf("timeout waiting for IP")
 }
 
@@ -270,7 +270,7 @@ func (h *LibvirtHypervisor) getVirshIP(name string) string {
 	if err := cmd.Run(); err != nil {
 		return ""
 	}
-	
+
 	// Parse output - look for IP pattern
 	lines := bytes.Split(out.Bytes(), []byte("\n"))
 	for _, line := range lines {
@@ -283,9 +283,9 @@ func (h *LibvirtHypervisor) getVirshIP(name string) string {
 				return string(ip)
 			}
 			// Also check next field as it might be the IP
-			if i > 0 && (bytes.Contains(fields[i-1], []byte("192.168.")) || 
-			             bytes.Contains(fields[i-1], []byte("10.")) || 
-			             bytes.Contains(fields[i-1], []byte("172."))) {
+			if i > 0 && (bytes.Contains(fields[i-1], []byte("192.168.")) ||
+				bytes.Contains(fields[i-1], []byte("10.")) ||
+				bytes.Contains(fields[i-1], []byte("172."))) {
 				return string(f)
 			}
 		}
@@ -446,11 +446,11 @@ func (h *LibvirtHypervisor) domainToNode(domain *libvirt.Domain) (*Node, error) 
 	}
 
 	return &Node{
-		ID:    uuid,
-		Name:  name,
-		State: nodeState,
-		IP:    ip,
-		Host:  h.uri,
+		ID:      uuid,
+		Name:    name,
+		State:   nodeState,
+		IP:      ip,
+		Host:    h.uri,
 		Created: time.Now(),
 	}, nil
 }

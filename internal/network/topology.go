@@ -15,12 +15,12 @@ import (
 
 // TopologyNode represents a node in the network topology
 type TopologyNode struct {
-	ID     string
-	Name   string
-	Type   string // network, router, firewall, vm, tunnel
-	X, Y   float32
-	State  string // up, down, error
-	Color  color.Color
+	ID    string
+	Name  string
+	Type  string // network, router, firewall, vm, tunnel
+	X, Y  float32
+	State string // up, down, error
+	Color color.Color
 }
 
 // TopologyEdge represents a connection between nodes
@@ -35,19 +35,19 @@ type TopologyEdge struct {
 type TopologyView struct {
 	widget.BaseWidget
 
-	manager   *NetworkManager
-	nodes     []TopologyNode
-	edges     []TopologyEdge
-	scale     float32
-	offsetX   float32
-	offsetY   float32
-	selected  string
-	onSelect  func(nodeID string)
+	manager  *NetworkManager
+	nodes    []TopologyNode
+	edges    []TopologyEdge
+	scale    float32
+	offsetX  float32
+	offsetY  float32
+	selected string
+	onSelect func(nodeID string)
 
 	// UI elements
-	toolbar    *widget.Toolbar
-	infoPanel  *widget.Label
-	canvas     *fyne.Container
+	toolbar   *widget.Toolbar
+	infoPanel *widget.Label
+	canvas    *fyne.Container
 }
 
 // NewTopologyView creates a new topology view
@@ -590,8 +590,8 @@ func (tv *TopologyView) LayoutNodePositions() {
 
 	// Initialize positions randomly
 	for i := range tv.nodes {
-		tv.nodes[i].X = float32(i%5) * 150 + 50
-		tv.nodes[i].Y = float32(i/5) * 150 + 50
+		tv.nodes[i].X = float32(i%5)*150 + 50
+		tv.nodes[i].Y = float32(i/5)*150 + 50
 	}
 
 	// Apply forces

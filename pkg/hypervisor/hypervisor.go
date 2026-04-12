@@ -52,25 +52,25 @@ type NodeConfig struct {
 
 // Node represents a virtual machine node
 type Node struct {
-	ID      string     `json:"id"`
-	Name    string     `json:"name"`
-	State   NodeState `json:"state"`
-	IP      string    `json:"ip"`
-	Host    string    `json:"host"`
+	ID      string      `json:"id"`
+	Name    string      `json:"name"`
+	State   NodeState   `json:"state"`
+	IP      string      `json:"ip"`
+	Host    string      `json:"host"`
 	Config  *NodeConfig `json:"config"`
-	Created time.Time `json:"created"`
+	Created time.Time   `json:"created"`
 }
 
 // NodeStatus holds current status information
 type NodeStatus struct {
-	State       NodeState `json:"state"`
+	State       NodeState     `json:"state"`
 	Uptime      time.Duration `json:"uptime"`
-	CPUPercent  float64    `json:"cpu_percent"`
-	MemUsed     uint64     `json:"mem_used"`
-	MemTotal    uint64     `json:"mem_total"`
-	DiskUsedGB  float64    `json:"disk_used_gb"`
-	DiskTotalGB float64    `json:"disk_total_gb"`
-	IP          string     `json:"ip"`
+	CPUPercent  float64       `json:"cpu_percent"`
+	MemUsed     uint64        `json:"mem_used"`
+	MemTotal    uint64        `json:"mem_total"`
+	DiskUsedGB  float64       `json:"disk_used_gb"`
+	DiskTotalGB float64       `json:"disk_total_gb"`
+	IP          string        `json:"ip"`
 }
 
 // Metrics holds resource usage metrics

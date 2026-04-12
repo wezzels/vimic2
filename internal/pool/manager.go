@@ -15,15 +15,15 @@ import (
 
 // PoolManager manages VM pools with QEMU backing files
 type PoolManager struct {
-	db            types.PipelineDB
-	templateMgr   *TemplateManager
-	config        map[string]poolConfig
-	vms           map[string]*VM
-	overlays      map[string]*Overlay
-	pools         map[string]*Pool
-	mu            sync.RWMutex
-	stateFile     string
-	eventChan     chan VMEvent
+	db          types.PipelineDB
+	templateMgr *TemplateManager
+	config      map[string]poolConfig
+	vms         map[string]*VM
+	overlays    map[string]*Overlay
+	pools       map[string]*Pool
+	mu          sync.RWMutex
+	stateFile   string
+	eventChan   chan VMEvent
 }
 
 // Pool represents a VM pool
@@ -73,13 +73,13 @@ type VMStatus string
 
 const (
 	VMStatusCreating  VMStatus = "creating"
-	VMStatusRunning    VMStatus = "running"
-	VMStatusIdle       VMStatus = "idle"
-	VMStatusBusy       VMStatus = "busy"
-	VMStatusStopping   VMStatus = "stopping"
-	VMStatusStopped    VMStatus = "stopped"
-	VMStatusDestroyed  VMStatus = "destroyed"
-	VMStatusError      VMStatus = "error"
+	VMStatusRunning   VMStatus = "running"
+	VMStatusIdle      VMStatus = "idle"
+	VMStatusBusy      VMStatus = "busy"
+	VMStatusStopping  VMStatus = "stopping"
+	VMStatusStopped   VMStatus = "stopped"
+	VMStatusDestroyed VMStatus = "destroyed"
+	VMStatusError     VMStatus = "error"
 )
 
 // VMEvent represents a VM state change event
@@ -309,7 +309,7 @@ func (pm *PoolManager) AllocateVM(poolName string) (*types.VMState, error) {
 		ID:        generateID("vm"),
 		Name:      fmt.Sprintf("vm-%s", generateID("")),
 		PoolID:    pool.ID,
-		Status:     "creating",
+		Status:    "creating",
 		CreatedAt: time.Now(),
 	}
 

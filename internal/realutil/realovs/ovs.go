@@ -31,23 +31,23 @@ type Config struct {
 
 // Bridge represents an OVS bridge
 type Bridge struct {
-	Name    string
-	VLAN    int
-	Trunk   []int
-	Ports   []string
+	Name  string
+	VLAN  int
+	Trunk []int
+	Ports []string
 }
 
 // Port represents an OVS port
 type Port struct {
-	Name        string
-	Bridge      string
-	VLAN        int
-	Trunk       []int
-	QoS         int64
-	MAC         string
-	IPAddress   string
+	Name         string
+	Bridge       string
+	VLAN         int
+	Trunk        []int
+	QoS          int64
+	MAC          string
+	IPAddress    string
 	PortSecurity bool
-	Options     map[string]string
+	Options      map[string]string
 }
 
 // Flow represents an OpenFlow rule

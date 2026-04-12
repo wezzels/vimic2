@@ -212,6 +212,7 @@ func TestRealHypervisor_VMConfig_Validation(t *testing.T) {
 		_ = cfg // Just validation
 	}
 }
+
 // TestRealHypervisor_NewHypervisor_EmptyURI tests NewHypervisor with empty URI
 func TestRealHypervisor_NewHypervisor_EmptyURI(t *testing.T) {
 	hv := realhv.NewHypervisor(&realhv.Config{
@@ -594,5 +595,3 @@ func TestRealHypervisor_ListNodes_AfterConnect(t *testing.T) {
 	_ = nodes
 	_ = err
 }
-
-

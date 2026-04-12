@@ -47,20 +47,20 @@ func NewApp(
 		monitorMgr: monitorMgr,
 		autoScaler: autoScaler,
 	}
-	
+
 	// Create status watcher
 	app.statusWatcher = status.NewWatcher(db, nil) // hosts will be added later
-	
+
 	return app
 }
 
 func (a *App) Run() error {
 	a.window = a.makeMainWindow()
 	a.window.Resize(fyne.NewSize(1200, 800))
-	
+
 	// Start status watching
 	a.statusWatcher.Start(5 * time.Second)
-	
+
 	a.window.ShowAndRun()
 	return nil
 }
@@ -360,7 +360,7 @@ func (a *App) makeClusterDetail() fyne.CanvasObject {
 
 func (a *App) makeNodeDetail() fyne.CanvasObject {
 	n := a.selectedNode
-	
+
 	// Get node metrics history (last hour)
 	metrics, _ := a.db.GetNodeMetrics(n.ID, time.Now().Add(-time.Hour))
 
@@ -762,10 +762,10 @@ func (a *App) onNewNode() {
 		}, a.window).Show()
 }
 
-func (a *App) onStartNode()  { a.onNodeAction(a.selectedNode, "start") }
-func (a *App) onStopNode()   { a.onNodeAction(a.selectedNode, "stop") }
+func (a *App) onStartNode()   { a.onNodeAction(a.selectedNode, "start") }
+func (a *App) onStopNode()    { a.onNodeAction(a.selectedNode, "stop") }
 func (a *App) onRestartNode() { a.onNodeAction(a.selectedNode, "restart") }
-func (a *App) onDeleteNode() { a.onNodeDelete(a.selectedNode) }
+func (a *App) onDeleteNode()  { a.onNodeDelete(a.selectedNode) }
 func (a *App) onNodeConsole() { dialog.ShowInformation("Console", "VNC/SPICE coming soon", a.window) }
 func (a *App) onNodeDetails() {
 	if a.selectedNode != nil {

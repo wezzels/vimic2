@@ -184,7 +184,7 @@ func TestAlertThreshold_Checking(t *testing.T) {
 	threshold := 80.0
 
 	tests := []struct {
-		value     float64
+		value       float64
 		shouldAlert bool
 	}{
 		{75.0, false},

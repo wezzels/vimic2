@@ -24,17 +24,17 @@ func NewCloudInitGenerator(sshKeyManager *SSHKeyManager) *CloudInitGenerator {
 
 // CloudInitConfig represents cloud-init configuration
 type CloudInitConfig struct {
-	Hostname      string
-	Username      string
-	SSHKeys       []string
-	Packages      []string
-	RunCommands   []string
-	WriteFiles    []WriteFileConfig
-	Environment   map[string]string
-	Platform      RunnerPlatform
-	PipelineID    string
-	VMID          string
-	WorkDir       string
+	Hostname    string
+	Username    string
+	SSHKeys     []string
+	Packages    []string
+	RunCommands []string
+	WriteFiles  []WriteFileConfig
+	Environment map[string]string
+	Platform    RunnerPlatform
+	PipelineID  string
+	VMID        string
+	WorkDir     string
 }
 
 // WriteFileConfig represents a file to write

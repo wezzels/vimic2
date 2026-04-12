@@ -12,14 +12,14 @@ import (
 
 // Config represents the complete pipeline configuration
 type Config struct {
-	Database   DatabaseConfig   `mapstructure:"database"`
-	Hypervisor  HypervisorConfig `mapstructure:"hypervisor"`
-	Templates   TemplatesConfig  `mapstructure:"templates"`
-	Platforms   PlatformsConfig  `mapstructure:"platforms"`
-	Pools       map[string]PoolConfig `mapstructure:"pools"`
-	Networks    NetworksConfig   `mapstructure:"networks"`
-	Logging     LoggingConfig    `mapstructure:"logging"`
-	SSH         SSHConfig        `mapstructure:"ssh"`
+	Database   DatabaseConfig        `mapstructure:"database"`
+	Hypervisor HypervisorConfig      `mapstructure:"hypervisor"`
+	Templates  TemplatesConfig       `mapstructure:"templates"`
+	Platforms  PlatformsConfig       `mapstructure:"platforms"`
+	Pools      map[string]PoolConfig `mapstructure:"pools"`
+	Networks   NetworksConfig        `mapstructure:"networks"`
+	Logging    LoggingConfig         `mapstructure:"logging"`
+	SSH        SSHConfig             `mapstructure:"ssh"`
 }
 
 // DatabaseConfig represents database configuration
@@ -35,7 +35,7 @@ type HypervisorConfig struct {
 
 // TemplatesConfig represents template configuration
 type TemplatesConfig struct {
-	BasePath       string `mapstructure:"base_path"`
+	BasePath        string `mapstructure:"base_path"`
 	DefaultTemplate string `mapstructure:"default_template"`
 }
 
@@ -59,66 +59,66 @@ type PlatformConfig struct {
 
 // PoolConfig represents a VM pool configuration
 type PoolConfig struct {
-	Template   string `mapstructure:"template"`
-	MinSize    int    `mapstructure:"min_size"`
-	MaxSize    int    `mapstructure:"max_size"`
-	CPU        int    `mapstructure:"cpu"`
-	Memory     int    `mapstructure:"memory"`
-	DiskSize   int64  `mapstructure:"disk_size"`
-	PreAllocated int  `mapstructure:"pre_allocated"`
+	Template     string `mapstructure:"template"`
+	MinSize      int    `mapstructure:"min_size"`
+	MaxSize      int    `mapstructure:"max_size"`
+	CPU          int    `mapstructure:"cpu"`
+	Memory       int    `mapstructure:"memory"`
+	DiskSize     int64  `mapstructure:"disk_size"`
+	PreAllocated int    `mapstructure:"pre_allocated"`
 }
 
 // NetworksConfig represents network configuration
 type NetworksConfig struct {
-	BaseCIDR  string `mapstructure:"base_cidr"`
-	VLANStart int    `mapstructure:"vlan_start"`
-	VLANEnd   int    `mapstructure:"vlan_end"`
+	BaseCIDR  string   `mapstructure:"base_cidr"`
+	VLANStart int      `mapstructure:"vlan_start"`
+	VLANEnd   int      `mapstructure:"vlan_end"`
 	DNS       []string `mapstructure:"dns"`
 }
 
 // LoggingConfig represents logging configuration
 type LoggingConfig struct {
 	ElasticsearchURL string `mapstructure:"elasticsearch_url"`
-	RetentionDays   int    `mapstructure:"retention_days"`
-	Level           string `mapstructure:"level"`
+	RetentionDays    int    `mapstructure:"retention_days"`
+	Level            string `mapstructure:"level"`
 }
 
 // SSHConfig represents SSH key configuration
 type SSHConfig struct {
-	KeyPath     string `mapstructure:"key_path"`
-	KeyType     string `mapstructure:"key_type"`
-	KeySize     int    `mapstructure:"key_size"`
-	Username    string `mapstructure:"username"`
-	Port        int    `mapstructure:"port"`
+	KeyPath  string `mapstructure:"key_path"`
+	KeyType  string `mapstructure:"key_type"`
+	KeySize  int    `mapstructure:"key_size"`
+	Username string `mapstructure:"username"`
+	Port     int    `mapstructure:"port"`
 }
 
 // LoadConfig loads configuration from file
 func LoadConfig(configPath string) (*Config, error) {
 	// Set config file
 	viper.SetConfigFile(configPath)
-	
+
 	// Set defaults
 	setDefaults()
-	
+
 	// Read config
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
-	
+
 	// Expand environment variables
 	expandEnvironmentVariables()
-	
+
 	// Unmarshal config
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
-	
+
 	// Validate config
 	if err := validateConfig(&config); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
-	
+
 	return &config, nil
 }
 
@@ -126,26 +126,26 @@ func LoadConfig(configPath string) (*Config, error) {
 func setDefaults() {
 	// Database defaults
 	viper.SetDefault("database.path", filepath.Join(os.Getenv("HOME"), ".vimic2", "pipeline.db"))
-	
+
 	// Hypervisor defaults
 	viper.SetDefault("hypervisor.type", "libvirt")
 	viper.SetDefault("hypervisor.uri", "qemu:///system")
-	
+
 	// Templates defaults
 	viper.SetDefault("templates.base_path", "/var/lib/vimic2/templates")
 	viper.SetDefault("templates.default_template", "base-runner-ubuntu-24.04.qcow2")
-	
+
 	// Network defaults
 	viper.SetDefault("networks.base_cidr", "10.100.0.0/16")
 	viper.SetDefault("networks.vlan_start", 1000)
 	viper.SetDefault("networks.vlan_end", 2000)
 	viper.SetDefault("networks.dns", []string{"8.8.8.8", "8.8.4.4"})
-	
+
 	// Logging defaults
 	viper.SetDefault("logging.elasticsearch_url", "http://localhost:9200")
 	viper.SetDefault("logging.retention_days", 30)
 	viper.SetDefault("logging.level", "info")
-	
+
 	// SSH defaults
 	viper.SetDefault("ssh.key_path", filepath.Join(os.Getenv("HOME"), ".vimic2", "keys"))
 	viper.SetDefault("ssh.key_type", "ed25519")
@@ -171,17 +171,17 @@ func validateConfig(config *Config) error {
 	if config.Database.Path == "" {
 		return fmt.Errorf("database path is required")
 	}
-	
+
 	// Validate hypervisor
 	if config.Hypervisor.Type != "libvirt" && config.Hypervisor.Type != "stub" {
 		return fmt.Errorf("invalid hypervisor type: %s (must be libvirt or stub)", config.Hypervisor.Type)
 	}
-	
+
 	// Validate templates path
 	if config.Templates.BasePath == "" {
 		return fmt.Errorf("templates base path is required")
 	}
-	
+
 	// Validate at least one platform is enabled
 	enabled := 0
 	if config.Platforms.GitLab.Enabled {
@@ -202,12 +202,12 @@ func validateConfig(config *Config) error {
 	if enabled == 0 {
 		return fmt.Errorf("at least one platform must be enabled")
 	}
-	
+
 	// Validate pools
 	if len(config.Pools) == 0 {
 		return fmt.Errorf("at least one pool must be configured")
 	}
-	
+
 	for name, pool := range config.Pools {
 		if pool.Template == "" {
 			return fmt.Errorf("pool %s: template is required", name)
@@ -225,7 +225,7 @@ func validateConfig(config *Config) error {
 			return fmt.Errorf("pool %s: memory must be > 0", name)
 		}
 	}
-	
+
 	// Validate networks
 	if config.Networks.BaseCIDR == "" {
 		return fmt.Errorf("networks base_cidr is required")
@@ -233,7 +233,7 @@ func validateConfig(config *Config) error {
 	if config.Networks.VLANStart >= config.Networks.VLANEnd {
 		return fmt.Errorf("networks vlan_start must be < vlan_end")
 	}
-	
+
 	// Validate SSH
 	if config.SSH.KeyPath == "" {
 		return fmt.Errorf("ssh key_path is required")
@@ -241,7 +241,7 @@ func validateConfig(config *Config) error {
 	if config.SSH.KeyType != "ed25519" && config.SSH.KeyType != "rsa" {
 		return fmt.Errorf("ssh key_type must be ed25519 or rsa")
 	}
-	
+
 	return nil
 }
 
@@ -252,7 +252,7 @@ func SaveConfig(config *Config, configPath string) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
-	
+
 	// Convert to viper
 	viper.Set("database", config.Database)
 	viper.Set("hypervisor", config.Hypervisor)
@@ -262,12 +262,12 @@ func SaveConfig(config *Config, configPath string) error {
 	viper.Set("networks", config.Networks)
 	viper.Set("logging", config.Logging)
 	viper.Set("ssh", config.SSH)
-	
+
 	// Write config
 	if err := viper.WriteConfigAs(configPath); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -297,11 +297,11 @@ func (c *Config) GetPlatformConfig(platformName string) (*PlatformConfig, error)
 	default:
 		return nil, fmt.Errorf("unknown platform: %s", platformName)
 	}
-	
+
 	if !config.Enabled {
 		return nil, fmt.Errorf("platform %s is not enabled", platformName)
 	}
-	
+
 	return config, nil
 }
 
