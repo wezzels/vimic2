@@ -64,6 +64,9 @@ func (r *RollingUpdater) DrainNode(ctx context.Context, nodeID string) error {
 	if err != nil {
 		return err
 	}
+	if node == nil {
+		return fmt.Errorf("node not found: %s", nodeID)
+	}
 	// Mark as draining
 	node.State = "draining"
 	return r.db.SaveNode(node)
@@ -74,6 +77,9 @@ func (r *RollingUpdater) UpgradeNode(ctx context.Context, nodeID string, version
 	node, err := r.db.GetNode(nodeID)
 	if err != nil {
 		return err
+	}
+	if node == nil {
+		return fmt.Errorf("node not found: %s", nodeID)
 	}
 	// Update node config with new version
 	if node.Config == nil {
@@ -89,6 +95,9 @@ func (r *RollingUpdater) RestoreNode(ctx context.Context, nodeID string) error {
 	node, err := r.db.GetNode(nodeID)
 	if err != nil {
 		return err
+	}
+	if node == nil {
+		return fmt.Errorf("node not found: %s", nodeID)
 	}
 	node.State = "running"
 	return r.db.SaveNode(node)

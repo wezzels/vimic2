@@ -13,17 +13,17 @@ import (
 )
 
 // createTestUpdater creates a test rolling updater
-func createTestUpdater(t *testing.T) (*orchestrator.RollingUpdater, *database.DB) {
+func createTestUpdater(t *testing.T) (*orchestrator.RollingUpdater, *database.DB, func()) {
 	tmpFile, err := os.CreateTemp("", "vimic2-updater-test-*.db")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
 	tmpPath := tmpFile.Name()
 	tmpFile.Close()
-	defer os.Remove(tmpPath)
 
 	db, err := database.NewDB(tmpPath)
 	if err != nil {
+		os.Remove(tmpPath)
 		t.Fatalf("Failed to create database: %v", err)
 	}
 
@@ -40,16 +40,36 @@ func createTestUpdater(t *testing.T) (*orchestrator.RollingUpdater, *database.DB
 	}
 	db.SaveCluster(testCluster)
 
+	// Create test node for tests that need it
+	testNode := &database.Node{
+		ID:        "test-node",
+		ClusterID: "test-cluster",
+		Name:      "test-node",
+		Role:      "worker",
+		HostID:    "host-1",
+		State:     "running",
+		Config:    &database.NodeConfig{CPU: 2, MemoryMB: 4096, DiskGB: 20, Image: "ubuntu:22.04"},
+	}
+	db.SaveNode(testNode)
+
 	// Create logger
 	sugar := zap.NewExample().Sugar()
 
 	updater := orchestrator.NewRollingUpdater(db, sugar)
 
-	return updater, db
+	cleanup := func() {
+		db.Close()
+		os.Remove(tmpPath)
+		os.Remove(tmpPath + "-wal")
+		os.Remove(tmpPath + "-shm")
+	}
+
+	return updater, db, cleanup
 }
 
 func TestRollingUpdaterCreate(t *testing.T) {
-	updater, db := createTestUpdater(t)
+	updater, db, cleanup := createTestUpdater(t)
+	defer cleanup()
 	defer db.Close()
 
 	if updater == nil {
@@ -58,7 +78,8 @@ func TestRollingUpdaterCreate(t *testing.T) {
 }
 
 func TestRollingUpdaterUpdateStrategy(t *testing.T) {
-	updater, db := createTestUpdater(t)
+	updater, db, cleanup := createTestUpdater(t)
+	defer cleanup()
 	defer db.Close()
 
 	strategy := &orchestrator.UpdateStrategy{
@@ -85,7 +106,8 @@ func TestRollingUpdaterUpdateStrategy(t *testing.T) {
 }
 
 func TestRollingUpdaterBatching(t *testing.T) {
-	updater, db := createTestUpdater(t)
+	updater, db, cleanup := createTestUpdater(t)
+	defer cleanup()
 	defer db.Close()
 
 	tests := []struct {
@@ -110,7 +132,8 @@ func TestRollingUpdaterBatching(t *testing.T) {
 }
 
 func TestRollingUpdaterHealthCheck(t *testing.T) {
-	updater, db := createTestUpdater(t)
+	updater, db, cleanup := createTestUpdater(t)
+	defer cleanup()
 	defer db.Close()
 
 	ctx := context.Background()
@@ -127,7 +150,8 @@ func TestRollingUpdaterHealthCheck(t *testing.T) {
 }
 
 func TestRollingUpdaterDrainNode(t *testing.T) {
-	updater, db := createTestUpdater(t)
+	updater, db, cleanup := createTestUpdater(t)
+	defer cleanup()
 	defer db.Close()
 
 	ctx := context.Background()
@@ -140,7 +164,8 @@ func TestRollingUpdaterDrainNode(t *testing.T) {
 }
 
 func TestRollingUpdaterUpgradeNode(t *testing.T) {
-	updater, db := createTestUpdater(t)
+	updater, db, cleanup := createTestUpdater(t)
+	defer cleanup()
 	defer db.Close()
 
 	ctx := context.Background()
@@ -153,7 +178,8 @@ func TestRollingUpdaterUpgradeNode(t *testing.T) {
 }
 
 func TestRollingUpdaterRestoreNode(t *testing.T) {
-	updater, db := createTestUpdater(t)
+	updater, db, cleanup := createTestUpdater(t)
+	defer cleanup()
 	defer db.Close()
 
 	ctx := context.Background()
