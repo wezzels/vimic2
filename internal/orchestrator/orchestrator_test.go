@@ -426,18 +426,16 @@ func TestListBackups(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	rm := orchestrator.NewRecoveryManagerWithLogger(db, backupDir, logger)
 
-	// Create multiple backups with delay to ensure unique IDs (Unix seconds)
+	// Create multiple backups (IDs use nanoseconds so no delay needed)
 	ctx := context.Background()
 	_, err = rm.CreateBackup(ctx, "list-test", "Backup 1")
 	if err != nil {
 		t.Fatalf("Failed to create backup 1: %v", err)
 	}
-	time.Sleep(1 * time.Second) // Ensure unique Unix timestamp
 	_, err = rm.CreateBackup(ctx, "list-test", "Backup 2")
 	if err != nil {
 		t.Fatalf("Failed to create backup 2: %v", err)
 	}
-	time.Sleep(1 * time.Second) // Ensure unique Unix timestamp
 	_, err = rm.CreateBackup(ctx, "list-test", "Backup 3")
 	if err != nil {
 		t.Fatalf("Failed to create backup 3: %v", err)

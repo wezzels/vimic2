@@ -122,7 +122,7 @@ func (r *RecoveryManager) CreateBackup(ctx context.Context, clusterID, notes str
 	}
 
 	backup := &Backup{
-		ID:          fmt.Sprintf("backup-%d", time.Now().Unix()),
+		ID:          fmt.Sprintf("backup-%d", time.Now().UnixNano()),
 		ClusterID:   clusterID,
 		ClusterName: cluster.Name,
 		Nodes:       make([]*BackupNode, 0, len(nodes)),
