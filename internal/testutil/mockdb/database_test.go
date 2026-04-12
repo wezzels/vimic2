@@ -173,7 +173,7 @@ func TestMockDB_Alert(t *testing.T) {
 
 	alert := &mockdb.Alert{
 		ID:        "alert-1",
-		NodeID:     "node-1",
+		NodeID:    "node-1",
 		Type:      "cpu_high",
 		Message:   "CPU usage above 80%",
 		Severity:  "warning",

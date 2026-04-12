@@ -26,12 +26,12 @@ const (
 type TunnelProtocol string
 
 const (
-	TunnelVXLAN   TunnelProtocol = "vxlan"
-	TunnelGRE     TunnelProtocol = "gre"
-	TunnelGeneve  TunnelProtocol = "geneve"
-	TunnelGRETAP  TunnelProtocol = "gretap"
-	TunnelIPinIP  TunnelProtocol = "ipip"
-	TunnelSIT     TunnelProtocol = "sit"
+	TunnelVXLAN  TunnelProtocol = "vxlan"
+	TunnelGRE    TunnelProtocol = "gre"
+	TunnelGeneve TunnelProtocol = "geneve"
+	TunnelGRETAP TunnelProtocol = "gretap"
+	TunnelIPinIP TunnelProtocol = "ipip"
+	TunnelSIT    TunnelProtocol = "sit"
 )
 
 // InterfaceState defines the state of a network interface
@@ -52,28 +52,28 @@ type Network struct {
 
 	// Bridge configuration
 	BridgeName string `json:"bridge_name"`
-	VLANID     int    `json:"vlan_id,omitempty"`     // 0 = trunk, 1-4094 = VLAN
-	VLANs      []int  `json:"vlans,omitempty"`      // Multiple VLANs for trunk
+	VLANID     int    `json:"vlan_id,omitempty"` // 0 = trunk, 1-4094 = VLAN
+	VLANs      []int  `json:"vlans,omitempty"`   // Multiple VLANs for trunk
 
 	// IP configuration
-	CIDR       string `json:"cidr"`                 // Network CIDR (e.g., 10.0.0.0/24)
-	Gateway    string `json:"gateway"`              // Gateway IP
-	DNS        []string `json:"dns"`                 // DNS servers
+	CIDR    string   `json:"cidr"`    // Network CIDR (e.g., 10.0.0.0/24)
+	Gateway string   `json:"gateway"` // Gateway IP
+	DNS     []string `json:"dns"`     // DNS servers
 
 	// DHCP configuration
 	DHCPEnabled bool   `json:"dhcp_enabled"`
-	DHCPStart   string `json:"dhcp_start"`          // DHCP range start
-	DHCPEnd     string `json:"dhcp_end"`            // DHCP range end
+	DHCPStart   string `json:"dhcp_start"` // DHCP range start
+	DHCPEnd     string `json:"dhcp_end"`   // DHCP range end
 
 	// Interfaces assigned to this network
-	Interfaces []string `json:"interfaces"`         // Interface IDs
+	Interfaces []string `json:"interfaces"` // Interface IDs
 
 	// Firewall rules
 	FirewallRules []FirewallRule `json:"firewall_rules,omitempty"`
 
 	// NAT configuration
 	NATEnabled bool   `json:"nat_enabled"`
-	ExternalIP  string `json:"external_ip,omitempty"`
+	ExternalIP string `json:"external_ip,omitempty"`
 
 	// Metadata
 	CreatedAt time.Time `json:"created_at"`
@@ -82,23 +82,23 @@ type Network struct {
 
 // Router represents a virtual router
 type Router struct {
-	ID           string      `json:"id"`
-	Name         string      `json:"name"`
-	NetworkID    string      `json:"network_id"`        // Primary network
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	NetworkID    string            `json:"network_id"` // Primary network
 	Interfaces   []RouterInterface `json:"interfaces"`
-	RoutingTable []Route    `json:"routing_table"`
-	NATRules    []NATRule  `json:"nat_rules"`
-	Enabled     bool       `json:"enabled"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	RoutingTable []Route           `json:"routing_table"`
+	NATRules     []NATRule         `json:"nat_rules"`
+	Enabled      bool              `json:"enabled"`
+	CreatedAt    time.Time         `json:"created_at"`
+	UpdatedAt    time.Time         `json:"updated_at"`
 }
 
 // RouterInterface represents a router interface
 type RouterInterface struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
-	NetworkID  string `json:"network_id"`        // Connected network
-	IPAddress  string `json:"ip_address"`        // IP on this network
+	NetworkID  string `json:"network_id"` // Connected network
+	IPAddress  string `json:"ip_address"` // IP on this network
 	MACAddress string `json:"mac_address"`
 	VLANID     int    `json:"vlan_id,omitempty"` // VLAN tag
 	Enabled    bool   `json:"enabled"`
@@ -107,86 +107,86 @@ type RouterInterface struct {
 // Route represents a routing table entry
 type Route struct {
 	ID          string `json:"id"`
-	Destination string `json:"destination"`      // CIDR
-	Gateway     string `json:"gateway"`          // Next hop
-	Interface   string `json:"interface"`        // Interface name
-	Metric      int    `json:"metric"`           // Route preference
-	Type        string `json:"type"`             // static, connected, ospf, bgp
+	Destination string `json:"destination"` // CIDR
+	Gateway     string `json:"gateway"`     // Next hop
+	Interface   string `json:"interface"`   // Interface name
+	Metric      int    `json:"metric"`      // Route preference
+	Type        string `json:"type"`        // static, connected, ospf, bgp
 	Enabled     bool   `json:"enabled"`
 }
 
 // NATRule represents a NAT rule
 type NATRule struct {
 	ID           string `json:"id"`
-	Type         string `json:"type"`           // snat, dnat, masquerade
-	SourceCIDR   string `json:"source_cidr"`    // Source network
-	DestCIDR     string `json:"dest_cidr"`       // Destination network
-	ExternalIP   string `json:"external_ip"`     // External IP for SNAT
-	ExternalPort int    `json:"external_port"`   // External port for DNAT
-	InternalIP   string `json:"internal_ip"`     // Internal IP for DNAT
-	InternalPort int    `json:"internal_port"`   // Internal port for DNAT
-	Protocol     string `json:"protocol"`        // tcp, udp, all
+	Type         string `json:"type"`          // snat, dnat, masquerade
+	SourceCIDR   string `json:"source_cidr"`   // Source network
+	DestCIDR     string `json:"dest_cidr"`     // Destination network
+	ExternalIP   string `json:"external_ip"`   // External IP for SNAT
+	ExternalPort int    `json:"external_port"` // External port for DNAT
+	InternalIP   string `json:"internal_ip"`   // Internal IP for DNAT
+	InternalPort int    `json:"internal_port"` // Internal port for DNAT
+	Protocol     string `json:"protocol"`      // tcp, udp, all
 	Enabled      bool   `json:"enabled"`
 }
 
 // Firewall represents a virtual firewall
 type Firewall struct {
-	ID        string        `json:"id"`
-	Name      string        `json:"name"`
-	NetworkID string        `json:"network_id"`
-	Rules     []FirewallRule `json:"rules"`
-	DefaultPolicy string    `json:"default_policy"` // accept, drop, reject
-	Enabled   bool          `json:"enabled"`
-	Logging   bool          `json:"logging"`
-	CreatedAt time.Time    `json:"created_at"`
-	UpdatedAt time.Time    `json:"updated_at"`
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	NetworkID     string         `json:"network_id"`
+	Rules         []FirewallRule `json:"rules"`
+	DefaultPolicy string         `json:"default_policy"` // accept, drop, reject
+	Enabled       bool           `json:"enabled"`
+	Logging       bool           `json:"logging"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 // FirewallRule represents a firewall rule
 type FirewallRule struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Direction   string `json:"direction"`      // ingress, egress
-	Protocol    string `json:"protocol"`       // tcp, udp, icmp, all
-	SourceCIDR  string `json:"source_cidr"`    // Source network
-	DestCIDR    string `json:"dest_cidr"`      // Destination network
-	SourcePort  int    `json:"source_port"`     // Source port
-	DestPort    int    `json:"dest_port"`       // Destination port
-	Action      string `json:"action"`         // accept, drop, reject
-	Priority    int    `json:"priority"`       // Rule priority
-	Enabled     bool   `json:"enabled"`
-	Log         bool   `json:"log"`            // Log matches
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Direction  string `json:"direction"`   // ingress, egress
+	Protocol   string `json:"protocol"`    // tcp, udp, icmp, all
+	SourceCIDR string `json:"source_cidr"` // Source network
+	DestCIDR   string `json:"dest_cidr"`   // Destination network
+	SourcePort int    `json:"source_port"` // Source port
+	DestPort   int    `json:"dest_port"`   // Destination port
+	Action     string `json:"action"`      // accept, drop, reject
+	Priority   int    `json:"priority"`    // Rule priority
+	Enabled    bool   `json:"enabled"`
+	Log        bool   `json:"log"` // Log matches
 }
 
 // Tunnel represents a tunnel between networks/routers
 type Tunnel struct {
-	ID          string         `json:"id"`
-	Name        string         `json:"name"`
-	Protocol    TunnelProtocol `json:"protocol"`
-	LocalIP     string         `json:"local_ip"`
-	RemoteIP    string         `json:"remote_ip"`
-	VNI         int            `json:"vni"`           // VXLAN VNI / GRE key
-	SourcePort  int            `json:"source_port"`   // UDP source port
-	DestPort    int            `json:"dest_port"`     // UDP dest port
-	NetworkID   string         `json:"network_id"`    // Associated network
-	RouterID    string         `json:"router_id"`     // Associated router (optional)
-	Enabled     bool           `json:"enabled"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	ID         string         `json:"id"`
+	Name       string         `json:"name"`
+	Protocol   TunnelProtocol `json:"protocol"`
+	LocalIP    string         `json:"local_ip"`
+	RemoteIP   string         `json:"remote_ip"`
+	VNI        int            `json:"vni"`         // VXLAN VNI / GRE key
+	SourcePort int            `json:"source_port"` // UDP source port
+	DestPort   int            `json:"dest_port"`   // UDP dest port
+	NetworkID  string         `json:"network_id"`  // Associated network
+	RouterID   string         `json:"router_id"`   // Associated router (optional)
+	Enabled    bool           `json:"enabled"`
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
 }
 
 // VMInterface represents a VM's network interface
 type VMInterface struct {
 	ID           string         `json:"id"`
 	VMID         string         `json:"vm_id"`
-	Name         string         `json:"name"`          // eth0, eth1, etc.
+	Name         string         `json:"name"` // eth0, eth1, etc.
 	MACAddress   string         `json:"mac_address"`
 	IPAddress    string         `json:"ip_address"`
-	NetworkID    string         `json:"network_id"`    // Connected network
-	VLANID       int            `json:"vlan_id"`       // VLAN tag
-	TrunkVLANs   []int          `json:"trunk_vlans"`   // Trunk ports
+	NetworkID    string         `json:"network_id"`  // Connected network
+	VLANID       int            `json:"vlan_id"`     // VLAN tag
+	TrunkVLANs   []int          `json:"trunk_vlans"` // Trunk ports
 	MTU          int            `json:"mtu"`
-	Bandwidth    int64          `json:"bandwidth"`     // Mbps rate limit
+	Bandwidth    int64          `json:"bandwidth"` // Mbps rate limit
 	State        InterfaceState `json:"state"`
 	PortSecurity bool           `json:"port_security"` // Enable port security
 	CreatedAt    time.Time      `json:"created_at"`
@@ -198,11 +198,11 @@ type SwitchPort struct {
 	ID         string   `json:"id"`
 	Name       string   `json:"name"`
 	BridgeName string   `json:"bridge_name"`
-	Type       string   `json:"type"`         // access, trunk, tunnel
+	Type       string   `json:"type"` // access, trunk, tunnel
 	VLANID     int      `json:"vlan_id"`
 	TrunkVLANs []int    `json:"trunk_vlans"`
-	Interfaces []string `json:"interfaces"`   // VM interfaces
-	TunnelID   string   `json:"tunnel_id"`   // For tunnel ports
+	Interfaces []string `json:"interfaces"` // VM interfaces
+	TunnelID   string   `json:"tunnel_id"`  // For tunnel ports
 	Enabled    bool     `json:"enabled"`
 }
 
@@ -630,10 +630,10 @@ type NetworkStats struct {
 	TxBytes        int64  `json:"tx_bytes"`
 	RxPackets      int64  `json:"rx_packets"`
 	TxPackets      int64  `json:"tx_packets"`
-	RxErrors      int64  `json:"rx_errors"`
-	TxErrors      int64  `json:"tx_errors"`
+	RxErrors       int64  `json:"rx_errors"`
+	TxErrors       int64  `json:"tx_errors"`
 	ConnectedPorts int    `json:"connected_ports"`
-	FlowCount     int    `json:"flow_count"`
+	FlowCount      int    `json:"flow_count"`
 }
 
 // generateID generates a unique ID with prefix

@@ -118,9 +118,9 @@ func TestServerConfig_Validation(t *testing.T) {
 		{
 			name: "With TLS",
 			config: &ServerConfig{
-				ListenAddr:  ":443",
-				TLSCert:     "/path/to/cert.pem",
-				TLSKey:      "/path/to/key.pem",
+				ListenAddr: ":443",
+				TLSCert:    "/path/to/cert.pem",
+				TLSKey:     "/path/to/key.pem",
 			},
 			valid: true,
 		},
@@ -167,11 +167,11 @@ func TestServer_HandleHealth(t *testing.T) {
 func TestJSON_EncodingDecoding(t *testing.T) {
 	// Test pipeline request encoding
 	req := map[string]interface{}{
-		"platform":      "docker",
-		"repository":    "github.com/user/repo",
-		"branch":        "main",
-		"runner_count":  3,
-		"labels":        []string{"linux", "x64"},
+		"platform":     "docker",
+		"repository":   "github.com/user/repo",
+		"branch":       "main",
+		"runner_count": 3,
+		"labels":       []string{"linux", "x64"},
 	}
 
 	data, err := json.Marshal(req)

@@ -8,15 +8,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/stsgym/vimic2/internal/database"
 	"go.uber.org/zap"
+
+	"github.com/stsgym/vimic2/internal/database"
 )
 
 // RecoveryManager handles cluster backup and restore
 type RecoveryManager struct {
-	db         *database.DB
-	backupDir  string
-	sugar      *zap.SugaredLogger
+	db        *database.DB
+	backupDir string
+	sugar     *zap.SugaredLogger
 }
 
 // NewRecoveryManager creates a new recovery manager
@@ -39,22 +40,22 @@ func NewRecoveryManager(db *database.DB, backupDir string) *RecoveryManager {
 
 // Backup holds a cluster backup
 type Backup struct {
-	ID          string    `json:"id"`
-	ClusterID   string    `json:"cluster_id"`
-	ClusterName string    `json:"cluster_name"`
+	ID          string        `json:"id"`
+	ClusterID   string        `json:"cluster_id"`
+	ClusterName string        `json:"cluster_name"`
 	Nodes       []*BackupNode `json:"nodes"`
-	CreatedAt   time.Time `json:"created_at"`
-	Notes       string    `json:"notes"`
+	CreatedAt   time.Time     `json:"created_at"`
+	Notes       string        `json:"notes"`
 }
 
 // BackupNode holds node backup info
 type BackupNode struct {
-	ID        string            `json:"id"`
-	Name      string            `json:"name"`
-	Role      string            `json:"role"`
-	HostID    string            `json:"host_id"`
-	Config    map[string]interface{} `json:"config"`
-	IP        string            `json:"ip"`
+	ID     string                 `json:"id"`
+	Name   string                 `json:"name"`
+	Role   string                 `json:"role"`
+	HostID string                 `json:"host_id"`
+	Config map[string]interface{} `json:"config"`
+	IP     string                 `json:"ip"`
 }
 
 // CPU returns the CPU count from config
@@ -139,12 +140,12 @@ func (r *RecoveryManager) CreateBackup(ctx context.Context, clusterID, notes str
 		}
 
 		backup.Nodes = append(backup.Nodes, &BackupNode{
-			ID:        node.ID,
-			Name:      node.Name,
-			Role:      node.Role,
-			HostID:    node.HostID,
-			Config:    config,
-			IP:        node.IP,
+			ID:     node.ID,
+			Name:   node.Name,
+			Role:   node.Role,
+			HostID: node.HostID,
+			Config: config,
+			IP:     node.IP,
 		})
 	}
 

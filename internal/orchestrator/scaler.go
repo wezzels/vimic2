@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/stsgym/vimic2/internal/cluster"
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/monitor"
-	"go.uber.org/zap"
 )
 
 // AutoScaler handles automatic cluster scaling
@@ -27,16 +28,16 @@ type AutoScaler struct {
 
 // ScaleRule defines when to scale
 type ScaleRule struct {
-	ClusterID       string
-	Metric          string  // cpu, memory
-	UpperThreshold  float64 // Scale up when above
-	LowerThreshold  float64 // Scale down when below
-	ScaleUpCount    int     // Nodes to add
-	ScaleDownCount  int     // Nodes to remove
-	Cooldown        time.Duration
-	LastScaleUp     time.Time
-	LastScaleDown   time.Time
-	Enabled         bool
+	ClusterID      string
+	Metric         string  // cpu, memory
+	UpperThreshold float64 // Scale up when above
+	LowerThreshold float64 // Scale down when below
+	ScaleUpCount   int     // Nodes to add
+	ScaleDownCount int     // Nodes to remove
+	Cooldown       time.Duration
+	LastScaleUp    time.Time
+	LastScaleDown  time.Time
+	Enabled        bool
 }
 
 // NewAutoScaler creates a new auto-scaler
@@ -140,7 +141,7 @@ func (a *AutoScaler) evaluate(clusterID string, rule *ScaleRule) error {
 	if err != nil {
 		return err
 	}
-	
+
 	maxNodes := 100
 	minNodes := 1
 	if cluster.Config != nil {
@@ -154,7 +155,7 @@ func (a *AutoScaler) evaluate(clusterID string, rule *ScaleRule) error {
 	// Scale up
 	if currentValue >= rule.UpperThreshold && canScaleUp && currentNodes < maxNodes {
 		a.sugar.Infow("Scaling up cluster", "cluster", clusterID, "metric", rule.Metric, "value", currentValue)
-		
+
 		if err := a.clusterMgr.ScaleCluster(context.Background(), clusterID, currentNodes+rule.ScaleUpCount); err != nil {
 			return fmt.Errorf("failed to scale up: %w", err)
 		}
@@ -164,12 +165,12 @@ func (a *AutoScaler) evaluate(clusterID string, rule *ScaleRule) error {
 	// Scale down
 	if currentValue <= rule.LowerThreshold && canScaleDown && currentNodes > minNodes {
 		a.sugar.Infow("Scaling down cluster", "cluster", clusterID, "metric", rule.Metric, "value", currentValue)
-		
+
 		newCount := currentNodes - rule.ScaleDownCount
 		if newCount < minNodes {
 			newCount = minNodes
 		}
-		
+
 		if err := a.clusterMgr.ScaleCluster(context.Background(), clusterID, newCount); err != nil {
 			return fmt.Errorf("failed to scale down: %w", err)
 		}

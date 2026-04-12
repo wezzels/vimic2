@@ -287,14 +287,14 @@ func TestTunnel_Creation(t *testing.T) {
 // TestVMInterface_Creation tests VM interface creation
 func TestVMInterface_Creation(t *testing.T) {
 	iface := &VMInterface{
-		ID:           "iface-1",
-		VMID:         "vm-1",
-		Name:         "eth0",
-		MACAddress:   "52:54:00:12:34:56",
-		IPAddress:    "192.168.1.100",
-		NetworkID:    "network-1",
-		VLANID:       100,
-		Bandwidth:    1000,
+		ID:         "iface-1",
+		VMID:       "vm-1",
+		Name:       "eth0",
+		MACAddress: "52:54:00:12:34:56",
+		IPAddress:  "192.168.1.100",
+		NetworkID:  "network-1",
+		VLANID:     100,
+		Bandwidth:  1000,
 	}
 
 	if iface.ID != "iface-1" {

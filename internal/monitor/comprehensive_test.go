@@ -33,9 +33,9 @@ func TestClusterMetrics_Aggregation(t *testing.T) {
 // TestAlertRule_Thresholds tests alert threshold logic
 func TestAlertRule_Thresholds(t *testing.T) {
 	tests := []struct {
-		name      string
-		threshold float64
-		value     float64
+		name        string
+		threshold   float64
+		value       float64
 		shouldAlert bool
 	}{
 		{"CPU at limit", 80.0, 80.0, true},

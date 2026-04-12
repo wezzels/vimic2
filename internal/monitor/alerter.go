@@ -12,9 +12,9 @@ import (
 type AlertRule struct {
 	ID        string  `json:"id"`
 	Name      string  `json:"name"`
-	Metric    string  `json:"metric"`    // cpu, memory, disk
+	Metric    string  `json:"metric"` // cpu, memory, disk
 	Threshold float64 `json:"threshold"`
-	Duration  int     `json:"duration"`  // seconds the condition must persist
+	Duration  int     `json:"duration"` // seconds the condition must persist
 	Enabled   bool    `json:"enabled"`
 }
 
@@ -53,12 +53,12 @@ func (a *Alerter) SetCallback(cb func(*database.Alert)) {
 // Evaluate checks metrics against rules and fires alerts
 func (a *Alerter) Evaluate(nodeID, nodeName string, m *database.Metric) []*database.Alert {
 	var fired []*database.Alert
-	
+
 	for _, rule := range a.rules {
 		if !rule.Enabled {
 			continue
 		}
-		
+
 		value := a.getMetricValue(m, rule.Metric)
 		if value >= rule.Threshold {
 			// Check if we already have an active alert for this node/rule
@@ -67,7 +67,7 @@ func (a *Alerter) Evaluate(nodeID, nodeName string, m *database.Metric) []*datab
 				fired = append(fired, existing)
 				continue
 			}
-			
+
 			// Create new alert
 			alert := &database.Alert{
 				ID:        fmt.Sprintf("alert-%d", time.Now().UnixNano()),
@@ -81,24 +81,24 @@ func (a *Alerter) Evaluate(nodeID, nodeName string, m *database.Metric) []*datab
 				FiredAt:   time.Now(),
 				Resolved:  false,
 			}
-			
+
 			key = fmt.Sprintf("%s-%s", nodeID, rule.ID)
 			a.alerts[key] = alert
-			
+
 			// Save to database if available
 			if a.db != nil {
 				a.db.SaveAlert(alert)
 			}
-			
+
 			// Fire callback if set
 			if a.callback != nil {
 				a.callback(alert)
 			}
-			
+
 			fired = append(fired, alert)
 		}
 	}
-	
+
 	return fired
 }
 
@@ -109,7 +109,7 @@ func (a *Alerter) ResolveAlert(nodeID, ruleID string) {
 		alert.Resolved = true
 		now := time.Now()
 		alert.ResolvedAt = &now
-		
+
 		// Update in database
 		if a.db != nil {
 			a.db.SaveAlert(alert)

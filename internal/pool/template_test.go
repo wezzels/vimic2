@@ -82,8 +82,8 @@ func TestOverlay_Structure(t *testing.T) {
 		ID:         "overlay-2",
 		TemplateID: "template-1",
 		VMID:       "vm-1",
-		Path:        "/var/lib/vimic2/overlays/vm-1.qcow2",
-		CreatedAt:   now,
+		Path:       "/var/lib/vimic2/overlays/vm-1.qcow2",
+		CreatedAt:  now,
 	}
 
 	if overlay.ID != "overlay-2" {
@@ -107,8 +107,8 @@ func TestOverlay_JSONMarshaling(t *testing.T) {
 		ID:         "overlay-2",
 		TemplateID: "template-1",
 		VMID:       "vm-1",
-		Path:        "/var/lib/vimic2/overlays/vm-1.qcow2",
-		CreatedAt:   now,
+		Path:       "/var/lib/vimic2/overlays/vm-1.qcow2",
+		CreatedAt:  now,
 	}
 
 	data, err := json.Marshal(overlay)
@@ -198,8 +198,8 @@ func TestTemplateManager_AddOverlayToMap(t *testing.T) {
 		ID:         "overlay-1",
 		TemplateID: "template-1",
 		VMID:       "vm-1",
-		Path:        "/var/lib/vimic2/overlays/vm-1.qcow2",
-		CreatedAt:   time.Now(),
+		Path:       "/var/lib/vimic2/overlays/vm-1.qcow2",
+		CreatedAt:  time.Now(),
 	}
 
 	tm.overlays[overlay.ID] = overlay
@@ -248,9 +248,9 @@ func TestOverlay_DestroyedAt(t *testing.T) {
 		ID:          "overlay-3",
 		TemplateID:  "template-1",
 		VMID:        "vm-1",
-		Path:         "/var/lib/vimic2/overlays/vm-1.qcow2",
-		CreatedAt:    now,
-		DestroyedAt:  &destroyed,
+		Path:        "/var/lib/vimic2/overlays/vm-1.qcow2",
+		CreatedAt:   now,
+		DestroyedAt: &destroyed,
 	}
 
 	if overlay.DestroyedAt == nil {

@@ -40,8 +40,8 @@ type Cluster struct {
 
 // ClusterConfig represents cluster configuration
 type ClusterConfig struct {
-	MinNodes  int `json:"min_nodes"`
-	MaxNodes  int `json:"max_nodes"`
+	MinNodes  int  `json:"min_nodes"`
+	MaxNodes  int  `json:"max_nodes"`
 	AutoScale bool `json:"auto_scale"`
 }
 

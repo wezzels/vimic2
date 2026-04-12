@@ -51,7 +51,7 @@ func TestNetworkDB_SaveAndGetNetwork(t *testing.T) {
 		CIDR:        "192.168.1.0/24",
 		Gateway:     "192.168.1.1",
 		DHCPEnabled: true,
-		VLANID:       100,
+		VLANID:      100,
 	}
 
 	ctx := context.Background()

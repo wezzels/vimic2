@@ -15,7 +15,7 @@ import (
 type PipelineStatus string
 
 const (
-	PipelineStatusCreating  PipelineStatus = "creating"
+	PipelineStatusCreating PipelineStatus = "creating"
 	PipelineStatusRunning  PipelineStatus = "running"
 	PipelineStatusSuccess  PipelineStatus = "success"
 	PipelineStatusFailed   PipelineStatus = "failed"
@@ -59,67 +59,67 @@ const (
 
 // Pipeline represents a build pipeline
 type Pipeline struct {
-	ID           string         `json:"id"`
-	Platform     RunnerPlatform `json:"platform"`
-	Repository   string         `json:"repository"`
-	Branch       string         `json:"branch"`
-	CommitSHA    string         `json:"commit_sha"`
-	CommitMsg    string         `json:"commit_message"`
-	Author       string         `json:"author"`
-	Status       PipelineStatus `json:"status"`
-	NetworkID    string         `json:"network_id"`
-	StartTime    time.Time      `json:"start_time"`
-	EndTime     *time.Time     `json:"end_time,omitempty"`
-	Duration    int64          `json:"duration_seconds"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	ID         string         `json:"id"`
+	Platform   RunnerPlatform `json:"platform"`
+	Repository string         `json:"repository"`
+	Branch     string         `json:"branch"`
+	CommitSHA  string         `json:"commit_sha"`
+	CommitMsg  string         `json:"commit_message"`
+	Author     string         `json:"author"`
+	Status     PipelineStatus `json:"status"`
+	NetworkID  string         `json:"network_id"`
+	StartTime  time.Time      `json:"start_time"`
+	EndTime    *time.Time     `json:"end_time,omitempty"`
+	Duration   int64          `json:"duration_seconds"`
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
 }
 
 // Runner represents a CI/CD runner
 type Runner struct {
-	ID          string       `json:"id"`
-	PipelineID  string       `json:"pipeline_id"`
-	VMID        string       `json:"vm_id"`
+	ID          string         `json:"id"`
+	PipelineID  string         `json:"pipeline_id"`
+	VMID        string         `json:"vm_id"`
 	Platform    RunnerPlatform `json:"platform"`
-	PlatformID  string       `json:"platform_runner_id"`
-	Token       string       `json:"-"` // Sensitive, not serialized
-	Labels      []string     `json:"labels"`
-	Name        string       `json:"name"`
-	Status      RunnerStatus `json:"status"`
-	CurrentJob  string       `json:"current_job,omitempty"`
-	CreatedAt   time.Time    `json:"created_at"`
-	DestroyedAt *time.Time   `json:"destroyed_at,omitempty"`
+	PlatformID  string         `json:"platform_runner_id"`
+	Token       string         `json:"-"` // Sensitive, not serialized
+	Labels      []string       `json:"labels"`
+	Name        string         `json:"name"`
+	Status      RunnerStatus   `json:"status"`
+	CurrentJob  string         `json:"current_job,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
+	DestroyedAt *time.Time     `json:"destroyed_at,omitempty"`
 }
 
 // VM represents a virtual machine
 type VM struct {
-	ID          string  `json:"id"`
-	PoolID      string  `json:"pool_id"`
-	TemplateID  string  `json:"template_id"`
-	Name        string  `json:"name"`
-	IP          string  `json:"ip"`
-	MAC         string  `json:"mac"`
-	CPU         int     `json:"cpu"`
-	Memory      int     `json:"memory"`
-	State       VMState `json:"state"`
-	OverlayID   string  `json:"overlay_id"`
-	RunnerToken string  `json:"-"` // Sensitive
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string     `json:"id"`
+	PoolID      string     `json:"pool_id"`
+	TemplateID  string     `json:"template_id"`
+	Name        string     `json:"name"`
+	IP          string     `json:"ip"`
+	MAC         string     `json:"mac"`
+	CPU         int        `json:"cpu"`
+	Memory      int        `json:"memory"`
+	State       VMState    `json:"state"`
+	OverlayID   string     `json:"overlay_id"`
+	RunnerToken string     `json:"-"` // Sensitive
+	CreatedAt   time.Time  `json:"created_at"`
 	DestroyedAt *time.Time `json:"destroyed_at,omitempty"`
 }
 
 // Template represents a VM template
 type Template struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	BaseImage   string    `json:"base_image"`
-	Size        int64     `json:"size"`
-	Packages    []string `json:"packages"`
-	OS          string    `json:"os"`
-	OSVersion   string    `json:"os_version"`
-	Checksum    string    `json:"checksum"`
-	ReadOnly    bool      `json:"read_only"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	BaseImage string    `json:"base_image"`
+	Size      int64     `json:"size"`
+	Packages  []string  `json:"packages"`
+	OS        string    `json:"os"`
+	OSVersion string    `json:"os_version"`
+	Checksum  string    `json:"checksum"`
+	ReadOnly  bool      `json:"read_only"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Pool represents a VM pool
@@ -137,13 +137,13 @@ type Pool struct {
 
 // Network represents an isolated network
 type Network struct {
-	ID          string    `json:"id"`
-	PipelineID  string    `json:"pipeline_id"`
-	BridgeName  string    `json:"bridge_name"`
-	VLANID      int       `json:"vlan_id"`
-	CIDR        string    `json:"cidr"`
-	Gateway     string    `json:"gateway"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string     `json:"id"`
+	PipelineID  string     `json:"pipeline_id"`
+	BridgeName  string     `json:"bridge_name"`
+	VLANID      int        `json:"vlan_id"`
+	CIDR        string     `json:"cidr"`
+	Gateway     string     `json:"gateway"`
+	CreatedAt   time.Time  `json:"created_at"`
 	DestroyedAt *time.Time `json:"destroyed_at,omitempty"`
 }
 

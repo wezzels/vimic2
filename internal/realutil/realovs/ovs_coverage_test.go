@@ -329,6 +329,7 @@ func TestRealOVS_SetBridgeTrunk_NoBridge(t *testing.T) {
 		t.Error("SetBridgeTrunk should fail for non-existent bridge")
 	}
 }
+
 // TestRealOVS_GetBridge_NonExistent tests GetBridge with non-existent bridge
 func TestRealOVS_GetBridge_NonExistent(t *testing.T) {
 	c := realovs.NewClientWithDefaults()
@@ -416,8 +417,6 @@ func TestRealOVS_SetInterfaceOption_Invalid(t *testing.T) {
 	}
 }
 
-
-
 // TestRealOVS_GetBridge_Errors tests GetBridge error handling
 func TestRealOVS_GetBridge_Errors(t *testing.T) {
 	c := realovs.NewClientWithDefaults()
@@ -429,7 +428,7 @@ func TestRealOVS_GetBridge_Errors(t *testing.T) {
 	}
 }
 
-// TestRealOVS_ListPorts_Errors tests ListPorts error handling  
+// TestRealOVS_ListPorts_Errors tests ListPorts error handling
 func TestRealOVS_ListPorts_Errors(t *testing.T) {
 	c := realovs.NewClientWithDefaults()
 

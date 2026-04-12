@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/provisioner"
 	"github.com/stsgym/vimic2/pkg/hypervisor"
@@ -23,13 +24,13 @@ type Wizard struct {
 
 // Cluster holds the configuration being built
 type Cluster struct {
-	ID          string
-	Name        string
-	Hosts       []*HostRef
-	NodeGroups  []*NodeGroup
-	Network     *NetworkConfig
-	Status      string
-	DeployedAt  time.Time
+	ID         string
+	Name       string
+	Hosts      []*HostRef
+	NodeGroups []*NodeGroup
+	Network    *NetworkConfig
+	Status     string
+	DeployedAt time.Time
 }
 
 // HostRef references a host in the cluster
@@ -41,14 +42,14 @@ type HostRef struct {
 
 // NodeGroup defines a group of similar nodes
 type NodeGroup struct {
-	Name      string
-	Role      string
-	Count     int
-	CPU       int
-	MemoryMB  uint64
-	DiskGB    int
-	Image     string
-	HostID    string // Empty = auto-select
+	Name     string
+	Role     string
+	Count    int
+	CPU      int
+	MemoryMB uint64
+	DiskGB   int
+	Image    string
+	HostID   string // Empty = auto-select
 }
 
 // NetworkConfig holds network settings
@@ -61,13 +62,13 @@ type NetworkConfig struct {
 
 // Progress tracks deployment progress
 type Progress struct {
-	ClusterID   string
-	TotalNodes  int
+	ClusterID     string
+	TotalNodes    int
 	DeployedNodes int
-	CurrentNode string
-	Status      string // pending, deploying, running, error, complete
-	Error       error
-	StartedAt   time.Time
+	CurrentNode   string
+	Status        string // pending, deploying, running, error, complete
+	Error         error
+	StartedAt     time.Time
 }
 
 // NewWizard creates a new deployment wizard
@@ -75,7 +76,7 @@ func NewWizard() *Wizard {
 	return &Wizard{
 		step: 1,
 		cluster: &Cluster{
-			ID:   uuid.New().String(),
+			ID: uuid.New().String(),
 			Network: &NetworkConfig{
 				Type: "nat",
 				CIDR: "192.168.100.0/24",
@@ -150,16 +151,16 @@ func (w *Wizard) GetCluster() *Cluster {
 
 // Executor handles the actual deployment
 type Executor struct {
-	db         *database.DB
-	hosts      map[string]hypervisor.Hypervisor
+	db          *database.DB
+	hosts       map[string]hypervisor.Hypervisor
 	provisioner *provisioner.Manager
 }
 
 // NewExecutor creates a new deployment executor
 func NewExecutor(db *database.DB, hosts map[string]hypervisor.Hypervisor) *Executor {
 	return &Executor{
-		db:         db,
-		hosts:      hosts,
+		db:          db,
+		hosts:       hosts,
 		provisioner: provisioner.NewManager(""),
 	}
 }
@@ -172,10 +173,10 @@ func (e *Executor) Execute(ctx context.Context, cluster *Cluster, progress chan<
 	}
 
 	prog := &Progress{
-		ClusterID:   cluster.ID,
-		TotalNodes:  totalNodes,
-		Status:      "deploying",
-		StartedAt:   time.Now(),
+		ClusterID:  cluster.ID,
+		TotalNodes: totalNodes,
+		Status:     "deploying",
+		StartedAt:  time.Now(),
 	}
 	progress <- prog
 

@@ -41,12 +41,12 @@ func TestHostConnection_Create(t *testing.T) {
 // TestHostConnection_Local tests local host connection
 func TestHostConnection_Local(t *testing.T) {
 	conn := &HostConnection{
-		ID:       "local-1",
-		Name:     "localhost",
-		Address:  "127.0.0.1",
-		Port:     22,
-		User:     "root",
-		IsLocal:  true,
+		ID:      "local-1",
+		Name:    "localhost",
+		Address: "127.0.0.1",
+		Port:    22,
+		User:    "root",
+		IsLocal: true,
 	}
 
 	if !conn.IsLocal {
@@ -60,13 +60,13 @@ func TestHostConnection_Local(t *testing.T) {
 // TestHostConnection_Remote tests remote host connection
 func TestHostConnection_Remote(t *testing.T) {
 	conn := &HostConnection{
-		ID:       "remote-1",
-		Name:     "remote-server",
-		Address:  "10.0.0.50",
-		Port:     2222,
-		User:     "admin",
-		SSHKey:   "/home/admin/.ssh/id_rsa",
-		IsLocal:  false,
+		ID:      "remote-1",
+		Name:    "remote-server",
+		Address: "10.0.0.50",
+		Port:    2222,
+		User:    "admin",
+		SSHKey:  "/home/admin/.ssh/id_rsa",
+		IsLocal: false,
 	}
 
 	if conn.IsLocal {
@@ -240,14 +240,14 @@ func TestNewManager(t *testing.T) {
 // TestManager_GetHost tests GetConnection method
 func TestManager_GetHost(t *testing.T) {
 	mgr := NewManager(nil)
-	
+
 	// Add a host
 	mgr.hosts["test-1"] = &HostConnection{
 		ID:      "test-1",
 		Name:    "test-host",
 		Address: "192.168.1.100",
 	}
-	
+
 	// Get existing connection
 	conn, err := mgr.GetConnection("test-1")
 	if err != nil {
@@ -259,7 +259,7 @@ func TestManager_GetHost(t *testing.T) {
 	if conn.Name != "test-host" {
 		t.Errorf("expected name test-host, got %s", conn.Name)
 	}
-	
+
 	// Get non-existing connection
 	conn2, err := mgr.GetConnection("non-existent")
 	if err == nil {
@@ -273,18 +273,18 @@ func TestManager_GetHost(t *testing.T) {
 // TestManager_ListHosts tests ListHosts method
 func TestManager_ListHosts(t *testing.T) {
 	mgr := NewManager(nil)
-	
+
 	// Empty list
 	hosts := mgr.ListHosts()
 	if len(hosts) != 0 {
 		t.Errorf("expected empty list, got %d", len(hosts))
 	}
-	
+
 	// Add hosts
 	mgr.hosts["h1"] = &HostConnection{ID: "h1", Name: "host1"}
 	mgr.hosts["h2"] = &HostConnection{ID: "h2", Name: "host2"}
 	mgr.hosts["h3"] = &HostConnection{ID: "h3", Name: "host3"}
-	
+
 	hosts = mgr.ListHosts()
 	if len(hosts) != 3 {
 		t.Errorf("expected 3 hosts, got %d", len(hosts))
@@ -296,7 +296,7 @@ func TestManager_RemoveHost_Method(t *testing.T) {
 	mgr := NewManager(nil)
 	mgr.hosts["h1"] = &HostConnection{ID: "h1"}
 	mgr.hosts["h2"] = &HostConnection{ID: "h2"}
-	
+
 	// Remove existing
 	err := mgr.RemoveHost("h1")
 	if err != nil {
@@ -305,7 +305,7 @@ func TestManager_RemoveHost_Method(t *testing.T) {
 	if mgr.hosts["h1"] != nil {
 		t.Error("expected host to be removed")
 	}
-	
+
 	// Remove non-existing (should succeed)
 	err = mgr.RemoveHost("h99")
 	if err != nil {
@@ -316,7 +316,7 @@ func TestManager_RemoveHost_Method(t *testing.T) {
 // TestManager_isLocalAddress tests local address detection
 func TestManager_isLocalAddress(t *testing.T) {
 	mgr := NewManager(nil)
-	
+
 	tests := []struct {
 		addr     string
 		expected bool
@@ -326,7 +326,7 @@ func TestManager_isLocalAddress(t *testing.T) {
 		{"192.168.1.100", false},
 		{"10.0.0.50", false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.addr, func(t *testing.T) {
 			result := mgr.isLocalAddress(tt.addr)
@@ -343,7 +343,7 @@ func TestHostConnection_GetAddress(t *testing.T) {
 		Address: "192.168.1.100",
 		Port:    22,
 	}
-	
+
 	expected := "192.168.1.100:22"
 	result := fmt.Sprintf("%s:%d", conn.Address, conn.Port)
 	if result != expected {

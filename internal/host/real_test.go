@@ -10,8 +10,8 @@ import (
 // TestHostConnection_LocalAddress tests local address detection
 func TestHostConnection_LocalAddress(t *testing.T) {
 	tests := []struct {
-		addr     string
-		isLocal  bool
+		addr    string
+		isLocal bool
 	}{
 		{"localhost", true},
 		{"127.0.0.1", true},
@@ -24,8 +24,8 @@ func TestHostConnection_LocalAddress(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.addr, func(t *testing.T) {
 			// Local address check logic
-			isLocal := tt.addr == "localhost" || 
-				tt.addr == "127.0.0.1" || 
+			isLocal := tt.addr == "localhost" ||
+				tt.addr == "127.0.0.1" ||
 				tt.addr == "::1"
 
 			if isLocal != tt.isLocal {
@@ -171,12 +171,12 @@ func TestHostConnection_Fields(t *testing.T) {
 // TestHostInfo_Struct tests HostInfo struct
 func TestHostInfo_Struct(t *testing.T) {
 	info := &HostInfo{
-		ID:        "host-1",
-		Name:      "HV-1",
-		Address:   "192.168.1.10",
-		Status:    "online",
-		Nodes:     10,
-		CPUUsage:  45.5,
+		ID:       "host-1",
+		Name:     "HV-1",
+		Address:  "192.168.1.10",
+		Status:   "online",
+		Nodes:    10,
+		CPUUsage: 45.5,
 		MemUsage: 60.2,
 	}
 

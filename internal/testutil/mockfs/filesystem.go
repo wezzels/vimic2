@@ -11,11 +11,11 @@ import (
 
 // MockFile represents a mock file
 type MockFile struct {
-	Name    string
-	Content []byte
-	Mode    os.FileMode
-	ModTime time.Time
-	IsDir   bool
+	Name     string
+	Content  []byte
+	Mode     os.FileMode
+	ModTime  time.Time
+	IsDir    bool
 	Children map[string]*MockFile
 }
 
@@ -100,11 +100,11 @@ func (m *MockFilesystem) WriteFile(filename string, data []byte, perm os.FileMod
 	// Create or update file
 	filename = parts[len(parts)-1]
 	current.Children[filename] = &MockFile{
-		Name:     filename,
-		Content:  data,
-		Mode:     perm,
-		ModTime:  time.Now(),
-		IsDir:    false,
+		Name:    filename,
+		Content: data,
+		Mode:    perm,
+		ModTime: time.Now(),
+		IsDir:   false,
 	}
 
 	return nil
@@ -295,11 +295,11 @@ type mockFileInfo struct {
 }
 
 func (m *mockFileInfo) Name() string       { return m.name }
-func (m *mockFileInfo) Size() int64         { return m.size }
-func (m *mockFileInfo) Mode() os.FileMode   { return m.mode }
-func (m *mockFileInfo) ModTime() time.Time  { return m.modTime }
-func (m *mockFileInfo) IsDir() bool         { return m.isDir }
-func (m *mockFileInfo) Sys() interface{}    { return nil }
+func (m *mockFileInfo) Size() int64        { return m.size }
+func (m *mockFileInfo) Mode() os.FileMode  { return m.mode }
+func (m *mockFileInfo) ModTime() time.Time { return m.modTime }
+func (m *mockFileInfo) IsDir() bool        { return m.isDir }
+func (m *mockFileInfo) Sys() interface{}   { return nil }
 
 // MockFile implements io.Reader and io.Writer
 func (m *MockFile) Read(p []byte) (n int, err error) {

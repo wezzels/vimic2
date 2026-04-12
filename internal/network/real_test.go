@@ -378,7 +378,7 @@ func TestNetworkDB_GetStats(t *testing.T) {
 		network := &Network{
 			ID:   "net-" + string(rune('A'+i)),
 			Name: "network-" + string(rune('A'+i)),
-			CIDR:  "10.0.0.0/24",
+			CIDR: "10.0.0.0/24",
 		}
 		db.SaveNetwork(ctx, network)
 	}
@@ -397,7 +397,7 @@ func TestNetworkDB_GetStats(t *testing.T) {
 func TestIPAMManager_Creation(t *testing.T) {
 	config := &IPAMConfig{
 		BaseCIDR: "192.168.0.0/16",
-		DNS:     []string{"8.8.8.8"},
+		DNS:      []string{"8.8.8.8"},
 	}
 
 	// Just verify config creation
@@ -410,7 +410,7 @@ func TestIPAMManager_Creation(t *testing.T) {
 func TestIPAMConfigReal(t *testing.T) {
 	config := &IPAMConfig{
 		BaseCIDR: "10.0.0.0/24",
-		DNS:     []string{"8.8.8.8", "8.8.4.4"},
+		DNS:      []string{"8.8.8.8", "8.8.4.4"},
 	}
 
 	if len(config.DNS) != 2 {

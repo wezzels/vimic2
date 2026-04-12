@@ -12,10 +12,10 @@ import (
 
 // VLANAllocator manages VLAN ID allocation
 type VLANAllocator struct {
-	start   int
-	end     int
-	used    map[int]bool
-	mu      sync.RWMutex
+	start     int
+	end       int
+	used      map[int]bool
+	mu        sync.RWMutex
 	stateFile string
 }
 

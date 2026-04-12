@@ -26,24 +26,24 @@ type ArtifactManager struct {
 
 // Artifact represents a pipeline artifact
 type Artifact struct {
-	ID          string          `json:"id"`
-	PipelineID  string          `json:"pipeline_id"`
-	Type        string          `json:"type"`
-	Name        string          `json:"name"`
-	Path        string          `json:"path"`
-	Size        int64           `json:"size"`
-	Checksum    string          `json:"checksum"`
-	ContentType string          `json:"content_type"`
+	ID          string            `json:"id"`
+	PipelineID  string            `json:"pipeline_id"`
+	Type        string            `json:"type"`
+	Name        string            `json:"name"`
+	Path        string            `json:"path"`
+	Size        int64             `json:"size"`
+	Checksum    string            `json:"checksum"`
+	ContentType string            `json:"content_type"`
 	Metadata    map[string]string `json:"metadata"`
-	CreatedAt   time.Time        `json:"created_at"`
-	ExpiresAt   *time.Time       `json:"expires_at,omitempty"`
+	CreatedAt   time.Time         `json:"created_at"`
+	ExpiresAt   *time.Time        `json:"expires_at,omitempty"`
 }
 
 // ArtifactConfig represents artifact manager configuration
 type ArtifactConfig struct {
-	StoragePath string        `json:"storage_path"`
-	RetentionDays int         `json:"retention_days"`
-	MaxSize      int64         `json:"max_size"`
+	StoragePath   string `json:"storage_path"`
+	RetentionDays int    `json:"retention_days"`
+	MaxSize       int64  `json:"max_size"`
 }
 
 // NewArtifactManager creates a new artifact manager
@@ -52,7 +52,7 @@ func NewArtifactManager(db *PipelineDB, config *ArtifactConfig) (*ArtifactManage
 		config = &ArtifactConfig{
 			StoragePath:   filepath.Join(os.Getenv("HOME"), ".vimic2", "artifacts"),
 			RetentionDays: 30,
-			MaxSize:      100 * 1024 * 1024, // 100 MB
+			MaxSize:       100 * 1024 * 1024, // 100 MB
 		}
 	}
 

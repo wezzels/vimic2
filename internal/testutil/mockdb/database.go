@@ -9,18 +9,18 @@ import (
 
 // MockDB provides a mock database for testing
 type MockDB struct {
-	clusters    map[string]*Cluster
-	hosts       map[string]*Host
-	nodes       map[string]*Node
-	pipelines   map[string]*Pipeline
-	runners     map[string]*Runner
-	networks    map[string]*Network
-	pools       map[string]*Pool
-	metrics     map[string][]*Metric
-	alerts      map[string]*Alert
-	mu          sync.RWMutex
-	errMode     bool // If true, return errors
-	failNextOp  bool // Fail the next operation
+	clusters   map[string]*Cluster
+	hosts      map[string]*Host
+	nodes      map[string]*Node
+	pipelines  map[string]*Pipeline
+	runners    map[string]*Runner
+	networks   map[string]*Network
+	pools      map[string]*Pool
+	metrics    map[string][]*Metric
+	alerts     map[string]*Alert
+	mu         sync.RWMutex
+	errMode    bool // If true, return errors
+	failNextOp bool // Fail the next operation
 }
 
 // Cluster represents a cluster record

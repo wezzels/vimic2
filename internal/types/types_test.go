@@ -282,15 +282,15 @@ func TestPipeline_Create(t *testing.T) {
 // TestPipeline_JSON tests pipeline JSON marshaling
 func TestPipeline_JSON(t *testing.T) {
 	pipeline := &Pipeline{
-		ID:           "pipeline-1",
-		Platform:     PlatformGitHub,
-		Repository:   "https://github.com/test/repo",
-		Branch:       "main",
-		CommitSHA:    "abc123",
-		Status:       PipelineStatusSuccess,
-		StartTime:    time.Now(),
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		ID:         "pipeline-1",
+		Platform:   PlatformGitHub,
+		Repository: "https://github.com/test/repo",
+		Branch:     "main",
+		CommitSHA:  "abc123",
+		Status:     PipelineStatusSuccess,
+		StartTime:  time.Now(),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	data, err := json.Marshal(pipeline)

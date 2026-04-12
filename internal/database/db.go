@@ -185,14 +185,14 @@ func (d *DB) DeleteHost(id string) error {
 
 // ClusterConfig holds cluster configuration
 type ClusterConfig struct {
-	MinNodes      int               `json:"min_nodes"`
-	MaxNodes      int               `json:"max_nodes"`
-	AutoScale     bool              `json:"autoscale"`
-	ScaleOnCPU    float64           `json:"scale_on_cpu"`
-	ScaleOnMemory float64           `json:"scale_on_memory"`
-	CooldownSec   int               `json:"cooldown_sec"`
-	Network       *NetworkConfig    `json:"network"`
-	NodeDefaults  *NodeConfig       `json:"node_defaults"`
+	MinNodes      int            `json:"min_nodes"`
+	MaxNodes      int            `json:"max_nodes"`
+	AutoScale     bool           `json:"autoscale"`
+	ScaleOnCPU    float64        `json:"scale_on_cpu"`
+	ScaleOnMemory float64        `json:"scale_on_memory"`
+	CooldownSec   int            `json:"cooldown_sec"`
+	Network       *NetworkConfig `json:"network"`
+	NodeDefaults  *NodeConfig    `json:"node_defaults"`
 }
 
 // NetworkConfig holds network configuration
@@ -215,8 +215,8 @@ type Cluster struct {
 	Name      string         `json:"name"`
 	Config    *ClusterConfig `json:"config"`
 	Status    string         `json:"status"` // pending, deploying, running, degraded, error
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 }
 
 // SaveCluster saves a cluster to the database
@@ -304,16 +304,16 @@ func (d *DB) DeleteCluster(id string) error {
 
 // Node represents a virtual machine node
 type Node struct {
-	ID        string     `json:"id"`
-	ClusterID string     `json:"cluster_id"`
-	HostID    string     `json:"host_id"`
-	Name      string     `json:"name"`
-	Role      string     `json:"role"` // worker, database, master
-	State     string     `json:"state"` // pending, running, stopped, error
-	IP        string     `json:"ip"`
+	ID        string      `json:"id"`
+	ClusterID string      `json:"cluster_id"`
+	HostID    string      `json:"host_id"`
+	Name      string      `json:"name"`
+	Role      string      `json:"role"`  // worker, database, master
+	State     string      `json:"state"` // pending, running, stopped, error
+	IP        string      `json:"ip"`
 	Config    *NodeConfig `json:"config"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
 }
 
 // SaveNode saves a node to the database
@@ -493,17 +493,17 @@ func (d *DB) CleanupOldMetrics(olderThan time.Duration) (int64, error) {
 
 // Alert represents an alert
 type Alert struct {
-	ID          string     `json:"id"`
-	RuleID      string     `json:"rule_id"`
-	NodeID      string     `json:"node_id"`
-	NodeName    string     `json:"node_name"`
-	Metric      string     `json:"metric"`
-	Value       float64    `json:"value"`
-	Threshold   float64    `json:"threshold"`
-	Message     string     `json:"message"`
-	FiredAt     time.Time  `json:"fired_at"`
-	Resolved    bool       `json:"resolved"`
-	ResolvedAt  *time.Time `json:"resolved_at,omitempty"`
+	ID         string     `json:"id"`
+	RuleID     string     `json:"rule_id"`
+	NodeID     string     `json:"node_id"`
+	NodeName   string     `json:"node_name"`
+	Metric     string     `json:"metric"`
+	Value      float64    `json:"value"`
+	Threshold  float64    `json:"threshold"`
+	Message    string     `json:"message"`
+	FiredAt    time.Time  `json:"fired_at"`
+	Resolved   bool       `json:"resolved"`
+	ResolvedAt *time.Time `json:"resolved_at,omitempty"`
 }
 
 // SaveAlert saves an alert to the database

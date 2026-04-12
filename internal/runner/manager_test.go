@@ -81,8 +81,8 @@ func TestRunnerInfo_JSON(t *testing.T) {
 func TestRunnerManagerConfig_Create(t *testing.T) {
 	config := &RunnerManagerConfig{
 		GitLab: &GitLabConfig{
-			URL:   "https://gitlab.example.com",
-			Token: "glrt-xxx",
+			URL:    "https://gitlab.example.com",
+			Token:  "glrt-xxx",
 			Labels: []string{"docker"},
 		},
 		GitHub: &GitHubConfig{
@@ -118,8 +118,8 @@ func TestRunnerManagerConfig_Create(t *testing.T) {
 // TestGitLabConfig tests GitLab runner configuration
 func TestGitLabConfig_Create(t *testing.T) {
 	config := &GitLabConfig{
-		URL:   "https://gitlab.example.com",
-		Token: "glrt-xxx",
+		URL:    "https://gitlab.example.com",
+		Token:  "glrt-xxx",
 		Labels: []string{"docker"},
 	}
 
@@ -170,7 +170,7 @@ func TestJenkinsConfig_Create(t *testing.T) {
 func TestCircleCIConfig_Create(t *testing.T) {
 	config := &CircleCIConfig{
 		APIToken: "cci_xxx",
-		Name:    "test-runner",
+		Name:     "test-runner",
 	}
 
 	if config.APIToken != "cci_xxx" {
@@ -342,13 +342,13 @@ func TestRunnerInfo_DestroyedAt(t *testing.T) {
 // TestRunnerInfo_JSON_Fields tests JSON field names
 func TestRunnerInfo_JSON_Fields(t *testing.T) {
 	runner := &RunnerInfo{
-		ID:         "runner-1",
-		Platform:   types.PlatformGitLab,
-		Name:       "test-runner",
-		Labels:     []string{"docker"},
-		Status:     types.RunnerStatusOnline,
-		IPAddress:  "10.100.1.10",
-		CreatedAt:  time.Now(),
+		ID:        "runner-1",
+		Platform:  types.PlatformGitLab,
+		Name:      "test-runner",
+		Labels:    []string{"docker"},
+		Status:    types.RunnerStatusOnline,
+		IPAddress: "10.100.1.10",
+		CreatedAt: time.Now(),
 	}
 
 	data, err := json.Marshal(runner)

@@ -508,6 +508,7 @@ func TestRealDatabase_GetNodeMetrics_Empty(t *testing.T) {
 		t.Errorf("expected empty metrics, got %d", len(metrics))
 	}
 }
+
 // TestRealDatabase_NewDatabase_InvalidPath tests NewDatabase with invalid path
 func TestRealDatabase_NewDatabase_InvalidPath(t *testing.T) {
 	// Try to create database in non-existent directory
@@ -1834,7 +1835,7 @@ func TestRealDatabase_SaveCluster_JSONError(t *testing.T) {
 	}
 }
 
-// TestRealDatabase_SaveNode_JSONError tests SaveNode JSON handling  
+// TestRealDatabase_SaveNode_JSONError tests SaveNode JSON handling
 func TestRealDatabase_SaveNode_JSONError(t *testing.T) {
 	db, err := realdb.NewDatabaseWithDefaults(":memory:")
 	if err != nil {
@@ -2178,7 +2179,7 @@ func TestRealDatabase_VacuumOperation(t *testing.T) {
 
 	// Create some data
 	for i := 0; i < 100; i++ {
-		cluster := &realdb.Cluster{ID: string(rune('a'+i%26)), Name: "test", Status: "running"}
+		cluster := &realdb.Cluster{ID: string(rune('a' + i%26)), Name: "test", Status: "running"}
 		if err := db.SaveCluster(cluster); err != nil {
 			t.Fatal(err)
 		}
@@ -2433,13 +2434,6 @@ func TestRealDatabase_ListClusterNodes_JSONHandling(t *testing.T) {
 	}
 }
 
-
-
-
-
-
-
-
 func TestRealDatabase_Count_AfterOperations(t *testing.T) {
 	db, err := realdb.NewDatabaseWithDefaults(":memory:")
 	if err != nil {
@@ -2449,10 +2443,10 @@ func TestRealDatabase_Count_AfterOperations(t *testing.T) {
 
 	// Create multiple entities
 	for i := 0; i < 5; i++ {
-		cluster := &realdb.Cluster{ID: string(rune('a'+i)), Name: string(rune('a'+i)), Status: "running"}
+		cluster := &realdb.Cluster{ID: string(rune('a' + i)), Name: string(rune('a' + i)), Status: "running"}
 		db.SaveCluster(cluster)
 
-		host := &realdb.Host{ID: string(rune('a'+i)), Name: string(rune('a'+i)), Address: "10.0.0.1"}
+		host := &realdb.Host{ID: string(rune('a' + i)), Name: string(rune('a' + i)), Address: "10.0.0.1"}
 		db.SaveHost(host)
 	}
 
@@ -2737,7 +2731,6 @@ func TestRealDatabase_ListPools_WithData(t *testing.T) {
 	}
 }
 
-
 func TestRealDatabase_Vacuum_Method(t *testing.T) {
 	db, err := realdb.NewDatabaseWithDefaults(":memory:")
 	if err != nil {
@@ -2747,7 +2740,7 @@ func TestRealDatabase_Vacuum_Method(t *testing.T) {
 
 	// Create and delete data
 	for i := 0; i < 10; i++ {
-		cluster := &realdb.Cluster{ID: string(rune('a'+i)), Name: "test", Status: "running"}
+		cluster := &realdb.Cluster{ID: string(rune('a' + i)), Name: "test", Status: "running"}
 		db.SaveCluster(cluster)
 	}
 	for i := 0; i < 5; i++ {

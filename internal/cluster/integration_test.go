@@ -92,7 +92,7 @@ func TestIntegration_Cluster_Delete(t *testing.T) {
 	}
 
 	db, _ := database.NewDB(":memory:")
-	 hosts := make(map[string]hypervisor.Hypervisor)
+	hosts := make(map[string]hypervisor.Hypervisor)
 	mgr := NewManager(db, hosts)
 
 	cfg := &database.ClusterConfig{

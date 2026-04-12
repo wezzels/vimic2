@@ -14,24 +14,24 @@ import (
 
 // StateTracker manages VM state in memory with persistence
 type StateTracker struct {
-	db           types.PipelineDB
-	cache        map[string]*VMState
-	stateFile    string
-	eventChan    chan StateEvent
-	subscribers  map[string][]chan StateEvent
-	mu           sync.RWMutex
+	db          types.PipelineDB
+	cache       map[string]*VMState
+	stateFile   string
+	eventChan   chan StateEvent
+	subscribers map[string][]chan StateEvent
+	mu          sync.RWMutex
 }
 
 // VMState represents the state of a VM
 type VMState struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Status      string    `json:"status"`
-	IPAddress   string    `json:"ip_address"`
-	PoolName    string    `json:"pool_name"`
-	Template    string    `json:"template"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Status    string    `json:"status"`
+	IPAddress string    `json:"ip_address"`
+	PoolName  string    `json:"pool_name"`
+	Template  string    `json:"template"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // StateTransition represents a state transition

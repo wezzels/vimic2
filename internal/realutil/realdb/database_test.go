@@ -161,13 +161,13 @@ func TestRealDatabase_Node(t *testing.T) {
 
 	// Create host
 	host := &realdb.Host{
-		ID:         "host-1",
-		Name:       "worker-1",
-		Address:    "192.168.1.100",
-		Port:       22,
-		User:       "root",
-		HVType:     "libvirt",
-		CreatedAt:  time.Now(),
+		ID:        "host-1",
+		Name:      "worker-1",
+		Address:   "192.168.1.100",
+		Port:      22,
+		User:      "root",
+		HVType:    "libvirt",
+		CreatedAt: time.Now(),
 	}
 	_ = db.SaveHost(host)
 

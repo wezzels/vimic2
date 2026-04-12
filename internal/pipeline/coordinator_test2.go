@@ -12,22 +12,22 @@ import (
 // TestPipelineState tests pipeline state structure
 func TestPipelineState_Create(t *testing.T) {
 	state := &PipelineState{
-		ID:          "pipeline-1",
-		Platform:    types.PlatformGitLab,
-		Repository: "https://gitlab.example.com/test/repo",
-		Branch:      "main",
-		CommitSHA:   "abc123",
-		CommitMsg:   "Test commit",
-		Author:      "test@example.com",
-		Status:      types.PipelineStatusRunning,
-		NetworkID:   "network-1",
-		VMs:         []string{"vm-1", "vm-2"},
-		Runners:     []string{"runner-1"},
-		StartTime:   time.Now(),
-		Duration:    300,
+		ID:           "pipeline-1",
+		Platform:     types.PlatformGitLab,
+		Repository:   "https://gitlab.example.com/test/repo",
+		Branch:       "main",
+		CommitSHA:    "abc123",
+		CommitMsg:    "Test commit",
+		Author:       "test@example.com",
+		Status:       types.PipelineStatusRunning,
+		NetworkID:    "network-1",
+		VMs:          []string{"vm-1", "vm-2"},
+		Runners:      []string{"runner-1"},
+		StartTime:    time.Now(),
+		Duration:     300,
 		CurrentStage: "build",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
 	if state.ID != "pipeline-1" {
@@ -124,15 +124,15 @@ func TestPipelineEvent_Create(t *testing.T) {
 // TestPipelineState_JSON tests JSON marshaling
 func TestPipelineState_JSON(t *testing.T) {
 	state := &PipelineState{
-		ID:          "pipeline-1",
-		Platform:    types.PlatformGitLab,
+		ID:         "pipeline-1",
+		Platform:   types.PlatformGitLab,
 		Repository: "https://gitlab.example.com/test/repo",
-		Branch:      "main",
-		CommitSHA:   "abc123",
-		Status:      types.PipelineStatusRunning,
-		StartTime:   time.Now(),
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		Branch:     "main",
+		CommitSHA:  "abc123",
+		Status:     types.PipelineStatusRunning,
+		StartTime:  time.Now(),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	data, err := json.Marshal(state)
@@ -300,8 +300,8 @@ func TestPipelineState_Duration(t *testing.T) {
 // TestJobState_LogManagement tests log management
 func TestJobState_LogManagement(t *testing.T) {
 	job := &JobState{
-		ID:     "job-1",
-		Log:    []string{},
+		ID:  "job-1",
+		Log: []string{},
 	}
 
 	// Add log lines

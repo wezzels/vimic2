@@ -117,13 +117,13 @@ func TestTunnelCreation(t *testing.T) {
 	}
 
 	tunnel := &Tunnel{
-		Name:     "vxlan-tunnel",
-		Protocol: TunnelVXLAN,
-		LocalIP:  "192.168.1.1",
-		RemoteIP: "192.168.1.2",
-		VNI:      1000,
+		Name:      "vxlan-tunnel",
+		Protocol:  TunnelVXLAN,
+		LocalIP:   "192.168.1.1",
+		RemoteIP:  "192.168.1.2",
+		VNI:       1000,
 		NetworkID: "net-001",
-		Enabled:  true,
+		Enabled:   true,
 	}
 
 	err = mgr.CreateTunnel(context.Background(), tunnel)
@@ -323,17 +323,17 @@ func TestInterfaceOperations(t *testing.T) {
 	ctx := context.Background()
 
 	iface := &VMInterface{
-		ID:          "vif-001",
-		VMID:        "vm-001",
-		Name:        "eth0",
-		MACAddress:  "00:11:22:33:44:55",
-		IPAddress:   "10.0.0.10",
-		NetworkID:   "net-001",
-		VLANID:      100,
-		TrunkVLANs:  []int{100, 200, 300},
-		MTU:         1500,
-		Bandwidth:   1000,
-		State:       InterfaceUp,
+		ID:           "vif-001",
+		VMID:         "vm-001",
+		Name:         "eth0",
+		MACAddress:   "00:11:22:33:44:55",
+		IPAddress:    "10.0.0.10",
+		NetworkID:    "net-001",
+		VLANID:       100,
+		TrunkVLANs:   []int{100, 200, 300},
+		MTU:          1500,
+		Bandwidth:    1000,
+		State:        InterfaceUp,
 		PortSecurity: true,
 	}
 
@@ -379,24 +379,24 @@ func TestFirewallOperations(t *testing.T) {
 		Logging:       true,
 		Rules: []FirewallRule{
 			{
-				ID:         "rule-001",
-				Name:       "allow-web",
-				Direction:  "ingress",
-				Protocol:   "tcp",
-				DestPort:   80,
-				Action:     "accept",
-				Priority:   100,
-				Enabled:    true,
+				ID:        "rule-001",
+				Name:      "allow-web",
+				Direction: "ingress",
+				Protocol:  "tcp",
+				DestPort:  80,
+				Action:    "accept",
+				Priority:  100,
+				Enabled:   true,
 			},
 			{
-				ID:         "rule-002",
-				Name:       "allow-ssh",
-				Direction:  "ingress",
-				Protocol:   "tcp",
-				DestPort:   22,
-				Action:     "accept",
-				Priority:   90,
-				Enabled:    true,
+				ID:        "rule-002",
+				Name:      "allow-ssh",
+				Direction: "ingress",
+				Protocol:  "tcp",
+				DestPort:  22,
+				Action:    "accept",
+				Priority:  90,
+				Enabled:   true,
 			},
 		},
 	}

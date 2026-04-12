@@ -10,29 +10,31 @@ import (
 	"time"
 
 	"golang.org/x/crypto/ssh"
-	
+
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/pkg/hypervisor"
 )
 
 // Manager manages connections to multiple hypervisor hosts
 type Manager struct {
-	hosts     map[string]*HostConnection
-	db        *database.DB
+	hosts map[string]*HostConnection
+	db    *database.DB
+	// defaultHV is kept for future use when multi-hypervisor support is added
+	// nolint:unused
 	defaultHV hypervisor.Hypervisor
 }
 
 // HostConnection represents a connection to a hypervisor host
 type HostConnection struct {
-	ID       string
-	Name     string
-	Address  string
-	Port     int
-	User     string
-	SSHKey   string
-	client   *ssh.Client
-	hv       hypervisor.Hypervisor
-	IsLocal  bool
+	ID      string
+	Name    string
+	Address string
+	Port    int
+	User    string
+	SSHKey  string
+	client  *ssh.Client
+	hv      hypervisor.Hypervisor
+	IsLocal bool
 }
 
 // NewManager creates a new host manager
@@ -63,11 +65,11 @@ func (m *Manager) AddHost(cfg *database.Host) (*HostConnection, error) {
 	if conn.IsLocal {
 		// Use local hypervisor
 		hv, err := hypervisor.NewHypervisor(&hypervisor.HostConfig{
-			Address: cfg.Address,
-			Port:    cfg.Port,
-			User:    cfg.User,
+			Address:    cfg.Address,
+			Port:       cfg.Port,
+			User:       cfg.User,
 			SSHKeyPath: cfg.SSHKeyPath,
-			Type:   cfg.HVType,
+			Type:       cfg.HVType,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create local hypervisor: %w", err)
@@ -87,20 +89,20 @@ func (m *Manager) AddHost(cfg *database.Host) (*HostConnection, error) {
 // connectSSH establishes an SSH connection to a remote host
 func (m *Manager) connectSSH(conn *HostConnection) error {
 	auth := []ssh.AuthMethod{}
-	
+
 	if conn.SSHKey != "" {
 		key, err := os.ReadFile(conn.SSHKey)
 		if err != nil {
 			return fmt.Errorf("failed to read SSH key: %w", err)
 		}
-		
+
 		signer, err := ssh.ParsePrivateKey(key)
 		if err != nil {
 			return fmt.Errorf("failed to parse SSH key: %w", err)
 		}
 		auth = append(auth, ssh.PublicKeys(signer))
 	}
-	
+
 	// Try password auth if no key
 	if conn.User == "root" {
 		// Could prompt for password here
@@ -110,7 +112,7 @@ func (m *Manager) connectSSH(conn *HostConnection) error {
 	if conn.Port == 0 {
 		addr = fmt.Sprintf("%s:22", conn.Address)
 	}
-	
+
 	client, err := ssh.Dial("tcp", addr, &ssh.ClientConfig{
 		User:            conn.User,
 		Auth:            auth,
@@ -120,7 +122,7 @@ func (m *Manager) connectSSH(conn *HostConnection) error {
 	if err != nil {
 		return fmt.Errorf("failed to dial SSH: %w", err)
 	}
-	
+
 	conn.client = client
 	return nil
 }
@@ -134,7 +136,7 @@ func (m *Manager) isLocalAddress(addr string) bool {
 	if addr == "localhost" || addr == "127.0.0.1" || addr == "::1" {
 		return true
 	}
-	
+
 	// Check if it's the local IP
 	if net.ParseIP(addr) != nil {
 		ifaces, err := net.Interfaces()
@@ -153,7 +155,7 @@ func (m *Manager) isLocalAddress(addr string) bool {
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -162,18 +164,18 @@ func (m *Manager) GetHypervisor(hostID string) (hypervisor.Hypervisor, error) {
 	if conn, ok := m.hosts[hostID]; ok {
 		return conn.hv, nil
 	}
-	
+
 	// Try to load from database
 	host, err := m.db.GetHost(hostID)
 	if err != nil || host == nil {
 		return nil, fmt.Errorf("host not found: %s", hostID)
 	}
-	
+
 	conn, err := m.AddHost(host)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return conn.hv, nil
 }
 
@@ -213,13 +215,13 @@ func (c *HostConnection) ExecSSH(cmd string) ([]byte, error) {
 	if c.client == nil {
 		return nil, fmt.Errorf("not connected via SSH")
 	}
-	
+
 	session, err := c.client.NewSession()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 	defer session.Close()
-	
+
 	return session.CombinedOutput(cmd)
 }
 
@@ -235,7 +237,7 @@ func (m *Manager) RefreshConnections() error {
 	if err != nil {
 		return err
 	}
-	
+
 	for _, host := range hosts {
 		if _, ok := m.hosts[host.ID]; !ok {
 			if _, err := m.AddHost(host); err != nil {
@@ -244,7 +246,7 @@ func (m *Manager) RefreshConnections() error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -277,14 +279,14 @@ func (m *Manager) GetHostInfo(hostID string) (*HostInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	info := &HostInfo{
 		ID:      conn.ID,
 		Name:    conn.Name,
 		Address: conn.Address,
 		Status:  conn.GetStatus(),
 	}
-	
+
 	// Get node count and metrics
 	if conn.hv != nil {
 		nodes, err := conn.hv.ListNodes(context.Background())
@@ -292,7 +294,7 @@ func (m *Manager) GetHostInfo(hostID string) (*HostInfo, error) {
 			info.Nodes = len(nodes)
 		}
 	}
-	
+
 	return info, nil
 }
 
@@ -310,13 +312,13 @@ func NewBestHostSelector(hosts *Manager) *BestHostSelector {
 func (s *BestHostSelector) SelectHost() (string, error) {
 	var bestID string
 	var bestScore float64
-	
+
 	for id := range s.hosts.hosts {
 		info, err := s.hosts.GetHostInfo(id)
 		if err != nil {
 			continue
 		}
-		
+
 		// Simple score: lower usage = better
 		score := 100.0 - info.CPUUsage - info.MemUsage
 		if score > bestScore {
@@ -324,7 +326,7 @@ func (s *BestHostSelector) SelectHost() (string, error) {
 			bestID = id
 		}
 	}
-	
+
 	if bestID == "" {
 		// Default to first host
 		for id := range s.hosts.hosts {
@@ -332,6 +334,6 @@ func (s *BestHostSelector) SelectHost() (string, error) {
 		}
 		return "", fmt.Errorf("no hosts available")
 	}
-	
+
 	return bestID, nil
 }

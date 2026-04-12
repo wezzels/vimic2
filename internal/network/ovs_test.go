@@ -225,14 +225,14 @@ func TestOVSFirewallChain(t *testing.T) {
 	}
 
 	rule := FirewallRule{
-		ID:         "rule-001",
-		Name:       "allow-web",
-		Direction:  "ingress",
-		Protocol:   "tcp",
-		DestPort:   80,
-		Action:     "accept",
-		Priority:   100,
-		Enabled:    true,
+		ID:        "rule-001",
+		Name:      "allow-web",
+		Direction: "ingress",
+		Protocol:  "tcp",
+		DestPort:  80,
+		Action:    "accept",
+		Priority:  100,
+		Enabled:   true,
 	}
 
 	err = ovs.AddFirewallRule("fw-001", rule)

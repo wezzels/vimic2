@@ -11,7 +11,7 @@ import (
 // TestServerConfigDefaults tests server config defaults
 func TestServerConfig_Defaults(t *testing.T) {
 	cfg := &ServerConfig{}
-	
+
 	// Default should be empty but valid
 	if cfg.ListenAddr != "" {
 		t.Error("expected empty listen addr")
@@ -135,9 +135,9 @@ func TestRunnersEndpoint_Logic(t *testing.T) {
 // TestAuthMiddleware tests auth middleware logic
 func TestAuthMiddleware_Logic(t *testing.T) {
 	tests := []struct {
-		name       string
-		token      string
-		expected   int
+		name     string
+		token    string
+		expected int
 	}{
 		{"Valid token", "valid-token", http.StatusOK},
 		{"Invalid token", "invalid-token", http.StatusUnauthorized},

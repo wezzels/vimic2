@@ -23,24 +23,24 @@ type Coordinator struct {
 
 // PipelineState represents the state of a pipeline
 type PipelineState struct {
-	ID           string              `json:"id"`
+	ID           string               `json:"id"`
 	Platform     types.RunnerPlatform `json:"platform"`
-	Repository   string              `json:"repository"`
-	Branch       string              `json:"branch"`
-	CommitSHA    string              `json:"commit_sha"`
-	CommitMsg    string              `json:"commit_message"`
-	Author       string              `json:"author"`
+	Repository   string               `json:"repository"`
+	Branch       string               `json:"branch"`
+	CommitSHA    string               `json:"commit_sha"`
+	CommitMsg    string               `json:"commit_message"`
+	Author       string               `json:"author"`
 	Status       types.PipelineStatus `json:"status"`
-	NetworkID    string              `json:"network_id"`
-	VMs          []string            `json:"vms"`
-	Runners      []string            `json:"runners"`
-	StartTime    time.Time           `json:"start_time"`
-	EndTime      *time.Time          `json:"end_time,omitempty"`
-	Duration     int64               `json:"duration_seconds"`
-	CurrentStage string              `json:"current_stage"`
-	Stages       []StageState        `json:"stages"`
-	CreatedAt    time.Time           `json:"created_at"`
-	UpdatedAt    time.Time           `json:"updated_at"`
+	NetworkID    string               `json:"network_id"`
+	VMs          []string             `json:"vms"`
+	Runners      []string             `json:"runners"`
+	StartTime    time.Time            `json:"start_time"`
+	EndTime      *time.Time           `json:"end_time,omitempty"`
+	Duration     int64                `json:"duration_seconds"`
+	CurrentStage string               `json:"current_stage"`
+	Stages       []StageState         `json:"stages"`
+	CreatedAt    time.Time            `json:"created_at"`
+	UpdatedAt    time.Time            `json:"updated_at"`
 }
 
 // StageState represents the state of a pipeline stage
@@ -67,11 +67,11 @@ type JobState struct {
 
 // PipelineEvent represents a pipeline state change event
 type PipelineEvent struct {
-	PipelineID string              `json:"pipeline_id"`
+	PipelineID string               `json:"pipeline_id"`
 	OldStatus  types.PipelineStatus `json:"old_status"`
 	NewStatus  types.PipelineStatus `json:"new_status"`
-	Message    string              `json:"message"`
-	Timestamp  time.Time           `json:"timestamp"`
+	Message    string               `json:"message"`
+	Timestamp  time.Time            `json:"timestamp"`
 }
 
 // NewCoordinator creates a new coordinator
@@ -219,8 +219,8 @@ func (c *Coordinator) CancelPipeline(ctx context.Context, id string) error {
 
 	// Update database
 	state := map[string]interface{}{
-		"status":    string(ps.Status),
-		"end_time":  ps.EndTime,
+		"status":   string(ps.Status),
+		"end_time": ps.EndTime,
 	}
 	if err := c.db.SavePipeline(id, state); err != nil {
 		return fmt.Errorf("failed to update pipeline: %w", err)

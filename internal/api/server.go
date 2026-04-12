@@ -48,7 +48,7 @@ func (s *Server) SetRunnerManager(rm types.RunnerManagerInterface) {
 
 // ServerConfig represents server configuration
 type ServerConfig struct {
-	ListenAddr string `json:"listen_addr"`
+	ListenAddr  string `json:"listen_addr"`
 	AuthEnabled bool   `json:"auth_enabled"`
 	AuthToken   string `json:"auth_token"`
 	TLSCert     string `json:"tls_cert"`
@@ -242,14 +242,14 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreatePipeline(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Platform   string   `json:"platform"`
-		Repository string   `json:"repository"`
-		Branch     string   `json:"branch"`
-		CommitSHA  string   `json:"commit_sha"`
-		CommitMsg  string   `json:"commit_message"`
-		Author     string   `json:"author"`
-		RunnerCount int     `json:"runner_count"`
-		Labels     []string `json:"labels"`
+		Platform    string   `json:"platform"`
+		Repository  string   `json:"repository"`
+		Branch      string   `json:"branch"`
+		CommitSHA   string   `json:"commit_sha"`
+		CommitMsg   string   `json:"commit_message"`
+		Author      string   `json:"author"`
+		RunnerCount int      `json:"runner_count"`
+		Labels      []string `json:"labels"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -410,10 +410,10 @@ func (s *Server) handleCreateRunner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		PoolName    string   `json:"pool_name"`
-		Platform    string   `json:"platform"`
-		PipelineID  string   `json:"pipeline_id"`
-		Labels      []string `json:"labels"`
+		PoolName   string   `json:"pool_name"`
+		Platform   string   `json:"platform"`
+		PipelineID string   `json:"pipeline_id"`
+		Labels     []string `json:"labels"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

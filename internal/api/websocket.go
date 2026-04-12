@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/stsgym/vimic2/internal/pipeline"
 )
 

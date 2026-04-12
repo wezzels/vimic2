@@ -770,17 +770,17 @@ func TestRealFilesystem_TryLockFile_MethodAlreadyLocked(t *testing.T) {
 // TestRealFilesystem_WriteFile_PermissionDenied tests WriteFile with permission denied
 func TestRealFilesystem_WriteFile_PermissionDenied(t *testing.T) {
 	fs := realfs.NewFilesystem()
-	
+
 	// Try to write to a read-only directory (may not fail on all systems)
 	// This is a best-effort test for error handling
 	tmpDir := t.TempDir()
 	readOnlyDir := filepath.Join(tmpDir, "readonly")
-	
+
 	if err := os.Mkdir(readOnlyDir, 0444); err != nil {
 		t.Skip("Could not create read-only directory")
 	}
 	defer os.Chmod(readOnlyDir, 0755)
-	
+
 	// This should fail with permission denied
 	err := fs.WriteFile(filepath.Join(readOnlyDir, "test.txt"), []byte("test"), 0644)
 	// May or may not fail depending on OS
@@ -791,23 +791,23 @@ func TestRealFilesystem_WriteFile_PermissionDenied(t *testing.T) {
 func TestRealFilesystem_ReadDir_Symlink(t *testing.T) {
 	fs := realfs.NewFilesystem()
 	tmpDir := t.TempDir()
-	
+
 	// Create a file and symlink
 	filePath := filepath.Join(tmpDir, "file.txt")
 	if err := os.WriteFile(filePath, []byte("test"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	linkPath := filepath.Join(tmpDir, "link.txt")
 	if err := os.Symlink(filePath, linkPath); err != nil {
 		t.Skip("Could not create symlink")
 	}
-	
+
 	entries, err := fs.ReadDir(tmpDir)
 	if err != nil {
 		t.Fatalf("ReadDir failed: %v", err)
 	}
-	
+
 	if len(entries) != 2 {
 		t.Errorf("expected 2 entries, got %d", len(entries))
 	}
@@ -817,20 +817,20 @@ func TestRealFilesystem_ReadDir_Symlink(t *testing.T) {
 func TestRealFilesystem_Copy_PermissionDenied(t *testing.T) {
 	fs := realfs.NewFilesystem()
 	tmpDir := t.TempDir()
-	
+
 	// Create source file
 	srcPath := filepath.Join(tmpDir, "src.txt")
 	if err := os.WriteFile(srcPath, []byte("test"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	// Create read-only directory
 	readOnlyDir := filepath.Join(tmpDir, "readonly")
 	if err := os.Mkdir(readOnlyDir, 0444); err != nil {
 		t.Skip("Could not create read-only directory")
 	}
 	defer os.Chmod(readOnlyDir, 0755)
-	
+
 	// This should fail
 	err := fs.Copy(srcPath, filepath.Join(readOnlyDir, "dst.txt"))
 	// May or may not fail depending on OS
@@ -842,13 +842,13 @@ func TestRealFilesystem_Lock_NestedDir(t *testing.T) {
 	fs := realfs.NewFilesystem()
 	tmpDir := t.TempDir()
 	lockPath := filepath.Join(tmpDir, "a", "b", "c", "d", "test.lock")
-	
+
 	lock, err := fs.Lock(lockPath)
 	if err != nil {
 		t.Fatalf("Lock failed for nested path: %v", err)
 	}
 	defer lock.Unlock()
-	
+
 	// Verify all directories were created
 	if !fs.Exists(filepath.Join(tmpDir, "a", "b", "c", "d")) {
 		t.Error("nested directories should be created")
@@ -860,13 +860,13 @@ func TestRealFilesystem_TryLock_NestedDir(t *testing.T) {
 	fs := realfs.NewFilesystem()
 	tmpDir := t.TempDir()
 	lockPath := filepath.Join(tmpDir, "x", "y", "z", "test.lock")
-	
+
 	// Note: TryLock doesn't create parent directories
 	// Create them first
 	if err := os.MkdirAll(filepath.Dir(lockPath), 0755); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	lock, err := fs.TryLock(lockPath)
 	if err != nil {
 		t.Fatalf("TryLock failed: %v", err)
@@ -877,7 +877,7 @@ func TestRealFilesystem_TryLock_NestedDir(t *testing.T) {
 // TestRealFilesystem_Stat_NonExistent tests Stat on non-existent file
 func TestRealFilesystem_Stat_NonExistent(t *testing.T) {
 	fs := realfs.NewFilesystem()
-	
+
 	_, err := fs.Stat("/non/existent/file")
 	if err == nil {
 		t.Error("Stat should fail for non-existent file")
@@ -887,7 +887,7 @@ func TestRealFilesystem_Stat_NonExistent(t *testing.T) {
 // TestRealFilesystem_ReadFile_NonExistent tests ReadFile on non-existent file
 func TestRealFilesystem_ReadFile_NonExistent(t *testing.T) {
 	fs := realfs.NewFilesystem()
-	
+
 	_, err := fs.ReadFile("/non/existent/file")
 	if err == nil {
 		t.Error("ReadFile should fail for non-existent file")
@@ -897,7 +897,7 @@ func TestRealFilesystem_ReadFile_NonExistent(t *testing.T) {
 // TestRealFilesystem_Remove_NonExistent tests Remove on non-existent path
 func TestRealFilesystem_Remove_NonExistent(t *testing.T) {
 	fs := realfs.NewFilesystem()
-	
+
 	// Remove on non-existent should not error
 	err := fs.Remove("/non/existent/path")
 	// os.RemoveAll returns nil even if path doesn't exist
@@ -907,13 +907,13 @@ func TestRealFilesystem_Remove_NonExistent(t *testing.T) {
 // TestRealFilesystem_TempFile_Error tests TempFile creation
 func TestRealFilesystem_TempFile_Error(t *testing.T) {
 	fs := realfs.NewFilesystem()
-	
+
 	file, err := fs.TempFile("test", ".txt")
 	if err != nil {
 		t.Fatalf("TempFile failed: %v", err)
 	}
 	defer file.Close()
-	
+
 	// Verify file exists
 	if _, err := os.Stat(file.Name()); err != nil {
 		t.Errorf("temp file should exist: %v", err)
@@ -923,12 +923,12 @@ func TestRealFilesystem_TempFile_Error(t *testing.T) {
 // TestRealFilesystem_Abs_Relative tests Abs with relative path
 func TestRealFilesystem_Abs_Relative(t *testing.T) {
 	fs := realfs.NewFilesystem()
-	
+
 	abs, err := fs.Abs(".")
 	if err != nil {
 		t.Fatalf("Abs failed: %v", err)
 	}
-	
+
 	// Should return absolute path
 	if abs == "" {
 		t.Error("Abs should return non-empty path")
@@ -941,13 +941,13 @@ func TestRealFilesystem_Abs_Relative(t *testing.T) {
 // TestRealFilesystem_Split tests Split function
 func TestRealFilesystem_Split(t *testing.T) {
 	fs := realfs.NewFilesystem()
-	
+
 	// Split returns (dir, file) where dir includes trailing separator
 	_, file := fs.Split("/a/b/c.txt")
 	if file != "c.txt" {
 		t.Errorf("Split file = %s, want c.txt", file)
 	}
-	
+
 	_, file = fs.Split("file.txt")
 	if file != "file.txt" {
 		t.Errorf("Split file = %s, want file.txt", file)
@@ -957,13 +957,11 @@ func TestRealFilesystem_Split(t *testing.T) {
 // TestRealFilesystem_SplitList_Extra tests SplitList function
 func TestRealFilesystem_SplitList_Extra(t *testing.T) {
 	fs := realfs.NewFilesystem()
-	
+
 	// Just verify it doesn't panic
 	parts := fs.SplitList("/a/b:/c/d")
 	_ = parts
 }
-
-
 
 // TestRealFilesystem_LockFile_WriteNotLocked tests Write when not locked
 func TestRealFilesystem_LockFile_WriteNotLocked(t *testing.T) {
@@ -1025,8 +1023,6 @@ func TestRealFilesystem_LockFile_ReadNotLocked(t *testing.T) {
 
 	file.Close()
 }
-
-
 
 // TestRealFilesystem_WriteFile_RenameError tests WriteFile when rename fails
 func TestRealFilesystem_WriteFile_RenameError(t *testing.T) {
@@ -1148,7 +1144,7 @@ func TestRealFilesystem_TryLock_CreateDir(t *testing.T) {
 
 	// TryLock doesn't create parent directory - need to create it first
 	lockPath := filepath.Join(tmpDir, "subdir", "test.lock")
-	
+
 	// This should fail because parent doesn't exist
 	_, err := fs.TryLock(lockPath)
 	if err == nil {
@@ -1209,5 +1205,3 @@ func TestRealFilesystem_Copy_ToNewDir(t *testing.T) {
 		t.Error("Copy should fail when destination directory doesn't exist")
 	}
 }
-
-

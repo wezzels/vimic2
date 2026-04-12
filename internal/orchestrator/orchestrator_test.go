@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/stsgym/vimic2/internal/cluster"
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/monitor"
 	"github.com/stsgym/vimic2/internal/orchestrator"
 	"github.com/stsgym/vimic2/pkg/hypervisor"
-	"go.uber.org/zap"
 )
 
 // TestAutoScalerCreation tests auto-scaler initialization

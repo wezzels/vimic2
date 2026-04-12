@@ -41,12 +41,12 @@ type IsolatedNetwork struct {
 
 // NetworkConfig represents network configuration
 type NetworkConfig struct {
-	VLANStart      int      `json:"vlan_start"`
-	VLANEnd        int      `json:"vlan_end"`
-	BaseCIDR       string   `json:"base_cidr"`
-	DNS            []string `json:"dns"`
-	OVSBridge      string   `json:"ovs_bridge"`
-	FirewallBackend string  `json:"firewall_backend"`
+	VLANStart       int      `json:"vlan_start"`
+	VLANEnd         int      `json:"vlan_end"`
+	BaseCIDR        string   `json:"base_cidr"`
+	DNS             []string `json:"dns"`
+	OVSBridge       string   `json:"ovs_bridge"`
+	FirewallBackend string   `json:"firewall_backend"`
 }
 
 // NewIsolationManager creates a new isolation manager

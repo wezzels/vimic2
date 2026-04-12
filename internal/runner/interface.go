@@ -14,28 +14,28 @@ import (
 type RunnerInterface interface {
 	// Register registers the runner with the platform.
 	Register(ctx context.Context) error
-	
+
 	// Start starts the runner process.
 	Start(ctx context.Context) error
-	
+
 	// Stop gracefully stops the runner.
 	Stop(ctx context.Context) error
-	
+
 	// Unregister removes the runner from the platform.
 	Unregister(ctx context.Context) error
-	
+
 	// Status returns the current status of the runner.
 	Status() types.RunnerStatus
-	
+
 	// ID returns the unique identifier of the runner.
 	ID() string
-	
+
 	// Platform returns the runner platform type.
 	Platform() types.RunnerPlatform
-	
+
 	// Labels returns the runner's labels/tags.
 	Labels() []string
-	
+
 	// Health returns health status.
 	Health() *HealthStatus
 }

@@ -26,14 +26,14 @@ func TestCluster_Fields(t *testing.T) {
 // TestNodeGroup_Fields tests NodeGroup field access
 func TestNodeGroup_Fields(t *testing.T) {
 	ng := &NodeGroup{
-		Name:      "workers",
-		Role:      "worker",
-		Count:     5,
-		CPU:       4,
-		MemoryMB:  8192,
-		DiskGB:    100,
-		Image:     "ubuntu-22.04",
-		HostID:    "host-1",
+		Name:     "workers",
+		Role:     "worker",
+		Count:    5,
+		CPU:      4,
+		MemoryMB: 8192,
+		DiskGB:   100,
+		Image:    "ubuntu-22.04",
+		HostID:   "host-1",
 	}
 
 	if ng.Name != "workers" {

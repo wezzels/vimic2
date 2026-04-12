@@ -16,7 +16,7 @@ type IPAMManager struct {
 	baseCIDR    string
 	gatewayIP   string
 	dns         []string
-	pools       map[string]*CIDRPool // CIDR -> Pool
+	pools       map[string]*CIDRPool     // CIDR -> Pool
 	allocations map[string]*IPAllocation // MAC -> Allocation
 	mu          sync.RWMutex
 	stateFile   string
@@ -24,24 +24,24 @@ type IPAMManager struct {
 
 // CIDRPool represents a CIDR pool
 type CIDRPool struct {
-	CIDR       string         `json:"cidr"`
-	Gateway    string         `json:"gateway"`
-	Subnet     string         `json:"subnet"`
-	Mask       string         `json:"mask"`
-	Start      string         `json:"start"`
-	End        string         `json:"end"`
-	Used       map[string]bool `json:"used"` // IP -> used
-	Reserved   []string       `json:"reserved"`
+	CIDR        string            `json:"cidr"`
+	Gateway     string            `json:"gateway"`
+	Subnet      string            `json:"subnet"`
+	Mask        string            `json:"mask"`
+	Start       string            `json:"start"`
+	End         string            `json:"end"`
+	Used        map[string]bool   `json:"used"` // IP -> used
+	Reserved    []string          `json:"reserved"`
 	Allocations map[string]string `json:"allocations"` // IP -> MAC
 }
 
 // IPAllocation represents an IP allocation
 type IPAllocation struct {
-	IP          string `json:"ip"`
-	MAC         string `json:"mac"`
-	CIDR        string `json:"cidr"`
-	VMID        string `json:"vm_id"`
-	NetworkID   string `json:"network_id"`
+	IP        string `json:"ip"`
+	MAC       string `json:"mac"`
+	CIDR      string `json:"cidr"`
+	VMID      string `json:"vm_id"`
+	NetworkID string `json:"network_id"`
 }
 
 // IPAMConfig represents IPAM configuration
@@ -88,7 +88,7 @@ func (im *IPAMManager) loadState() error {
 	}
 
 	var state struct {
-		Pools       map[string]*CIDRPool    `json:"pools"`
+		Pools       map[string]*CIDRPool     `json:"pools"`
 		Allocations map[string]*IPAllocation `json:"allocations"`
 	}
 	if err := json.Unmarshal(data, &state); err != nil {
@@ -115,7 +115,7 @@ func (im *IPAMManager) saveState() error {
 	// This avoids deadlock when called from methods that already hold im.mu.Lock()
 
 	state := struct {
-		Pools       map[string]*CIDRPool    `json:"pools"`
+		Pools       map[string]*CIDRPool     `json:"pools"`
 		Allocations map[string]*IPAllocation `json:"allocations"`
 	}{
 		Pools:       im.pools,
@@ -166,7 +166,7 @@ func (im *IPAMManager) Allocate() (string, string, error) {
 	}
 
 	// Find next available /24 subnet
-	for i := 0; i < (1<<(24-ones)); i++ {
+	for i := 0; i < (1 << (24 - ones)); i++ {
 		// Calculate subnet IP
 		subnetIP := make(net.IP, len(ipnet.IP))
 		copy(subnetIP, ipnet.IP)
@@ -195,8 +195,8 @@ func (im *IPAMManager) Allocate() (string, string, error) {
 			Used:        make(map[string]bool),
 			Allocations: make(map[string]string),
 			Reserved: []string{
-				subnetIP.String(),     // Network address
-				incrementIP(subnetIP.String()),   // Gateway
+				subnetIP.String(),                   // Network address
+				incrementIP(subnetIP.String()),      // Gateway
 				incrementIP(subnetIP.String(), 255), // Broadcast
 			},
 		}

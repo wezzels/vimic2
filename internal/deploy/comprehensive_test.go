@@ -80,15 +80,15 @@ func TestNetworkConfig_Variants(t *testing.T) {
 		config NetworkConfig
 	}{
 		{
-			name: "NAT network",
+			name:   "NAT network",
 			config: NetworkConfig{Type: "nat", CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 		},
 		{
-			name: "Bridge network",
+			name:   "Bridge network",
 			config: NetworkConfig{Type: "bridge", CIDR: "192.168.100.0/24", Gateway: "192.168.100.1"},
 		},
 		{
-			name: "VXLAN network",
+			name:   "VXLAN network",
 			config: NetworkConfig{Type: "vxlan", CIDR: "172.16.0.0/16"},
 		},
 	}

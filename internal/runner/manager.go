@@ -21,38 +21,38 @@ type RunnerManager struct {
 
 // RunnerInfo represents a unified runner interface
 type RunnerInfo struct {
-	ID           string            `json:"id"`
-	VMID         string            `json:"vm_id"`
-	PoolName     string            `json:"pool_name"`
-	PipelineID   string            `json:"pipeline_id"`
-	Platform     types.RunnerPlatform `json:"platform"`
-	PlatformID   string            `json:"platform_runner_id"`
-	Name         string            `json:"name"`
-	Labels       []string          `json:"labels"`
-	Status       types.RunnerStatus `json:"status"`
-	IPAddress    string            `json:"ip_address"`
-	CurrentJob   string            `json:"current_job,omitempty"`
-	HealthStatus string            `json:"health_status"`
-	LastHeartbeat *time.Time       `json:"last_heartbeat,omitempty"`
-	CreatedAt    time.Time         `json:"created_at"`
-	DestroyedAt  *time.Time        `json:"destroyed_at,omitempty"`
+	ID            string               `json:"id"`
+	VMID          string               `json:"vm_id"`
+	PoolName      string               `json:"pool_name"`
+	PipelineID    string               `json:"pipeline_id"`
+	Platform      types.RunnerPlatform `json:"platform"`
+	PlatformID    string               `json:"platform_runner_id"`
+	Name          string               `json:"name"`
+	Labels        []string             `json:"labels"`
+	Status        types.RunnerStatus   `json:"status"`
+	IPAddress     string               `json:"ip_address"`
+	CurrentJob    string               `json:"current_job,omitempty"`
+	HealthStatus  string               `json:"health_status"`
+	LastHeartbeat *time.Time           `json:"last_heartbeat,omitempty"`
+	CreatedAt     time.Time            `json:"created_at"`
+	DestroyedAt   *time.Time           `json:"destroyed_at,omitempty"`
 }
 
 // RunnerManagerConfig represents runner manager configuration
 type RunnerManagerConfig struct {
-	GitLab    *GitLabConfig   `json:"gitlab"`
-	GitHub    *GitHubConfig   `json:"github"`
-	Jenkins   *JenkinsConfig  `json:"jenkins"`
-	CircleCI  *CircleCIConfig `json:"circleci"`
-	Drone     *DroneConfig    `json:"drone"`
+	GitLab   *GitLabConfig   `json:"gitlab"`
+	GitHub   *GitHubConfig   `json:"github"`
+	Jenkins  *JenkinsConfig  `json:"jenkins"`
+	CircleCI *CircleCIConfig `json:"circleci"`
+	Drone    *DroneConfig    `json:"drone"`
 }
 
 // NewRunnerManager creates a new runner manager
 func NewRunnerManager(db types.PipelineDB, poolManager types.PoolManagerInterface, config *RunnerManagerConfig) (*RunnerManager, error) {
 	rm := &RunnerManager{
-		db:       db,
+		db:          db,
 		poolManager: poolManager,
-		runners:  make(map[string]*RunnerInfo),
+		runners:     make(map[string]*RunnerInfo),
 	}
 
 	return rm, nil

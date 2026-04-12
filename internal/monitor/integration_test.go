@@ -203,10 +203,10 @@ func TestIntegration_Alerter_Callback(t *testing.T) {
 	alerter.AddRule(rule)
 
 	metric := &database.Metric{
-		NodeID:    "callback-node",
-		CPU:       20.0,
-		Memory:    90.0,
-		Disk:      30.0,
+		NodeID: "callback-node",
+		CPU:    20.0,
+		Memory: 90.0,
+		Disk:   30.0,
 	}
 
 	alerter.Evaluate("callback-node", "CallbackNode", metric)

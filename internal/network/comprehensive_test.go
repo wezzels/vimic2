@@ -8,14 +8,14 @@ import (
 // TestFirewallRule_EnableDisable tests enabling and disabling rules
 func TestFirewallRule_EnableDisable(t *testing.T) {
 	rule := FirewallRule{
-		ID:         "rule-1",
-		Name:       "SSH Access",
-		Direction:  "ingress",
-		Protocol:   "tcp",
-		DestPort:   22,
-		Action:     "accept",
-		Priority:   100,
-		Enabled:    true,
+		ID:        "rule-1",
+		Name:      "SSH Access",
+		Direction: "ingress",
+		Protocol:  "tcp",
+		DestPort:  22,
+		Action:    "accept",
+		Priority:  100,
+		Enabled:   true,
 	}
 
 	// Check enabled
@@ -208,14 +208,14 @@ func TestNetwork_MultipleVLANs(t *testing.T) {
 // TestTunnel_VXLAN tests VXLAN tunnel configuration
 func TestTunnel_VXLAN(t *testing.T) {
 	tunnel := Tunnel{
-		ID:        "tunnel-1",
-		Name:      "vxlan-5000",
-		Protocol:  "vxlan",
-		VNI:       5000,
-		LocalIP:   "10.0.0.1",
-		RemoteIP:  "10.0.0.2",
+		ID:         "tunnel-1",
+		Name:       "vxlan-5000",
+		Protocol:   "vxlan",
+		VNI:        5000,
+		LocalIP:    "10.0.0.1",
+		RemoteIP:   "10.0.0.2",
 		SourcePort: 4789,
-		DestPort:  4789,
+		DestPort:   4789,
 	}
 
 	if tunnel.VNI != 5000 {

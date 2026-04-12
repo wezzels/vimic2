@@ -23,8 +23,8 @@ func TestServer_Routes(t *testing.T) {
 
 	// Test routes exist
 	tests := []struct {
-		path       string
-		expected   int
+		path     string
+		expected int
 	}{
 		{"/api/health", http.StatusOK},
 		{"/api/version", http.StatusOK},
@@ -114,8 +114,8 @@ func TestServer_JSONResponse(t *testing.T) {
 	router.HandleFunc("GET /api/status", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": "healthy",
-			"uptime": 3600,
+			"status":  "healthy",
+			"uptime":  3600,
 			"version": "1.0.0",
 		})
 	})

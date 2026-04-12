@@ -24,7 +24,7 @@ func NewCircleCIRunner(config *CircleCIConfig) (*CircleCIRunner, error) {
 	if config.APIToken == "" {
 		return nil, fmt.Errorf("circleci api token is required")
 	}
-	
+
 	runner := &CircleCIRunner{
 		BaseRunner: BaseRunner{
 			id:       generateID("cci"),
@@ -40,17 +40,17 @@ func NewCircleCIRunner(config *CircleCIConfig) (*CircleCIRunner, error) {
 			Timeout: 30 * time.Second,
 		},
 	}
-	
+
 	return runner, nil
 }
 
 // Register registers the runner with CircleCI.
 func (r *CircleCIRunner) Register(ctx context.Context) error {
 	r.SetStatus(types.RunnerStatusCreating)
-	
+
 	// POST /runner/resource
 	registerURL := fmt.Sprintf("%s/runner/resource", r.apiURL)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", registerURL, nil)
 	if err != nil {
 		r.SetStatus(types.RunnerStatusError)
@@ -58,22 +58,22 @@ func (r *CircleCIRunner) Register(ctx context.Context) error {
 	}
 	req.Header.Set("Circle-Token", r.apiToken)
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	resp, err := r.client.Do(req)
 	if err != nil {
 		r.SetStatus(types.RunnerStatusError)
 		return fmt.Errorf("registration request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		r.SetStatus(types.RunnerStatusError)
 		return fmt.Errorf("registration failed with status: %d", resp.StatusCode)
 	}
-	
+
 	r.registered = true
 	r.SetStatus(types.RunnerStatusOffline)
-	
+
 	return nil
 }
 
@@ -82,13 +82,13 @@ func (r *CircleCIRunner) Start(ctx context.Context) error {
 	if !r.registered {
 		return fmt.Errorf("runner must be registered before starting")
 	}
-	
+
 	r.SetStatus(types.RunnerStatusOnline)
 	r.health = &HealthStatus{
 		Healthy:   true,
 		LastCheck: time.Now(),
 	}
-	
+
 	return nil
 }
 

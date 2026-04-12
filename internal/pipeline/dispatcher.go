@@ -33,38 +33,38 @@ type JobDispatcher struct {
 
 // Job represents a job to be executed
 type Job struct {
-	ID           string          `json:"id"`
-	PipelineID   string          `json:"pipeline_id"`
-	Stage        string          `json:"stage"`
-	Name         string          `json:"name"`
-	Commands     []string        `json:"commands"`
-	Environment  map[string]string `json:"environment"`
-	Artifacts    []string        `json:"artifacts"`
-	Cache        []string        `json:"cache"`
-	Timeout      time.Duration    `json:"timeout"`
-	Status       PipelineStatus  `json:"status"`
-	RunnerID     string          `json:"runner_id"`
-	StartTime    *time.Time      `json:"start_time,omitempty"`
-	EndTime      *time.Time      `json:"end_time,omitempty"`
-	Duration     int64           `json:"duration_seconds"`
-	Retries      int             `json:"retries"`
-	MaxRetries   int             `json:"max_retries"`
-	CreatedAt    time.Time        `json:"created_at"`
-	UpdatedAt    time.Time        `json:"updated_at"`
+	ID          string            `json:"id"`
+	PipelineID  string            `json:"pipeline_id"`
+	Stage       string            `json:"stage"`
+	Name        string            `json:"name"`
+	Commands    []string          `json:"commands"`
+	Environment map[string]string `json:"environment"`
+	Artifacts   []string          `json:"artifacts"`
+	Cache       []string          `json:"cache"`
+	Timeout     time.Duration     `json:"timeout"`
+	Status      PipelineStatus    `json:"status"`
+	RunnerID    string            `json:"runner_id"`
+	StartTime   *time.Time        `json:"start_time,omitempty"`
+	EndTime     *time.Time        `json:"end_time,omitempty"`
+	Duration    int64             `json:"duration_seconds"`
+	Retries     int               `json:"retries"`
+	MaxRetries  int               `json:"max_retries"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
 // JobQueue represents a job queue
 type JobQueue struct {
-	Name      string  `json:"name"`
-	Priority int     `json:"priority"`
-	Jobs      []*Job  `json:"jobs"`
+	Name     string `json:"name"`
+	Priority int    `json:"priority"`
+	Jobs     []*Job `json:"jobs"`
 }
 
 // DispatcherConfig represents dispatcher configuration
 type DispatcherConfig struct {
-	Workers     int    `json:"workers"`
-	QueueSize   int    `json:"queue_size"`
-	MaxRetries  int    `json:"max_retries"`
+	Workers    int           `json:"workers"`
+	QueueSize  int           `json:"queue_size"`
+	MaxRetries int           `json:"max_retries"`
 	JobTimeout time.Duration `json:"job_timeout"`
 }
 
@@ -72,9 +72,9 @@ type DispatcherConfig struct {
 func NewJobDispatcher(db *PipelineDB, runnerMgr *runner.RunnerManager, config *DispatcherConfig) (*JobDispatcher, error) {
 	if config == nil {
 		config = &DispatcherConfig{
-			Workers:     10,
-			QueueSize:   100,
-			MaxRetries:  3,
+			Workers:    10,
+			QueueSize:  100,
+			MaxRetries: 3,
 			JobTimeout: 30 * time.Minute,
 		}
 	}
@@ -535,7 +535,7 @@ func (d *JobDispatcher) GetStats() map[string]int {
 	return map[string]int{
 		"total":     len(d.jobs),
 		"pending":   len(d.pending),
-		"running":  len(d.running),
+		"running":   len(d.running),
 		"completed": len(d.completed),
 		"failed":    len(d.failed),
 	}
