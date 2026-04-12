@@ -172,13 +172,16 @@ func (e *Executor) Execute(ctx context.Context, cluster *Cluster, progress chan<
 		totalNodes += ng.Count
 	}
 
-	prog := &Progress{
+	baseProg := &Progress{
 		ClusterID:  cluster.ID,
 		TotalNodes: totalNodes,
 		Status:     "deploying",
 		StartedAt:  time.Now(),
 	}
-	progress <- prog
+	
+	// Send initial progress (copy)
+	prog := *baseProg
+	progress <- &prog
 
 	// Save cluster to database
 	dbCluster := &database.Cluster{
@@ -194,6 +197,9 @@ func (e *Executor) Execute(ctx context.Context, cluster *Cluster, progress chan<
 		return fmt.Errorf("failed to save cluster: %w", err)
 	}
 
+	deployedNodes := 0
+	var lastErr error
+
 	// Deploy each node group
 	for _, ng := range cluster.NodeGroups {
 		for i := 0; i < ng.Count; i++ {
@@ -204,8 +210,6 @@ func (e *Executor) Execute(ctx context.Context, cluster *Cluster, progress chan<
 			}
 
 			nodeName := fmt.Sprintf("%s-%s-%d", cluster.Name, ng.Role, i+1)
-			prog.CurrentNode = nodeName
-			progress <- prog
 
 			// Select host
 			hostID := ng.HostID
@@ -217,9 +221,12 @@ func (e *Executor) Execute(ctx context.Context, cluster *Cluster, progress chan<
 			hv, ok := e.hosts[hostID]
 			if !ok {
 				err := fmt.Errorf("host not found: %s", hostID)
+				lastErr = err
+				prog := *baseProg
+				prog.CurrentNode = nodeName
 				prog.Error = err
 				prog.Status = "error"
-				progress <- prog
+				progress <- &prog
 				continue
 			}
 
@@ -237,9 +244,12 @@ func (e *Executor) Execute(ctx context.Context, cluster *Cluster, progress chan<
 			node, err := hv.CreateNode(ctx, nodeCfg)
 			if err != nil {
 				err := fmt.Errorf("failed to create node %s: %w", nodeName, err)
+				lastErr = err
+				prog := *baseProg
+				prog.CurrentNode = nodeName
 				prog.Error = err
 				prog.Status = "error"
-				progress <- prog
+				progress <- &prog
 				continue
 			}
 
@@ -258,21 +268,26 @@ func (e *Executor) Execute(ctx context.Context, cluster *Cluster, progress chan<
 				fmt.Printf("Warning: failed to save node %s: %v\n", nodeName, err)
 			}
 
-			prog.DeployedNodes++
-			progress <- prog
+			deployedNodes++
+			prog := *baseProg
+			prog.CurrentNode = nodeName
+			prog.DeployedNodes = deployedNodes
+			progress <- &prog
 		}
 	}
 
-	// Update final status
-	if prog.Error != nil {
-		prog.Status = "error"
+	// Send final progress (copy)
+	finalProg := *baseProg
+	if lastErr != nil {
+		finalProg.Status = "error"
+		finalProg.Error = lastErr
 		e.db.UpdateClusterStatus(cluster.ID, "error")
 	} else {
-		prog.Status = "complete"
-		prog.CurrentNode = ""
+		finalProg.Status = "complete"
+		finalProg.DeployedNodes = deployedNodes
 		e.db.UpdateClusterStatus(cluster.ID, "running")
 	}
-	progress <- prog
+	progress <- &finalProg
 
 	return nil
 }
