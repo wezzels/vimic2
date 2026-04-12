@@ -178,7 +178,7 @@ func (e *Executor) Execute(ctx context.Context, cluster *Cluster, progress chan<
 		Status:     "deploying",
 		StartedAt:  time.Now(),
 	}
-	
+
 	// Send initial progress (copy)
 	prog := *baseProg
 	progress <- &prog
