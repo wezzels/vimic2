@@ -167,9 +167,19 @@ func TestRollingUpdate(t *testing.T) {
 		NewImage:      "ubuntu:24.04",
 	}
 
-	progress := make(chan *orchestrator.UpdateProgress, 10)
+	progress := make(chan *orchestrator.UpdateProgress, 100)
+
+	// Drain progress channel in background to prevent blocking
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for range progress {
+		}
+	}()
 
 	err = updater.Update("update-test", config, progress)
+	close(progress)
+	<-done
 	if err != nil {
 		t.Logf("Update returned: %v", err)
 	}
@@ -416,11 +426,22 @@ func TestListBackups(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	rm := orchestrator.NewRecoveryManagerWithLogger(db, backupDir, logger)
 
-	// Create multiple backups
+	// Create multiple backups with delay to ensure unique IDs (Unix seconds)
 	ctx := context.Background()
-	rm.CreateBackup(ctx, "list-test", "Backup 1")
-	rm.CreateBackup(ctx, "list-test", "Backup 2")
-	rm.CreateBackup(ctx, "list-test", "Backup 3")
+	_, err = rm.CreateBackup(ctx, "list-test", "Backup 1")
+	if err != nil {
+		t.Fatalf("Failed to create backup 1: %v", err)
+	}
+	time.Sleep(1 * time.Second) // Ensure unique Unix timestamp
+	_, err = rm.CreateBackup(ctx, "list-test", "Backup 2")
+	if err != nil {
+		t.Fatalf("Failed to create backup 2: %v", err)
+	}
+	time.Sleep(1 * time.Second) // Ensure unique Unix timestamp
+	_, err = rm.CreateBackup(ctx, "list-test", "Backup 3")
+	if err != nil {
+		t.Fatalf("Failed to create backup 3: %v", err)
+	}
 
 	// List backups
 	backups, err := rm.ListBackups("list-test")
