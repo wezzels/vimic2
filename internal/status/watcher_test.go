@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/stsgym/vimic2/internal/database"
+	"github.com/stsgym/vimic2/pkg/hypervisor"
 )
 
 // TestNodeUpdate tests node update structure
@@ -188,5 +191,207 @@ func TestMockSubscriber(t *testing.T) {
 	}
 	if mock.clusterUpdates[0].ClusterID != "cluster-1" {
 		t.Errorf("expected cluster-1, got %s", mock.clusterUpdates[0].ClusterID)
+	}
+}
+
+// TestWatcher_Create tests watcher creation
+func TestWatcher_Create(t *testing.T) {
+	db := &database.DB{}
+	hosts := make(map[string]hypervisor.Hypervisor)
+
+	watcher := NewWatcher(db, hosts)
+	if watcher == nil {
+		t.Fatal("expected non-nil watcher")
+	}
+}
+
+// TestWatcher_Subscribe tests subscribing
+func TestWatcher_Subscribe(t *testing.T) {
+	db := &database.DB{}
+	hosts := make(map[string]hypervisor.Hypervisor)
+	watcher := NewWatcher(db, hosts)
+
+	mock := &mockSubscriber{}
+	watcher.Subscribe(mock)
+
+	if len(watcher.subs) != 1 {
+		t.Errorf("expected 1 subscriber, got %d", len(watcher.subs))
+	}
+}
+
+// TestWatcher_Unsubscribe tests unsubscribing
+func TestWatcher_Unsubscribe(t *testing.T) {
+	db := &database.DB{}
+	hosts := make(map[string]hypervisor.Hypervisor)
+	watcher := NewWatcher(db, hosts)
+
+	mock := &mockSubscriber{}
+	watcher.Subscribe(mock)
+	watcher.Unsubscribe(mock)
+
+	if len(watcher.subs) != 0 {
+		t.Errorf("expected 0 subscribers, got %d", len(watcher.subs))
+	}
+}
+
+// TestWatcher_MultipleSubscribers tests multiple subscribers
+func TestWatcher_MultipleSubscribers(t *testing.T) {
+	db := &database.DB{}
+	hosts := make(map[string]hypervisor.Hypervisor)
+	watcher := NewWatcher(db, hosts)
+
+	mock1 := &mockSubscriber{}
+	mock2 := &mockSubscriber{}
+	mock3 := &mockSubscriber{}
+
+	watcher.Subscribe(mock1)
+	watcher.Subscribe(mock2)
+	watcher.Subscribe(mock3)
+
+	if len(watcher.subs) != 3 {
+		t.Errorf("expected 3 subscribers, got %d", len(watcher.subs))
+	}
+
+	watcher.Unsubscribe(mock2)
+
+	if len(watcher.subs) != 2 {
+		t.Errorf("expected 2 subscribers after unsubscribe, got %d", len(watcher.subs))
+	}
+}
+
+// TestWatcher_Stop tests stopping the watcher
+func TestWatcher_Stop(t *testing.T) {
+	db := &database.DB{}
+	hosts := make(map[string]hypervisor.Hypervisor)
+	watcher := NewWatcher(db, hosts)
+
+	// Stop should not panic
+	watcher.Stop()
+}
+
+// TestWebSocketHub_Create tests hub creation
+func TestWebSocketHub_Create(t *testing.T) {
+	hub := NewWebSocketHub()
+	if hub == nil {
+		t.Fatal("expected non-nil hub")
+	}
+	if hub.clients == nil {
+		t.Error("expected initialized clients map")
+	}
+	if hub.broadcast == nil {
+		t.Error("expected initialized broadcast channel")
+	}
+}
+
+// TestWebSocketHub_Broadcast tests broadcasting
+func TestWebSocketHub_Broadcast(t *testing.T) {
+	hub := NewWebSocketHub()
+
+	update := &NodeUpdate{
+		Type:      UpdateNode,
+		NodeID:    "node-1",
+		ClusterID: "cluster-1",
+		State:     "running",
+		Timestamp: time.Now(),
+	}
+
+	// Broadcast should not block
+	hub.Broadcast(update)
+}
+
+// TestWebSocketHub_Clients tests client management
+func TestWebSocketHub_Clients(t *testing.T) {
+	hub := NewWebSocketHub()
+
+	client := &WebSocketClient{
+		hub:        hub,
+		send:       make(chan []byte, 256),
+		nodeFilter: nil,
+	}
+
+	// Manually add/remove client
+	hub.clients[client] = true
+	if len(hub.clients) != 1 {
+		t.Errorf("expected 1 client, got %d", len(hub.clients))
+	}
+
+	delete(hub.clients, client)
+	if len(hub.clients) != 0 {
+		t.Errorf("expected 0 clients, got %d", len(hub.clients))
+	}
+}
+
+// TestWebSocketClient_NodeFilter tests node filtering
+func TestWebSocketClient_NodeFilter(t *testing.T) {
+	hub := NewWebSocketHub()
+
+	client := &WebSocketClient{
+		hub:        hub,
+		send:       make(chan []byte, 256),
+		nodeFilter: []string{"node-1", "node-2"},
+	}
+
+	if len(client.nodeFilter) != 2 {
+		t.Errorf("expected 2 node filters, got %d", len(client.nodeFilter))
+	}
+}
+
+// TestContains tests contains helper
+func TestContains(t *testing.T) {
+	list := []string{"a", "b", "c"}
+
+	if !contains(list, "a") {
+		t.Error("expected to find 'a'")
+	}
+	if contains(list, "d") {
+		t.Error("did not expect to find 'd'")
+	}
+	if !contains(list, "c") {
+		t.Error("expected to find 'c'")
+	}
+}
+
+// TestNodeUpdate_Fields tests all node update fields
+func TestNodeUpdate_Fields(t *testing.T) {
+	now := time.Now()
+	update := &NodeUpdate{
+		Type:      UpdateMetrics,
+		NodeID:    "test-node",
+		ClusterID: "test-cluster",
+		State:     "stopped",
+		IP:        "192.168.1.1",
+		CPU:       75.5,
+		Memory:    80.2,
+		Disk:      45.0,
+		Timestamp: now,
+	}
+
+	if update.Type != UpdateMetrics {
+		t.Errorf("expected UpdateMetrics, got %s", update.Type)
+	}
+	if update.IP != "192.168.1.1" {
+		t.Errorf("expected IP 192.168.1.1, got %s", update.IP)
+	}
+	if update.Disk != 45.0 {
+		t.Errorf("expected Disk 45.0, got %f", update.Disk)
+	}
+}
+
+// TestClusterUpdate_Fields tests all cluster update fields
+func TestClusterUpdate_Fields(t *testing.T) {
+	now := time.Now()
+	update := &ClusterUpdate{
+		Type:      UpdateCluster,
+		ClusterID: "prod-cluster",
+		Status:    "degraded",
+		NodeCount: 10,
+		Timestamp: now,
+	}
+
+	if update.Status != "degraded" {
+		t.Errorf("expected status 'degraded', got '%s'", update.Status)
+	}
+	if update.NodeCount != 10 {
+		t.Errorf("expected 10 nodes, got %d", update.NodeCount)
 	}
 }
