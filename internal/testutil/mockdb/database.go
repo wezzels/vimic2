@@ -417,7 +417,8 @@ func (m *MockDB) ListAlerts() ([]*Alert, error) {
 
 // Pool operations
 
-func (m *MockDB) SavePool(pool *Pool) error {
+// SavePoolRecord saves a Pool record (for backward compatibility)
+func (m *MockDB) SavePoolRecord(pool *Pool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -430,7 +431,8 @@ func (m *MockDB) SavePool(pool *Pool) error {
 	return nil
 }
 
-func (m *MockDB) GetPool(id string) (*Pool, error) {
+// GetPoolRecord gets a Pool record (for backward compatibility)
+func (m *MockDB) GetPoolRecord(id string) (*Pool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -458,4 +460,261 @@ func (m *MockDB) Count() map[string]int {
 		"alerts":   len(m.alerts),
 		"pools":    len(m.pools),
 	}
+}
+
+// PipelineDB interface methods
+
+// SavePipeline saves a pipeline state
+func (m *MockDB) SavePipeline(id string, state map[string]interface{}) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return errors.New("mock error: save pipeline")
+	}
+
+	if m.pipelines == nil {
+		m.pipelines = make(map[string]*Pipeline)
+	}
+
+	m.pipelines[id] = &Pipeline{ID: id, Config: state}
+	return nil
+}
+
+// LoadPipeline loads a pipeline state
+func (m *MockDB) LoadPipeline(id string) (map[string]interface{}, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return nil, errors.New("mock error: load pipeline")
+	}
+
+	if m.pipelines == nil {
+		return nil, errors.New("pipeline not found")
+	}
+
+	p, ok := m.pipelines[id]
+	if !ok {
+		return nil, errors.New("pipeline not found")
+	}
+	return p.Config, nil
+}
+
+// DeletePipeline deletes a pipeline
+func (m *MockDB) DeletePipeline(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return errors.New("mock error: delete pipeline")
+	}
+
+	delete(m.pipelines, id)
+	return nil
+}
+
+// ListPipelines lists all pipelines
+func (m *MockDB) ListPipelines() ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return nil, errors.New("mock error: list pipelines")
+	}
+
+	ids := make([]string, 0, len(m.pipelines))
+	for id := range m.pipelines {
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// SaveRunner saves a runner state
+func (m *MockDB) SaveRunner(id string, state map[string]interface{}) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return errors.New("mock error: save runner")
+	}
+
+	if m.runners == nil {
+		m.runners = make(map[string]*Runner)
+	}
+
+	m.runners[id] = &Runner{ID: id, Config: state}
+	return nil
+}
+
+// LoadRunner loads a runner state
+func (m *MockDB) LoadRunner(id string) (map[string]interface{}, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return nil, errors.New("mock error: load runner")
+	}
+
+	if m.runners == nil {
+		return nil, errors.New("runner not found")
+	}
+
+	r, ok := m.runners[id]
+	if !ok {
+		return nil, errors.New("runner not found")
+	}
+	return r.Config, nil
+}
+
+// DeleteRunner deletes a runner
+func (m *MockDB) DeleteRunner(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return errors.New("mock error: delete runner")
+	}
+
+	delete(m.runners, id)
+	return nil
+}
+
+// SaveNetwork saves a network state
+func (m *MockDB) SaveNetwork(id string, state map[string]interface{}) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return errors.New("mock error: save network")
+	}
+
+	if m.networks == nil {
+		m.networks = make(map[string]*Network)
+	}
+
+	m.networks[id] = &Network{ID: id, Config: state}
+	return nil
+}
+
+// LoadNetwork loads a network state
+func (m *MockDB) LoadNetwork(id string) (map[string]interface{}, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return nil, errors.New("mock error: load network")
+	}
+
+	if m.networks == nil {
+		return nil, errors.New("network not found")
+	}
+
+	n, ok := m.networks[id]
+	if !ok {
+		return nil, errors.New("network not found")
+	}
+	return n.Config, nil
+}
+
+// DeleteNetwork deletes a network
+func (m *MockDB) DeleteNetwork(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return errors.New("mock error: delete network")
+	}
+
+	delete(m.networks, id)
+	return nil
+}
+
+// SavePool saves a pool state (PipelineDB interface)
+func (m *MockDB) SavePool(id string, state map[string]interface{}) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return errors.New("mock error: save pool state")
+	}
+
+	if m.pools == nil {
+		m.pools = make(map[string]*Pool)
+	}
+
+	m.pools[id] = &Pool{ID: id}
+	return nil
+}
+
+// LoadPool loads a pool state (PipelineDB interface)
+func (m *MockDB) LoadPool(id string) (map[string]interface{}, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return nil, errors.New("mock error: load pool state")
+	}
+
+	if m.pools == nil {
+		return nil, errors.New("pool not found")
+	}
+
+	p, ok := m.pools[id]
+	if !ok {
+		return nil, errors.New("pool not found")
+	}
+	return map[string]interface{}{"id": p.ID}, nil
+}
+
+// DeletePool deletes a pool state (PipelineDB interface)
+func (m *MockDB) DeletePool(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return errors.New("mock error: delete pool state")
+	}
+
+	delete(m.pools, id)
+	return nil
+}
+
+// UpdatePoolSize updates pool size (PipelineDB interface)
+func (m *MockDB) UpdatePoolSize(id string, available, busy int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return errors.New("mock error: update pool size")
+	}
+
+	return nil
+}
+
+// UpdateVMState updates VM state (PipelineDB interface)
+func (m *MockDB) UpdateVMState(vmID string, state string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.errMode || m.failNextOp {
+		m.failNextOp = false
+		return errors.New("mock error: update vm state")
+	}
+
+	return nil
 }

@@ -110,6 +110,48 @@ func (d *DB) migrate() error {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_alerts_node ON alerts(node_id);
+
+	-- PipelineDB interface tables
+	CREATE TABLE IF NOT EXISTS pipelines (
+		id TEXT PRIMARY KEY,
+		state TEXT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS runners (
+		id TEXT PRIMARY KEY,
+		state TEXT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS networks (
+		id TEXT PRIMARY KEY,
+		state TEXT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS pools (
+		id TEXT PRIMARY KEY,
+		state TEXT,
+		available INTEGER DEFAULT 0,
+		busy INTEGER DEFAULT 0,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS vms (
+		id TEXT PRIMARY KEY,
+		pool_id TEXT,
+		state TEXT DEFAULT 'pending',
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (pool_id) REFERENCES pools(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_vms_pool ON vms(pool_id);
 	`
 
 	_, err := d.db.Exec(schema)
@@ -573,4 +615,163 @@ func (d *DB) GetNodeAlerts(nodeID string) ([]*Alert, error) {
 		alerts = append(alerts, a)
 	}
 	return alerts, nil
+}
+
+// PipelineDB interface methods
+
+// SavePipeline saves a pipeline state
+func (d *DB) SavePipeline(id string, state map[string]interface{}) error {
+	jsonState, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	_, err = d.db.Exec(`INSERT OR REPLACE INTO pipelines (id, state, updated_at) VALUES (?, ?, ?)`,
+		id, jsonState, time.Now())
+	return err
+}
+
+// LoadPipeline loads a pipeline state
+func (d *DB) LoadPipeline(id string) (map[string]interface{}, error) {
+	var jsonState []byte
+	err := d.db.QueryRow(`SELECT state FROM pipelines WHERE id = ?`, id).Scan(&jsonState)
+	if err != nil {
+		return nil, err
+	}
+	var state map[string]interface{}
+	if err := json.Unmarshal(jsonState, &state); err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+// DeletePipeline deletes a pipeline
+func (d *DB) DeletePipeline(id string) error {
+	_, err := d.db.Exec(`DELETE FROM pipelines WHERE id = ?`, id)
+	return err
+}
+
+// ListPipelines lists all pipelines
+func (d *DB) ListPipelines() ([]string, error) {
+	rows, err := d.db.Query(`SELECT id FROM pipelines`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// SaveRunner saves a runner state
+func (d *DB) SaveRunner(id string, state map[string]interface{}) error {
+	jsonState, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	_, err = d.db.Exec(`INSERT OR REPLACE INTO runners (id, state, updated_at) VALUES (?, ?, ?)`,
+		id, jsonState, time.Now())
+	return err
+}
+
+// LoadRunner loads a runner state
+func (d *DB) LoadRunner(id string) (map[string]interface{}, error) {
+	var jsonState []byte
+	err := d.db.QueryRow(`SELECT state FROM runners WHERE id = ?`, id).Scan(&jsonState)
+	if err != nil {
+		return nil, err
+	}
+	var state map[string]interface{}
+	if err := json.Unmarshal(jsonState, &state); err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+// DeleteRunner deletes a runner
+func (d *DB) DeleteRunner(id string) error {
+	_, err := d.db.Exec(`DELETE FROM runners WHERE id = ?`, id)
+	return err
+}
+
+// SaveNetwork saves a network state
+func (d *DB) SaveNetwork(id string, state map[string]interface{}) error {
+	jsonState, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	_, err = d.db.Exec(`INSERT OR REPLACE INTO networks (id, state, updated_at) VALUES (?, ?, ?)`,
+		id, jsonState, time.Now())
+	return err
+}
+
+// LoadNetwork loads a network state
+func (d *DB) LoadNetwork(id string) (map[string]interface{}, error) {
+	var jsonState []byte
+	err := d.db.QueryRow(`SELECT state FROM networks WHERE id = ?`, id).Scan(&jsonState)
+	if err != nil {
+		return nil, err
+	}
+	var state map[string]interface{}
+	if err := json.Unmarshal(jsonState, &state); err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+// DeleteNetwork deletes a network
+func (d *DB) DeleteNetwork(id string) error {
+	_, err := d.db.Exec(`DELETE FROM networks WHERE id = ?`, id)
+	return err
+}
+
+// SavePool saves a pool state
+func (d *DB) SavePool(id string, state map[string]interface{}) error {
+	jsonState, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	_, err = d.db.Exec(`INSERT OR REPLACE INTO pools (id, state, updated_at) VALUES (?, ?, ?)`,
+		id, jsonState, time.Now())
+	return err
+}
+
+// LoadPool loads a pool state
+func (d *DB) LoadPool(id string) (map[string]interface{}, error) {
+	var jsonState []byte
+	err := d.db.QueryRow(`SELECT state FROM pools WHERE id = ?`, id).Scan(&jsonState)
+	if err != nil {
+		return nil, err
+	}
+	var state map[string]interface{}
+	if err := json.Unmarshal(jsonState, &state); err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+// DeletePool deletes a pool
+func (d *DB) DeletePool(id string) error {
+	_, err := d.db.Exec(`DELETE FROM pools WHERE id = ?`, id)
+	return err
+}
+
+// UpdatePoolSize updates pool size
+func (d *DB) UpdatePoolSize(id string, available, busy int) error {
+	_, err := d.db.Exec(`UPDATE pools SET available = ?, busy = ?, updated_at = ? WHERE id = ?`,
+		available, busy, time.Now(), id)
+	return err
+}
+
+// UpdateVMState updates VM state
+func (d *DB) UpdateVMState(vmID string, state string) error {
+	_, err := d.db.Exec(`UPDATE vms SET state = ?, updated_at = ? WHERE id = ?`,
+		state, time.Now(), vmID)
+	return err
 }
