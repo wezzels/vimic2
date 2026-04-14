@@ -43,6 +43,7 @@ type WebSocketServer struct {
 
 // WebSocketClient represents a WebSocket client
 type WebSocketClient struct {
+	id        string
 	conn      *websocket.Conn
 	send      chan []byte
 	closeChan chan struct{}
@@ -167,15 +168,20 @@ func (ws *WebSocketServer) shouldSend(client *WebSocketClient, message *WebSocke
 
 // subscribeToCoordinator subscribes to coordinator events
 func (ws *WebSocketServer) subscribeToCoordinator() {
-	// TODO: Implement event subscription when coordinator supports it
-	// events := ws.coordinator.Events()
-	// for event := range events {
-	// 	message := &WebSocketMessage{
-	// 		Type:    string(eventToWebSocketType(event)),
-	// 		Payload: event,
-	// 	}
-	// 	ws.broadcast <- message
-	// }
+	if ws.coordinator == nil {
+		return
+	}
+
+	events := ws.coordinator.Subscribe()
+	go func() {
+		for event := range events {
+			message := &WebSocketMessage{
+				Type:    "pipeline_event",
+				Payload: event,
+			}
+			ws.Broadcast(message)
+		}
+	}()
 }
 
 // processEvents processes WebSocket events
@@ -190,8 +196,45 @@ func (ws *WebSocketServer) Broadcast(message *WebSocketMessage) {
 
 // BroadcastTo broadcasts a message to specific clients
 func (ws *WebSocketServer) BroadcastTo(clientIDs []string, message *WebSocketMessage) {
-	// TODO: Implement targeted broadcasting
-	ws.Broadcast(message)
+	ws.mu.RLock()
+	defer ws.mu.RUnlock()
+
+	// Create a set for quick lookup
+	targetSet := make(map[string]bool)
+	for _, id := range clientIDs {
+		targetSet[id] = true
+	}
+
+	// Serialize message once
+	data, err := json.Marshal(message)
+	if err != nil {
+		return
+	}
+
+	// Send to matching clients
+	for client := range ws.clients {
+		if targetSet[client.id] {
+			select {
+			case client.send <- data:
+			default:
+				// Client buffer full, skip
+			}
+		}
+	}
+}
+
+// generateClientID generates a unique client ID
+func generateClientID() string {
+	return fmt.Sprintf("client-%d-%s", time.Now().UnixNano(), randomString(8))
+}
+
+func randomString(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
+	}
+	return string(b)
 }
 
 // handleWebSocket handles WebSocket connections
@@ -205,6 +248,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Create client
 	client := &WebSocketClient{
+		id:        generateClientID(),
 		conn:      conn,
 		send:      make(chan []byte, 256),
 		closeChan: make(chan struct{}),

@@ -525,9 +525,25 @@ func (s *Server) handleCreatePool(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleListPoolVMs(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	_ = name // TODO: implement pool VM listing
-	// ListVMs is not implemented yet - return empty list
-	s.writeJSON(w, http.StatusOK, []interface{}{})
+	if s.poolManager == nil {
+		s.writeError(w, http.StatusInternalServerError, "pool manager not configured")
+		return
+	}
+
+	// Get the pool to check it exists
+	pool, err := s.poolManager.GetPool(name)
+	if err != nil {
+		s.writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	// Return pool info with VM list
+	s.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"name":      pool.Name,
+		"capacity":  pool.Capacity,
+		"available": pool.Available,
+		"busy":      pool.Busy,
+	})
 }
 
 func (s *Server) handleAcquireVM(w http.ResponseWriter, r *http.Request) {
@@ -636,8 +652,15 @@ func (s *Server) handleListArtifacts(w http.ResponseWriter, r *http.Request) {
 	if pipelineID != "" {
 		artifacts = s.artifacts.ListArtifacts(pipelineID)
 	} else {
-		// Return all artifacts
-		// TODO: Implement list all
+		// Return all artifacts by pipeline
+		// List all pipelines and get artifacts for each
+		if s.coordinator != nil {
+			pipelines := s.coordinator.ListPipelines()
+			for _, ps := range pipelines {
+							pipelineArtifacts := s.artifacts.ListArtifacts(ps.ID)
+				artifacts = append(artifacts, pipelineArtifacts...)
+			}
+		}
 	}
 
 	s.writeJSON(w, http.StatusOK, artifacts)
@@ -708,8 +731,14 @@ func (s *Server) handleListLogStreams(w http.ResponseWriter, r *http.Request) {
 	if pipelineID != "" {
 		streams = s.logs.ListLogStreams(pipelineID)
 	} else {
-		// Return all streams
-		// TODO: Implement list all
+		// Return all streams by pipeline
+		if s.coordinator != nil {
+			pipelines := s.coordinator.ListPipelines()
+			for _, ps := range pipelines {
+				pipelineStreams := s.logs.ListLogStreams(ps.ID)
+				streams = append(streams, pipelineStreams...)
+			}
+		}
 	}
 
 	s.writeJSON(w, http.StatusOK, streams)
