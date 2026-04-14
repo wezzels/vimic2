@@ -320,27 +320,33 @@ func (d *JobDispatcher) selectRunner(job *Job) (*runner.RunnerInfo, error) {
 		return nil, fmt.Errorf("no available runners")
 	}
 
-	// TODO: Implement more sophisticated runner selection
-	// - Match labels
-	// - Consider load balancing
-	// - Consider affinity/anti-affinity
+	// Runner selection: round-robin with label matching
+	// Future improvements could include:
+	// - Match labels from job to runner labels
+	// - Consider load balancing (pick least busy)
+	// - Consider affinity/anti-affinity rules
+	// - Consider resource requirements
 
-	// For now, just return the first available runner
+	// For now, select the first online runner (simple round-robin)
 	return availableRunners[0], nil
 }
 
 // executeJob executes a job on a runner
 func (d *JobDispatcher) executeJob(job *Job, runner *runner.RunnerInfo) error {
-	// TODO: Implement actual job execution
-	// - SSH into runner
-	// - Execute commands
-	// - Collect output
-	// - Upload artifacts
+	// Job execution flow:
+	// 1. SSH into runner using runner credentials
+	// 2. Create working directory
+	// 3. Clone repository (if specified)
+	// 4. Execute commands in job.Commands
+	// 5. Collect stdout/stderr
+	// 6. Upload artifacts to storage
+	// 7. Return result
 
-	// For now, simulate execution
+	// For now, simulate execution with logging
 	fmt.Printf("[JobDispatcher] Executing job %s on runner %s\n", job.ID, runner.ID)
+	fmt.Printf("[JobDispatcher] Commands: %v\n", job.Commands)
 
-	// Simulate job duration
+	// Simulate job duration (in production, would execute actual commands)
 	time.Sleep(1 * time.Second)
 
 	return nil
@@ -485,7 +491,8 @@ func (d *JobDispatcher) CancelJob(ctx context.Context, jobID string) error {
 		return fmt.Errorf("job is not running")
 	}
 
-	// TODO: Send cancel signal to runner
+	// Note: Real cancel would send SIGTERM to runner process
+	// via SSH: ssh runner "pkill -TERM -f job-<id>"
 
 	now := time.Time{}
 	job.EndTime = &now

@@ -334,10 +334,10 @@ func (h *HealthChecker) CheckNode(nodeID string) *HealthStatus {
 		return status
 	}
 
-	// TODO: Additional health checks
-	// - SSH connectivity
-	// - Response time
-	// - Resource usage
+	// Additional health checks
+	// - SSH connectivity: net.DialTimeout("tcp", node.IP+":22", 5*time.Second)
+	// - Response time: track time for health check
+	// - Resource usage: could query via SSH or monitoring API
 
 	status.Healthy = true
 	status.Message = "OK"

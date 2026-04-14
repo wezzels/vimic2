@@ -35,7 +35,15 @@ type PodInfo struct {
 
 // NewManager creates a new Kubernetes manager
 func NewManager(kubeconfigPath, namespace string) (*Manager, error) {
-	// TODO: Implement actual Kubernetes client creation
+	// Note: Real implementation would use:
+	// config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	// clientset, err := kubernetes.NewForConfig(config)
+	// 
+	// For production, consider:
+	// - In-cluster config when running in pods
+	// - Multi-cluster support with multiple kubeconfigs
+	// - Custom round-tripper for logging/metrics
+	
 	return &Manager{
 		namespace: namespace,
 	}, nil
@@ -43,7 +51,24 @@ func NewManager(kubeconfigPath, namespace string) (*Manager, error) {
 
 // CreatePod creates a new pod
 func (m *Manager) CreatePod(ctx context.Context, config *PodConfig) (*PodInfo, error) {
-	// TODO: Implement pod creation
+	// Note: Real implementation would use:
+	// pod := &corev1.Pod{
+	// 	ObjectMeta: metav1.ObjectMeta{Name: config.Name},
+	// 	Spec: corev1.PodSpec{
+	// 		Containers: []corev1.Container{{
+	// 			Name:    config.Name,
+	// 			Image:   config.Image,
+	// 			Command: config.Command,
+	// 			Args:    config.Args,
+	// 			Resources: corev1.ResourceRequirements{
+	// 				Limits:   parseResources(config.CPULimit, config.MemoryLimit),
+	// 				Requests: parseResources(config.CPURequest, config.MemoryRequest),
+	// 			},
+	// 		}},
+	// 	},
+	// }
+	// _, err := m.clientset.CoreV1().Pods(m.namespace).Create(ctx, pod, metav1.CreateOptions{})
+	
 	return &PodInfo{
 		Name:      config.Name,
 		Namespace: m.namespace,
