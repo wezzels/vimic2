@@ -7,12 +7,27 @@ import (
 	"testing"
 )
 
+// newCleanVLANAllocator creates a VLAN allocator with isolated state for testing
+func newCleanVLANAllocator(t *testing.T, start, end int) *VLANAllocator {
+	tmpDir, err := os.MkdirTemp("", "vlan-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(tmpDir) })
+
+	stateFile := filepath.Join(tmpDir, "vlan-state.json")
+	va := &VLANAllocator{
+		start:     start,
+		end:       end,
+		used:      make(map[int]bool),
+		stateFile: stateFile,
+	}
+	return va
+}
+
 // TestNewVLANAllocator tests VLAN allocator creation
 func TestNewVLANAllocator(t *testing.T) {
-	va, err := NewVLANAllocator(100, 200)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
+	va := newCleanVLANAllocator(t, 100, 200)
 
 	if va.start != 100 {
 		t.Errorf("expected start 100, got %d", va.start)
@@ -45,22 +60,9 @@ func TestNewVLANAllocator_InvalidRange(t *testing.T) {
 	}
 }
 
-// TestVLANAllocator_AllocateReal tests VLAN allocation
+// TestVLANAllocator_Allocate tests VLAN allocation
 func TestVLANAllocator_Allocate(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vlan-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	stateFile := filepath.Join(tmpDir, "vlan-state.json")
-
-	va, err := NewVLANAllocator(100, 110)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
-
-	va.SetStateFile(stateFile)
+	va := newCleanVLANAllocator(t, 100, 110)
 
 	// Allocate first VLAN
 	vlan1, err := va.Allocate()
@@ -83,22 +85,9 @@ func TestVLANAllocator_Allocate(t *testing.T) {
 	}
 }
 
-// TestVLANAllocator_ReleaseReal tests VLAN release
+// TestVLANAllocator_Release tests VLAN release
 func TestVLANAllocator_Release(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vlan-release-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	stateFile := filepath.Join(tmpDir, "vlan-state.json")
-
-	va, err := NewVLANAllocator(100, 110)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
-
-	va.SetStateFile(stateFile)
+	va := newCleanVLANAllocator(t, 100, 110)
 
 	// Allocate and release
 	vlan, err := va.Allocate()
@@ -124,33 +113,17 @@ func TestVLANAllocator_Release(t *testing.T) {
 
 // TestVLANAllocator_ReleaseNotAllocated tests releasing unallocated VLAN
 func TestVLANAllocator_ReleaseNotAllocated(t *testing.T) {
-	va, err := NewVLANAllocator(100, 110)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
+	va := newCleanVLANAllocator(t, 100, 110)
 
-	err = va.Release(105)
+	err := va.Release(105)
 	if err == nil {
 		t.Error("expected error for releasing unallocated VLAN")
 	}
 }
 
-// TestVLANAllocator_IsAllocatedCheck tests IsAllocated check
+// TestVLANAllocator_IsAllocated tests IsAllocated check
 func TestVLANAllocator_IsAllocated(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vlan-is-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	stateFile := filepath.Join(tmpDir, "vlan-state.json")
-
-	va, err := NewVLANAllocator(100, 110)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
-
-	va.SetStateFile(stateFile)
+	va := newCleanVLANAllocator(t, 100, 110)
 
 	vlan, _ := va.Allocate()
 
@@ -163,22 +136,9 @@ func TestVLANAllocator_IsAllocated(t *testing.T) {
 	}
 }
 
-// TestVLANAllocator_UsedCount tests Used count
+// TestVLANAllocator_Used tests Used count
 func TestVLANAllocator_Used(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vlan-used-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	stateFile := filepath.Join(tmpDir, "vlan-state.json")
-
-	va, err := NewVLANAllocator(100, 110)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
-
-	va.SetStateFile(stateFile)
+	va := newCleanVLANAllocator(t, 100, 110)
 
 	if va.Used() != 0 {
 		t.Errorf("expected 0 used, got %d", va.Used())
@@ -192,22 +152,9 @@ func TestVLANAllocator_Used(t *testing.T) {
 	}
 }
 
-// TestVLANAllocator_AvailableCount tests Available count
+// TestVLANAllocator_Available tests Available count
 func TestVLANAllocator_Available(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vlan-avail-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	stateFile := filepath.Join(tmpDir, "vlan-state.json")
-
-	va, err := NewVLANAllocator(100, 110)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
-
-	va.SetStateFile(stateFile)
+	va := newCleanVLANAllocator(t, 100, 110)
 
 	total := 11 // 100-110 inclusive
 	if va.Available() != total {
@@ -224,20 +171,7 @@ func TestVLANAllocator_Available(t *testing.T) {
 
 // TestVLANAllocator_ListUsed tests ListUsed
 func TestVLANAllocator_ListUsed(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vlan-list-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	stateFile := filepath.Join(tmpDir, "vlan-state.json")
-
-	va, err := NewVLANAllocator(100, 110)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
-
-	va.SetStateFile(stateFile)
+	va := newCleanVLANAllocator(t, 100, 110)
 
 	va.Allocate()
 	va.Allocate()
@@ -250,20 +184,7 @@ func TestVLANAllocator_ListUsed(t *testing.T) {
 
 // TestVLANAllocator_ListAvailable tests ListAvailable
 func TestVLANAllocator_ListAvailable(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vlan-list-avail-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	stateFile := filepath.Join(tmpDir, "vlan-state.json")
-
-	va, err := NewVLANAllocator(100, 110)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
-
-	va.SetStateFile(stateFile)
+	va := newCleanVLANAllocator(t, 100, 110)
 
 	available := va.ListAvailable()
 	if len(available) != 11 {
@@ -273,20 +194,7 @@ func TestVLANAllocator_ListAvailable(t *testing.T) {
 
 // TestVLANAllocator_Reclaim tests Reclaim
 func TestVLANAllocator_Reclaim(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vlan-reclaim-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	stateFile := filepath.Join(tmpDir, "vlan-state.json")
-
-	va, err := NewVLANAllocator(100, 110)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
-
-	va.SetStateFile(stateFile)
+	va := newCleanVLANAllocator(t, 100, 110)
 
 	// Reclaim a VLAN
 	va.Reclaim(105)
@@ -306,22 +214,9 @@ func TestVLANAllocator_Reclaim(t *testing.T) {
 	}
 }
 
-// TestVLANAllocator_ResetPool tests Reset
+// TestVLANAllocator_Reset tests Reset
 func TestVLANAllocator_Reset(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vlan-reset-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	stateFile := filepath.Join(tmpDir, "vlan-state.json")
-
-	va, err := NewVLANAllocator(100, 110)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
-
-	va.SetStateFile(stateFile)
+	va := newCleanVLANAllocator(t, 100, 110)
 
 	// Allocate some VLANs
 	va.Allocate()
@@ -333,7 +228,7 @@ func TestVLANAllocator_Reset(t *testing.T) {
 	}
 
 	// Reset
-	err = va.Reset()
+	err := va.Reset()
 	if err != nil {
 		t.Fatalf("Reset failed: %v", err)
 	}
@@ -345,21 +240,8 @@ func TestVLANAllocator_Reset(t *testing.T) {
 
 // TestVLANAllocator_Exhaust tests exhausting VLAN pool
 func TestVLANAllocator_Exhaust(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vlan-exhaust-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	stateFile := filepath.Join(tmpDir, "vlan-state.json")
-
 	// Small range
-	va, err := NewVLANAllocator(100, 102)
-	if err != nil {
-		t.Fatalf("NewVLANAllocator failed: %v", err)
-	}
-
-	va.SetStateFile(stateFile)
+	va := newCleanVLANAllocator(t, 100, 102)
 
 	// Allocate all 3 VLANs
 	va.Allocate()
@@ -367,7 +249,7 @@ func TestVLANAllocator_Exhaust(t *testing.T) {
 	va.Allocate()
 
 	// Should fail
-	_, err = va.Allocate()
+	_, err := va.Allocate()
 	if err == nil {
 		t.Error("expected error when pool exhausted")
 	}
