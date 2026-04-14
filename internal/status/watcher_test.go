@@ -234,15 +234,160 @@ func TestWatcher_Unsubscribe(t *testing.T) {
 	}
 }
 
-// TestWatcher_MultipleSubscribers tests multiple subscribers
-func TestWatcher_MultipleSubscribers(t *testing.T) {
+// TestWebSocketHub_Run tests the hub's run loop
+func TestWebSocketHub_Run(t *testing.T) {
+	hub := NewWebSocketHub()
+	go hub.Run()
+
+	client := &WebSocketClient{
+		hub:        hub,
+		send:       make(chan []byte, 10),
+		nodeFilter: nil,
+	}
+
+	// Register client
+	hub.register <- client
+	time.Sleep(10 * time.Millisecond)
+
+	// Broadcast an update
+	update := &NodeUpdate{
+		Type:      UpdateNode,
+		NodeID:    "node-1",
+		ClusterID: "cluster-1",
+		State:     "running",
+		Timestamp: time.Now(),
+	}
+	hub.Broadcast(update)
+
+	// Receive the update
+	select {
+	case data := <-client.send:
+		var received NodeUpdate
+		if err := json.Unmarshal(data, &received); err != nil {
+			t.Fatalf("Failed to unmarshal: %v", err)
+		}
+		if received.NodeID != "node-1" {
+			t.Errorf("NodeID = %s, want node-1", received.NodeID)
+		}
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for broadcast")
+	}
+}
+
+// TestWebSocketHub_RunWithFilter tests the hub with node filtering
+func TestWebSocketHub_RunWithFilter(t *testing.T) {
+	hub := NewWebSocketHub()
+	go hub.Run()
+
+	client1 := &WebSocketClient{
+		hub:        hub,
+		send:       make(chan []byte, 10),
+		nodeFilter: []string{"node-1"},
+	}
+	client2 := &WebSocketClient{
+		hub:        hub,
+		send:       make(chan []byte, 10),
+		nodeFilter: []string{"node-2"},
+	}
+
+	hub.register <- client1
+	hub.register <- client2
+	time.Sleep(10 * time.Millisecond)
+
+	update := &NodeUpdate{
+		Type:      UpdateNode,
+		NodeID:    "node-1",
+		ClusterID: "cluster-1",
+		State:     "running",
+		Timestamp: time.Now(),
+	}
+	hub.Broadcast(update)
+
+	// client1 should receive
+	select {
+	case <-client1.send:
+		// Good
+	case <-time.After(time.Second):
+		t.Error("client1 timed out")
+	}
+
+	// client2 should NOT receive
+	select {
+	case <-client2.send:
+		t.Error("client2 should not receive node-1 update")
+	case <-time.After(50 * time.Millisecond):
+		// Expected
+	}
+}
+
+// TestWebSocketHub_Unregister tests client unregistration during run
+func TestWebSocketHub_UnregisterRun(t *testing.T) {
+	hub := NewWebSocketHub()
+	go hub.Run()
+
+	client := &WebSocketClient{
+		hub:        hub,
+		send:       make(chan []byte, 10),
+		nodeFilter: nil,
+	}
+
+	hub.register <- client
+	time.Sleep(10 * time.Millisecond)
+
+	hub.unregister <- client
+	time.Sleep(10 * time.Millisecond)
+
+	if _, ok := hub.clients[client]; ok {
+		t.Error("Client should be unregistered")
+	}
+}
+
+// TestWebSocketHub_MultipleBroadcasts tests multiple broadcasts
+func TestWebSocketHub_MultipleBroadcasts(t *testing.T) {
+	hub := NewWebSocketHub()
+	go hub.Run()
+
+	client := &WebSocketClient{
+		hub:        hub,
+		send:       make(chan []byte, 10),
+		nodeFilter: nil,
+	}
+
+	hub.register <- client
+	time.Sleep(10 * time.Millisecond)
+
+	for i := 0; i < 3; i++ {
+		update := &NodeUpdate{
+			Type:      UpdateNode,
+			NodeID:    "node-1",
+			ClusterID: "cluster-1",
+			State:     "running",
+			Timestamp: time.Now(),
+		}
+		hub.Broadcast(update)
+	}
+
+	count := 0
+	timeout := time.After(time.Second)
+	for count < 3 {
+		select {
+		case <-client.send:
+			count++
+		case <-timeout:
+			t.Fatalf("Timed out after receiving %d updates", count)
+		}
+	}
+}
+
+// TestWatcher_SubscribeMultiple tests multiple subscriber operations
+func TestWatcher_SubscribeMultiple(t *testing.T) {
 	db := &database.DB{}
 	hosts := make(map[string]hypervisor.Hypervisor)
 	watcher := NewWatcher(db, hosts)
 
-	mock1 := &mockSubscriber{}
-	mock2 := &mockSubscriber{}
-	mock3 := &mockSubscriber{}
+	mock1 := &mockSubscriber{nodeUpdates: make([]*NodeUpdate, 0), clusterUpdates: make([]*ClusterUpdate, 0)}
+	mock2 := &mockSubscriber{nodeUpdates: make([]*NodeUpdate, 0), clusterUpdates: make([]*ClusterUpdate, 0)}
+	mock3 := &mockSubscriber{nodeUpdates: make([]*NodeUpdate, 0), clusterUpdates: make([]*ClusterUpdate, 0)}
 
 	watcher.Subscribe(mock1)
 	watcher.Subscribe(mock2)
