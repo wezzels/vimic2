@@ -113,10 +113,8 @@ func (lc *LogCollector) loadState() error {
 }
 
 // saveState saves log state to disk
+// NOTE: Caller must hold lc.mu lock before calling this.
 func (lc *LogCollector) saveState() error {
-	lc.mu.RLock()
-	defer lc.mu.RUnlock()
-
 	logs := make([]*LogStream, 0, len(lc.logs))
 	for _, log := range lc.logs {
 		logs = append(logs, log)

@@ -150,10 +150,8 @@ func (d *JobDispatcher) loadState() error {
 }
 
 // saveState saves job state to disk
+// NOTE: Caller must hold d.mu lock before calling this.
 func (d *JobDispatcher) saveState() error {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
 	state := struct {
 		Jobs      []*Job `json:"jobs"`
 		Pending   []*Job `json:"pending"`
@@ -276,7 +274,7 @@ func (d *JobDispatcher) processJob(workerID int, job *Job) {
 	}()
 
 	// Mark as running
-	now := time.Time{}
+	now := time.Now()
 	job.StartTime = &now
 	job.Status = PipelineStatusRunning
 	job.UpdatedAt = now
@@ -303,6 +301,10 @@ func (d *JobDispatcher) processJob(workerID int, job *Job) {
 // selectRunner selects a runner for a job
 func (d *JobDispatcher) selectRunner(job *Job) (*runner.RunnerInfo, error) {
 	// Get all runners
+	if d.runnerManager == nil {
+		return nil, fmt.Errorf("no runner manager configured")
+	}
+
 	allRunners, err := d.runnerManager.ListRunners()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list runners: %w", err)
@@ -494,10 +496,12 @@ func (d *JobDispatcher) CancelJob(ctx context.Context, jobID string) error {
 	// Note: Real cancel would send SIGTERM to runner process
 	// via SSH: ssh runner "pkill -TERM -f job-<id>"
 
-	now := time.Time{}
+	now := time.Now()
 	job.EndTime = &now
 	job.Status = PipelineStatusCanceled
-	job.Duration = int64(now.Sub(*job.StartTime).Seconds())
+	if job.StartTime != nil {
+		job.Duration = int64(now.Sub(*job.StartTime).Seconds())
+	}
 	job.UpdatedAt = now
 
 	delete(d.running, job.ID)

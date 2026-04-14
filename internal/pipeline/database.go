@@ -286,7 +286,7 @@ func (db *PipelineDB) initialize() error {
 		pipeline_id TEXT NOT NULL,
 		runner_id TEXT NOT NULL,
 		stage TEXT,
-		job TEXT,
+		job_id TEXT,
 		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 		level TEXT DEFAULT 'info',
 		message TEXT NOT NULL,
