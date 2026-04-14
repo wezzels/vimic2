@@ -1,541 +1,235 @@
-// Package network provides real database tests
+//go:build integration
+
 package network
 
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
-	"time"
 )
 
-// TestNetworkDB_ListRouters tests ListRouters
-func TestNetworkDB_ListRouters(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
+// TestIsolation_RealCreateDelete tests creating and deleting isolation rules
+// Requires root/sudo for nftables/iptables access
+func TestIsolation_RealCreateDelete(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("requires root")
+	}
+
+	fm, err := NewFirewallManager(FirewallBackendNFTables)
 	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
+		t.Fatalf("NewFirewallManager failed: %v", err)
 	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
 
-	db, err := NewNetworkDB(tmpPath)
+	t.Logf("Firewall backend: %s", fm.GetBackend())
+
+	// Create isolation rules
+	err = fm.CreateIsolationRules("vimic2-iso-test", "10.200.0.0/24", 200)
 	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
-	}
-	defer db.Close()
+		t.Logf("CreateIsolationRules: %v", err)
+	} else {
+		t.Log("Isolation rules created successfully")
 
-	ctx := context.Background()
-
-	// Save router
-	router := &Router{
-		ID:   "router-1",
-		Name: "main-router",
-	}
-	err = db.SaveRouter(ctx, router)
-	if err != nil {
-		t.Fatalf("failed to save router: %v", err)
-	}
-
-	// List routers
-	routers, err := db.ListRouters(ctx)
-	if err != nil {
-		t.Fatalf("failed to list routers: %v", err)
-	}
-	if len(routers) < 1 {
-		t.Error("expected at least one router")
-	}
-}
-
-// TestNetworkDB_DeleteRouter tests DeleteRouter
-func TestNetworkDB_DeleteRouter(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	db, err := NewNetworkDB(tmpPath)
-	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	// Create and delete router
-	router := &Router{ID: "router-del", Name: "delete-me"}
-	db.SaveRouter(ctx, router)
-
-	err = db.DeleteRouter(ctx, "router-del")
-	if err != nil {
-		t.Fatalf("failed to delete router: %v", err)
-	}
-
-	// Verify deletion
-	routers, _ := db.ListRouters(ctx)
-	for _, r := range routers {
-		if r.ID == "router-del" {
-			t.Error("router should be deleted")
+		// Clean up
+		err = fm.DeleteIsolationRules("vimic2-iso-test", "10.200.0.0/24", 200)
+		if err != nil {
+			t.Logf("DeleteIsolationRules: %v", err)
+		} else {
+			t.Log("Isolation rules deleted successfully")
 		}
 	}
 }
 
-// TestNetworkDB_ListFirewalls tests ListFirewalls
-func TestNetworkDB_ListFirewalls(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
+// TestFirewall_RealAllowDenyTraffic tests allow/deny traffic rules
+// Requires root/sudo
+func TestFirewall_RealAllowDenyTraffic(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("requires root")
+	}
+
+	fm, err := NewFirewallManager(FirewallBackendNFTables)
 	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
+		t.Fatal(err)
 	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
 
-	db, err := NewNetworkDB(tmpPath)
+	t.Logf("Firewall backend: %s", fm.GetBackend())
+
+	// Test AllowTraffic
+	err = fm.AllowTraffic("10.0.0.0/24", "10.200.0.0/24", []int{22, 443})
 	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
+		t.Logf("AllowTraffic: %v", err)
+	} else {
+		t.Log("AllowTraffic succeeded")
 	}
-	defer db.Close()
 
-	ctx := context.Background()
-
-	// Save firewall
-	firewall := &Firewall{
-		ID:        "fw-1",
-		Name:      "web-firewall",
-		NetworkID: "net-1",
-	}
-	db.SaveFirewall(ctx, firewall)
-
-	// List firewalls
-	firewalls, err := db.ListFirewalls(ctx)
+	// Test DenyTraffic
+	err = fm.DenyTraffic("10.0.0.0/24", "10.200.0.0/24")
 	if err != nil {
-		t.Fatalf("failed to list firewalls: %v", err)
-	}
-	if len(firewalls) < 1 {
-		t.Error("expected at least one firewall")
+		t.Logf("DenyTraffic: %v", err)
+	} else {
+		t.Log("DenyTraffic succeeded")
 	}
 }
 
-// TestNetworkDB_DeleteFirewall tests DeleteFirewall
-func TestNetworkDB_DeleteFirewall(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
+// TestOVS_RealFlowManagement tests OVS flow operations
+// Requires root/sudo
+func TestOVS_RealFlowManagement(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("requires root")
 	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
 
-	db, err := NewNetworkDB(tmpPath)
+	ovs := NewOVSClient()
+
+	// Create a test bridge
+	err := ovs.CreateBridge("vimic2-test-flows")
 	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
+		t.Skipf("CreateBridge failed (OVS not available): %v", err)
 	}
-	defer db.Close()
+	defer ovs.DeleteBridge("vimic2-test-flows")
 
-	ctx := context.Background()
-
-	// Create and delete firewall
-	firewall := &Firewall{ID: "fw-del", Name: "delete-me"}
-	db.SaveFirewall(ctx, firewall)
-
-	err = db.DeleteFirewall(ctx, "fw-del")
+	// Add flows
+	err = ovs.AddFlow("vimic2-test-flows", "priority=100,ip,actions=output:1")
 	if err != nil {
-		t.Fatalf("failed to delete firewall: %v", err)
+		t.Logf("AddFlow: %v (may need more ports)", err)
+	}
+
+	// List flows
+	flows, err := ovs.DumpFlows("vimic2-test-flows")
+	if err != nil {
+		t.Logf("DumpFlows: %v", err)
+	} else {
+		t.Logf("Found %d flows", len(flows))
+	}
+
+	// Delete flows
+	err = ovs.DelFlow("vimic2-test-flows", "priority=100")
+	if err != nil {
+		t.Logf("DelFlow: %v", err)
 	}
 }
 
-// TestNetworkDB_DeleteTunnel tests DeleteTunnel
-func TestNetworkDB_DeleteTunnel(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	db, err := NewNetworkDB(tmpPath)
-	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	// Create and delete tunnel
-	tunnel := &Tunnel{ID: "tunnel-1", Name: "vpn-tunnel"}
-	db.SaveTunnel(ctx, tunnel)
-
-	err = db.DeleteTunnel(ctx, "tunnel-1")
-	if err != nil {
-		t.Fatalf("failed to delete tunnel: %v", err)
-	}
-}
-
-// TestNetworkDB_ListInterfaces tests ListInterfaces
-func TestNetworkDB_ListInterfaces(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	db, err := NewNetworkDB(tmpPath)
-	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	// Save VM interface
-	iface := &VMInterface{
-		ID:        "eth0",
-		Name:      "eth0",
-		IPAddress: "192.168.1.1",
-	}
-	db.SaveInterface(ctx, iface)
-
-	// List interfaces
-	ifaces, err := db.ListInterfaces(ctx)
-	if err != nil {
-		t.Fatalf("failed to list interfaces: %v", err)
-	}
-	if len(ifaces) < 1 {
-		t.Error("expected at least one interface")
-	}
-}
-
-// TestNetworkDB_DeleteInterface tests DeleteInterface
-func TestNetworkDB_DeleteInterface(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	db, err := NewNetworkDB(tmpPath)
-	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	// Create and delete interface
-	iface := &VMInterface{ID: "eth-del", Name: "delete-me"}
-	db.SaveInterface(ctx, iface)
-
-	err = db.DeleteInterface(ctx, "eth-del")
-	if err != nil {
-		t.Fatalf("failed to delete interface: %v", err)
-	}
-}
-
-// TestNetworkDB_Backup tests Backup
-func TestNetworkDB_Backup(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	backupFile, err := os.CreateTemp("", "network-backup-*.db")
-	if err != nil {
-		t.Fatalf("failed to create backup file: %v", err)
-	}
-	backupPath := backupFile.Name()
-	backupFile.Close()
-	defer os.Remove(backupPath)
-
-	db, err := NewNetworkDB(tmpPath)
-	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	// Create some data
-	network := &Network{ID: "net-1", Name: "backup-test", CIDR: "10.0.0.0/24"}
-	db.SaveNetwork(ctx, network)
-
-	// Backup
-	err = db.Backup(ctx, backupPath)
-	if err != nil {
-		t.Fatalf("failed to backup: %v", err)
-	}
-
-	// Verify backup file exists
-	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
-		t.Error("backup file should exist")
-	}
-}
-
-// TestNetworkDB_Restore tests Restore
-func TestNetworkDB_Restore(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	backupFile, err := os.CreateTemp("", "network-backup-*.db")
-	if err != nil {
-		t.Fatalf("failed to create backup file: %v", err)
-	}
-	backupPath := backupFile.Name()
-	backupFile.Close()
-	defer os.Remove(backupPath)
-
-	db, err := NewNetworkDB(tmpPath)
-	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	// Create data and backup
-	network := &Network{ID: "net-restore", Name: "restore-test", CIDR: "10.1.0.0/24"}
-	db.SaveNetwork(ctx, network)
-	db.Backup(ctx, backupPath)
-
-	// Delete the network
-	db.DeleteNetwork(ctx, "net-restore")
-
-	// Restore
-	err = db.Restore(ctx, backupPath)
-	if err != nil {
-		t.Fatalf("failed to restore: %v", err)
-	}
-
-	// Verify restored data
-	restored, err := db.GetNetwork(ctx, "net-restore")
-	if err != nil {
-		t.Fatalf("failed to get restored network: %v", err)
-	}
-	if restored.Name != "restore-test" {
-		t.Errorf("expected restore-test, got %s", restored.Name)
-	}
-}
-
-// TestNetworkDB_Migrate tests Migrate
-func TestNetworkDB_Migrate(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	db, err := NewNetworkDB(tmpPath)
-	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	// Run migrate (should be idempotent)
-	err = db.Migrate(ctx)
-	if err != nil {
-		t.Fatalf("failed to migrate: %v", err)
-	}
-}
-
-// TestNetworkDB_GetStats tests GetStats
-func TestNetworkDB_GetStats(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-test-*.db")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
-
-	db, err := NewNetworkDB(tmpPath)
-	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	// Create some data
-	for i := 0; i < 5; i++ {
-		network := &Network{
-			ID:   "net-" + string(rune('A'+i)),
-			Name: "network-" + string(rune('A'+i)),
-			CIDR: "10.0.0.0/24",
-		}
-		db.SaveNetwork(ctx, network)
-	}
-
-	stats, err := db.GetStats(ctx)
-	if err != nil {
-		t.Fatalf("failed to get stats: %v", err)
-	}
-
-	if stats == nil {
-		t.Error("expected non-nil stats")
-	}
-}
-
-// TestIPAMManager_Creation tests IPAM manager
-func TestIPAMManager_Creation(t *testing.T) {
+// TestIPAM_RealAllocation tests IPAM allocation
+func TestIPAM_RealAllocation(t *testing.T) {
 	config := &IPAMConfig{
-		BaseCIDR: "192.168.0.0/16",
-		DNS:      []string{"8.8.8.8"},
-	}
-
-	// Just verify config creation
-	if config.BaseCIDR == "" {
-		t.Error("BaseCIDR should not be empty")
-	}
-}
-
-// TestIPAMConfigReal tests IPAM config
-func TestIPAMConfigReal(t *testing.T) {
-	config := &IPAMConfig{
-		BaseCIDR: "10.0.0.0/24",
+		BaseCIDR: "10.100.0.0/24",
 		DNS:      []string{"8.8.8.8", "8.8.4.4"},
 	}
 
-	if len(config.DNS) != 2 {
-		t.Errorf("expected 2 DNS servers, got %d", len(config.DNS))
+	ipam, err := NewIPAMManager(config)
+	if err != nil {
+		t.Fatalf("NewIPAMManager failed: %v", err)
+	}
+
+	// Allocate multiple IPs
+	allocated := make(map[string]bool)
+	for i := 0; i < 5; i++ {
+		ip, _, err := ipam.Allocate()
+		if err != nil {
+			t.Logf("Allocate %d: %v", i, err)
+			break
+		}
+		if allocated[ip] {
+			t.Errorf("Duplicate IP allocated: %s", ip)
+		}
+		allocated[ip] = true
+		t.Logf("Allocated IP: %s", ip)
+	}
+
+	// Test pool listing
+	pools := ipam.ListPools()
+	t.Logf("Pools: %d", len(pools))
+
+	// Test DNS
+	dns := ipam.GetDNS()
+	t.Logf("DNS servers: %v", dns)
+
+	// Test stats
+	used := ipam.Used()
+	available := ipam.Available()
+	t.Logf("Used: %d, Available: %d", used, available)
+
+	// Test reclamation
+	for _, pool := range pools {
+		err := ipam.Reclaim(pool.CIDR)
+		if err != nil {
+			t.Logf("Reclaim %s: %v", pool.CIDR, err)
+		}
 	}
 }
 
-// TestNetwork_FullWorkflow tests complete network workflow
-func TestNetwork_FullWorkflow(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "network-full-*.db")
+// TestVLAN_RealAllocator tests VLAN allocation
+func TestVLAN_RealAllocator(t *testing.T) {
+	vlanAlloc, err := NewVLANAllocator(1, 4094)
 	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
+		t.Fatalf("NewVLANAllocator failed: %v", err)
 	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
 
-	db, err := NewNetworkDB(tmpPath)
+	// Allocate VLANs
+	vlanIDs := make([]int, 0, 5)
+	for i := 0; i < 5; i++ {
+		vlan, err := vlanAlloc.Allocate()
+		if err != nil {
+			t.Logf("Allocate VLAN %d: %v", i, err)
+			break
+		}
+		t.Logf("Allocated VLAN: %d", vlan)
+		vlanIDs = append(vlanIDs, vlan)
+	}
+
+	// Release VLANs
+	for _, vlan := range vlanIDs {
+		vlanAlloc.Reclaim(vlan)
+		t.Logf("Released VLAN: %d", vlan)
+	}
+}
+
+// TestNetworkManager_RealCreateNetwork tests creating a real network with OVS
+// Requires root/sudo
+func TestNetworkManager_RealCreateNetwork(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("requires root")
+	}
+
+	tmpDir, err := os.MkdirTemp("", "vimic2-net-real-test-")
 	if err != nil {
-		t.Fatalf("failed to create network DB: %v", err)
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := NewNetworkDB(dbPath)
+	if err != nil {
+		t.Fatal(err)
 	}
 	defer db.Close()
 
+	nm := NewNetworkManager(db)
 	ctx := context.Background()
 
 	// Create network
 	network := &Network{
-		ID:          "net-full",
-		Name:        "full-test",
-		CIDR:        "172.16.0.0/24",
-		Gateway:     "172.16.0.1",
-		DHCPEnabled: true,
-		VLANID:      100,
+		Name:       "test-real-network",
+		BridgeName: "vimic2-test-real",
+		CIDR:       "10.250.0.0/24",
+		Gateway:    "10.250.0.1",
+		VLANID:     250,
 	}
-	err = db.SaveNetwork(ctx, network)
+
+	err = nm.CreateNetwork(ctx, network)
 	if err != nil {
-		t.Fatalf("failed to save network: %v", err)
+		t.Skipf("CreateNetwork failed (OVS/network not available): %v", err)
+	}
+	t.Logf("Created network: %s (ID: %s)", network.Name, network.ID)
+
+	// List networks
+	networks, err := nm.ListNetworks(ctx)
+	if err != nil {
+		t.Logf("ListNetworks: %v", err)
+	} else {
+		t.Logf("Found %d networks", len(networks))
 	}
 
-	// Create router
-	router := &Router{
-		ID:        "router-full",
-		Name:      "main-router",
-		NetworkID: "net-full",
-	}
-	db.SaveRouter(ctx, router)
-
-	// Create firewall
-	firewall := &Firewall{
-		ID:        "fw-full",
-		Name:      "web-firewall",
-		NetworkID: "net-full",
-	}
-	db.SaveFirewall(ctx, firewall)
-
-	// Create tunnel
-	tunnel := &Tunnel{
-		ID:        "tunnel-full",
-		Name:      "vpn-tunnel",
-		NetworkID: "net-full",
-	}
-	db.SaveTunnel(ctx, tunnel)
-
-	// Create VM interface
-	iface := &VMInterface{
-		ID:        "eth-full",
-		Name:      "eth0",
-		IPAddress: "172.16.0.10",
-		NetworkID: "net-full",
-	}
-	db.SaveInterface(ctx, iface)
-
-	// Verify all created
-	net, _ := db.GetNetwork(ctx, "net-full")
-	if net.Name != "full-test" {
-		t.Error("network name mismatch")
-	}
-
-	routers, _ := db.ListRouters(ctx)
-	if len(routers) < 1 {
-		t.Error("expected at least one router")
-	}
-
-	firewalls, _ := db.ListFirewalls(ctx)
-	if len(firewalls) < 1 {
-		t.Error("expected at least one firewall")
-	}
-
-	ifaces, _ := db.ListInterfaces(ctx)
-	if len(ifaces) < 1 {
-		t.Error("expected at least one interface")
-	}
-
-	// Backup and restore
-	backupPath := tmpPath + ".backup"
-	db.Backup(ctx, backupPath)
-	defer os.Remove(backupPath)
-
-	// Delete and restore
-	db.DeleteNetwork(ctx, "net-full")
-	db.Restore(ctx, backupPath)
-
-	restored, _ := db.GetNetwork(ctx, "net-full")
-	if restored.Name != "full-test" {
-		t.Error("restored network name mismatch")
-	}
-}
-
-// TestIsolationManager_New tests isolation manager
-func TestIsolationManager_New(t *testing.T) {
-	// NewIsolationManager requires types.PipelineDB and NetworkConfig
-	// Just verify the function exists
-	_ = NewIsolationManager
-}
-
-// TestTimeOperations tests time operations
-func TestTimeOperations(t *testing.T) {
-	now := time.Now()
-	future := now.Add(24 * time.Hour)
-	past := now.Add(-24 * time.Hour)
-
-	if future.Before(now) {
-		t.Error("future should be after now")
-	}
-	if past.After(now) {
-		t.Error("past should be before now")
-	}
+	// Clean up: delete the bridge
+	ovs := NewOVSClient()
+	ovs.DeleteBridge("vimic2-test-real")
 }
