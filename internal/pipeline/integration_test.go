@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/types"
@@ -29,7 +30,7 @@ func newMockPoolManager() *mockPoolManager {
 
 func (m *mockPoolManager) AllocateVM(poolName string) (*types.VMState, error) {
 	vm := &types.VMState{
-		ID:     "vm-test-123",
+		ID:     "vm-test-" + time.Now().Format("20060102150405"),
 		Status: "running",
 	}
 	m.vms[vm.ID] = vm
@@ -68,7 +69,7 @@ func newMockNetworkManager() *mockNetworkManager {
 }
 
 func (m *mockNetworkManager) CreateNetwork(config *types.NetworkConfig) (string, error) {
-	id := "net-123"
+	id := "net-" + time.Now().Format("20060102150405")
 	m.networks[id] = config
 	return id, nil
 }
@@ -97,7 +98,7 @@ func newMockRunnerManager() *mockRunnerManager {
 }
 
 func (m *mockRunnerManager) CreateRunner(platform types.RunnerPlatform, config map[string]interface{}) (string, error) {
-	id := string(platform) + "-runner-123"
+	id := string(platform) + "-runner-" + time.Now().Format("20060102150405")
 	m.runners[id] = config
 	return id, nil
 }
@@ -303,5 +304,153 @@ func TestCoordinator_DeletePipeline_RealDB(t *testing.T) {
 	_, err = coord.GetPipeline(created.ID)
 	if err == nil {
 		t.Error("expected error when getting deleted pipeline")
+	}
+}
+
+// TestPipelineStatus_Constants tests that pipeline status constants are valid
+func TestPipelineStatus_Constants(t *testing.T) {
+	statuses := []types.PipelineStatus{
+		types.PipelineStatusCreating,
+		types.PipelineStatusRunning,
+		types.PipelineStatusSuccess,
+		types.PipelineStatusFailed,
+		types.PipelineStatusCanceled,
+	}
+
+	expected := []string{"creating", "running", "success", "failed", "canceled"}
+
+	for i, status := range statuses {
+		if string(status) != expected[i] {
+			t.Errorf("expected status %s, got %s", expected[i], status)
+		}
+	}
+}
+
+// TestRunnerPlatform_Constants tests that runner platform constants are valid
+func TestRunnerPlatform_Constants(t *testing.T) {
+	platforms := []types.RunnerPlatform{
+		types.PlatformGitLab,
+		types.PlatformGitHub,
+		types.PlatformJenkins,
+		types.PlatformCircleCI,
+		types.PlatformDrone,
+	}
+
+	expected := []string{"gitlab", "github", "jenkins", "circleci", "drone"}
+
+	for i, platform := range platforms {
+		if string(platform) != expected[i] {
+			t.Errorf("expected platform %s, got %s", expected[i], platform)
+		}
+	}
+}
+
+// TestPipelineState_Fields tests PipelineState struct fields
+func TestPipelineState_Fields(t *testing.T) {
+	now := time.Now()
+	ps := &PipelineState{
+		ID:         "pipeline-1",
+		Platform:   types.PlatformGitLab,
+		Repository: "https://gitlab.example.com/test/repo",
+		Branch:     "main",
+		CommitSHA:  "abc123",
+		CommitMsg:  "Test commit",
+		Author:     "test@example.com",
+		Status:     types.PipelineStatusRunning,
+		NetworkID:  "network-1",
+		VMs:        []string{"vm-1", "vm-2"},
+		Runners:    []string{"runner-1"},
+		StartTime:  now,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+
+	if ps.ID != "pipeline-1" {
+		t.Errorf("expected ID pipeline-1, got %s", ps.ID)
+	}
+	if ps.Platform != types.PlatformGitLab {
+		t.Errorf("expected platform gitlab, got %s", ps.Platform)
+	}
+	if len(ps.VMs) != 2 {
+		t.Errorf("expected 2 VMs, got %d", len(ps.VMs))
+	}
+	if len(ps.Runners) != 1 {
+		t.Errorf("expected 1 runner, got %d", len(ps.Runners))
+	}
+}
+
+// TestStageState_Fields tests StageState struct fields
+func TestStageState_Fields(t *testing.T) {
+	now := time.Now()
+	stage := &StageState{
+		Name:      "build",
+		Status:    types.PipelineStatusRunning,
+		StartTime: &now,
+		Jobs: []JobState{
+			{
+				ID:     "job-1",
+				Name:   "build-job",
+				Stage:  "build",
+				Status: types.PipelineStatusRunning,
+			},
+		},
+	}
+
+	if stage.Name != "build" {
+		t.Errorf("expected stage name build, got %s", stage.Name)
+	}
+	if stage.Status != types.PipelineStatusRunning {
+		t.Errorf("expected status running, got %s", stage.Status)
+	}
+	if len(stage.Jobs) != 1 {
+		t.Errorf("expected 1 job, got %d", len(stage.Jobs))
+	}
+}
+
+// TestJobState_Fields tests JobState struct fields
+func TestJobState_Fields(t *testing.T) {
+	now := time.Now()
+	job := &JobState{
+		ID:        "job-1",
+		Name:      "test-job",
+		Stage:     "test",
+		Status:    types.PipelineStatusSuccess,
+		RunnerID:  "runner-1",
+		StartTime: &now,
+		EndTime:   &now,
+		Duration:  60,
+		Log:       []string{"line 1", "line 2"},
+	}
+
+	if job.ID != "job-1" {
+		t.Errorf("expected job ID job-1, got %s", job.ID)
+	}
+	if job.Status != types.PipelineStatusSuccess {
+		t.Errorf("expected status success, got %s", job.Status)
+	}
+	if len(job.Log) != 2 {
+		t.Errorf("expected 2 log lines, got %d", len(job.Log))
+	}
+}
+
+// TestPipelineEvent_Fields tests PipelineEvent struct fields
+func TestPipelineEvent_Fields(t *testing.T) {
+	now := time.Now()
+	event := &PipelineEvent{
+		PipelineID: "pipeline-1",
+		OldStatus:  types.PipelineStatusCreating,
+		NewStatus:  types.PipelineStatusRunning,
+		Message:    "Pipeline started",
+		Timestamp:  now,
+	}
+
+	if event.PipelineID != "pipeline-1" {
+		t.Errorf("expected pipeline ID pipeline-1, got %s", event.PipelineID)
+	}
+	if event.OldStatus != types.PipelineStatusCreating {
+		t.Errorf("expected old status creating, got %s", event.OldStatus)
+	}
+	if event.NewStatus != types.PipelineStatusRunning {
+		t.Errorf("expected new status running, got %s", event.NewStatus)
 	}
 }
