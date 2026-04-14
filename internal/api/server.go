@@ -226,6 +226,11 @@ func (s *Server) handleListPipelines(w http.ResponseWriter, r *http.Request) {
 		limit = 100
 	}
 
+	if s.coordinator == nil {
+		s.writeJSON(w, http.StatusOK, []interface{}{})
+		return
+	}
+
 	pipelines := s.coordinator.ListPipelines()
 	s.writeJSON(w, http.StatusOK, pipelines)
 }
@@ -319,6 +324,11 @@ func (s *Server) handleDestroyPipeline(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListJobs(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	var jobs []*pipeline.Job
+
+	if s.dispatcher == nil {
+		s.writeJSON(w, http.StatusOK, []interface{}{})
+		return
+	}
 
 	switch status {
 	case "running":
