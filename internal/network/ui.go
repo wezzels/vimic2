@@ -7,10 +7,13 @@ import (
 	"strconv"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+
+	"image/color"
 )
 
 // NetworkTab provides the UI for network management
@@ -43,6 +46,10 @@ type NetworkTab struct {
 	firewallList     *widget.List
 	firewalls        []*Firewall
 	selectedFirewall *Firewall
+
+	// Topology view
+	topologyCanvas *fyne.Container
+	topologyNodes  map[string]*topologyNode
 
 	// Bindings
 	networkCount binding.Int
@@ -358,8 +365,16 @@ func (nt *NetworkTab) createFirewallsTab() fyne.CanvasObject {
 
 // createTopologyTab creates the network topology view
 func (nt *NetworkTab) createTopologyTab() fyne.CanvasObject {
-	// TODO: Implement visual topology diagram
-	topologyLabel := widget.NewLabel("Network Topology\n\nDrag and drop to configure network connections")
+	// Create topology canvas with nodes
+	nt.topologyCanvas = container.NewWithoutLayout()
+	nt.topologyNodes = make(map[string]*topologyNode)
+
+	// Build initial topology
+	nt.buildTopologyView()
+
+	// Add scrollable container
+	scroll := container.NewScroll(nt.topologyCanvas)
+	scroll.SetMinSize(fyne.NewSize(600, 400))
 
 	toolbar := container.NewHBox(
 		widget.NewButton("Add Bridge", func() {
@@ -371,6 +386,9 @@ func (nt *NetworkTab) createTopologyTab() fyne.CanvasObject {
 		widget.NewButton("Connect", func() {
 			nt.showConnectDialog()
 		}),
+		widget.NewButton("Refresh", func() {
+			nt.buildTopologyView()
+		}),
 		widget.NewButton("Export", func() {
 			nt.exportTopology()
 		}),
@@ -379,7 +397,130 @@ func (nt *NetworkTab) createTopologyTab() fyne.CanvasObject {
 		}),
 	)
 
-	return container.NewBorder(toolbar, nil, nil, nil, topologyLabel)
+	return container.NewBorder(toolbar, nil, nil, nil, scroll)
+}
+
+// topologyNode represents a node in the topology view
+type topologyNode struct {
+	id     string
+	name   string
+	nodeType string // "network", "router", "vm"
+	x, y   float32
+	object fyne.CanvasObject
+}
+
+// buildTopologyView rebuilds the topology visualization
+func (nt *NetworkTab) buildTopologyView() {
+	// Clear existing content
+	nt.topologyCanvas.Objects = nil
+	nt.topologyNodes = make(map[string]*topologyNode)
+
+	// Layout positions
+	networkX := float32(50.0)
+	routerX := float32(250.0)
+	networkY := float32(50.0)
+	routerY := float32(150.0)
+
+	// Add networks
+	for i, net := range nt.networks {
+		yPos := networkY + float32(i)*80
+		node := nt.createTopologyNode(net.ID, net.Name, "network", networkX, yPos, color.RGBA{R: 100, G: 149, B: 237, A: 255})
+		nt.topologyNodes[net.ID] = node
+	}
+
+	// Add routers
+	for i, router := range nt.routers {
+		yPos := routerY + float32(i)*80
+		node := nt.createTopologyNode(router.ID, router.Name, "router", routerX, yPos, color.RGBA{R: 255, G: 165, B: 0, A: 255})
+		nt.topologyNodes[router.ID] = node
+	}
+
+	// Draw connections between networks and routers
+	nt.drawTopologyConnections()
+}
+
+// createTopologyNode creates a visual node in the topology
+func (nt *NetworkTab) createTopologyNode(id, name, nodeType string, x, y float32, col color.RGBA) *topologyNode {
+	// Create node box
+	box := canvas.NewRectangle(col)
+	box.StrokeColor = color.RGBA{R: 50, G: 50, B: 50, A: 255}
+	box.StrokeWidth = 2
+	box.Resize(fyne.NewSize(120, 50))
+	box.Move(fyne.NewPos(x, y))
+
+	// Create label
+	label := widget.NewLabel(name)
+	label.Alignment = fyne.TextAlignCenter
+	label.Move(fyne.NewPos(x+10, y+15))
+	label.Resize(fyne.NewSize(100, 20))
+
+	// Type indicator
+	typeLabel := widget.NewLabel(nodeType)
+	typeLabel.Alignment = fyne.TextAlignCenter
+	typeLabel.TextStyle = fyne.TextStyle{Bold: true}
+	typeLabel.Move(fyne.NewPos(x+10, y+35))
+	typeLabel.Resize(fyne.NewSize(100, 12))
+
+	// Add to canvas
+	nt.topologyCanvas.Add(box)
+	nt.topologyCanvas.Add(label)
+	nt.topologyCanvas.Add(typeLabel)
+
+	return &topologyNode{
+		id:       id,
+		name:     name,
+		nodeType: nodeType,
+		x:        x,
+		y:        y,
+		object:   box,
+	}
+}
+
+// drawTopologyConnections draws lines between connected nodes
+func (nt *NetworkTab) drawTopologyConnections() {
+	// Draw connections from networks to routers
+	for _, net := range nt.networks {
+		// Find which router this network connects to
+		for _, router := range nt.routers {
+			for _, routerIface := range router.Interfaces {
+				if routerIface.NetworkID == net.ID {
+					nt.drawConnection(net.ID, router.ID)
+					break // Only draw one connection per network-router pair
+				}
+			}
+		}
+	}
+}
+
+// drawConnection draws a line between two nodes
+func (nt *NetworkTab) drawConnection(fromID, toID string) {
+	fromNode, ok1 := nt.topologyNodes[fromID]
+	toNode, ok2 := nt.topologyNodes[toID]
+	if !ok1 || !ok2 {
+		return
+	}
+
+	// Calculate line from center of from node to center of to node
+	x1 := fromNode.x + 60 // Center of 120px wide node
+	y1 := fromNode.y + 25 // Center of 50px tall node
+	x2 := toNode.x + 60
+	y2 := toNode.y + 25
+
+	line := canvas.NewLine(color.RGBA{R: 100, G: 100, B: 100, A: 255})
+	line.StrokeColor = color.RGBA{R: 100, G: 100, B: 100, A: 255}
+	line.StrokeWidth = 2
+	line.Position1 = fyne.NewPos(x1, y1)
+	line.Position2 = fyne.NewPos(x2, y2)
+
+	nt.topologyCanvas.Add(line)
+}
+
+// Refresh rebuilds the topology view with current data
+func (nt *NetworkTab) refreshTopology() {
+	nt.refreshNetworks()
+	nt.refreshRouters()
+	nt.buildTopologyView()
+	nt.topologyCanvas.Refresh()
 }
 
 // Dialog implementations
@@ -950,4 +1091,8 @@ func (nt *NetworkTab) Initialize() {
 	nt.refreshTunnels()
 	nt.refreshInterfaces()
 	nt.refreshFirewalls()
+	// Build topology after data is loaded
+	if nt.topologyCanvas != nil {
+		nt.buildTopologyView()
+	}
 }
