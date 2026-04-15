@@ -108,7 +108,7 @@ func (c *Coordinator) loadPipelines() error {
 }
 
 // CreatePipeline creates a new pipeline
-func (c *Coordinator) CreatePipeline(ctx context.Context, platform types.RunnerPlatform, repo, branch string) (*PipelineState, error) {
+func (c *Coordinator) CreatePipeline(ctx context.Context, platform types.RunnerPlatform, repo, branch, commitSHA, commitMsg, author string) (*PipelineState, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -120,6 +120,9 @@ func (c *Coordinator) CreatePipeline(ctx context.Context, platform types.RunnerP
 		Platform:   platform,
 		Repository: repo,
 		Branch:     branch,
+		CommitSHA:  commitSHA,
+		CommitMsg:  commitMsg,
+		Author:     author,
 		Status:     types.PipelineStatusCreating,
 		CreatedAt:  now,
 		UpdatedAt:  now,

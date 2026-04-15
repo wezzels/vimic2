@@ -271,6 +271,9 @@ func (s *Server) handleCreatePipeline(w http.ResponseWriter, r *http.Request) {
 		types.RunnerPlatform(req.Platform),
 		req.Repository,
 		req.Branch,
+		req.CommitSHA,
+		req.CommitMsg,
+		req.Author,
 	)
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, err.Error())
