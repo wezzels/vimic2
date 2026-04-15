@@ -4,8 +4,10 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -13,10 +15,12 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/stsgym/vimic2/internal/api"
 	"github.com/stsgym/vimic2/internal/cluster"
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/monitor"
 	"github.com/stsgym/vimic2/internal/orchestrator"
+	"github.com/stsgym/vimic2/internal/pipeline"
 	"github.com/stsgym/vimic2/internal/ui"
 	"github.com/stsgym/vimic2/pkg/hypervisor"
 )
@@ -24,17 +28,26 @@ import (
 var version = "0.1.0"
 
 func main() {
+	headless := flag.Bool("headless", false, "Run in headless mode (API only, no GUI)")
+	flag.Parse()
+
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 	sugar := logger.Sugar()
 
-	sugar.Infow("Starting Vimic2", "version", version)
+	sugar.Infow("Starting Vimic2", "version", version, "headless", *headless)
 
 	// Load configuration
 	cfg, err := loadConfig()
 	if err != nil {
 		sugar.Warnw("Using defaults - config not found", "error", err)
 		cfg = defaultConfig()
+	}
+
+	// Expand ~ in DB path
+	if len(cfg.DBPath) > 0 && cfg.DBPath[0] == '~' {
+		home, _ := os.UserHomeDir()
+		cfg.DBPath = filepath.Join(home, cfg.DBPath[1:])
 	}
 
 	// Initialize database
@@ -51,16 +64,57 @@ func main() {
 		if err != nil {
 			sugar.Warnw("Failed to connect to host", "host", name, "error", err)
 			// Use stub for development
-			hosts[name] = hypervisor.NewStubHypervisor()
+			hv = hypervisor.NewStubHypervisor()
+		} else {
+			defer hv.Close()
 		}
 		hosts[name] = hv
-		defer hv.Close()
 	}
 
 	// Initialize managers
 	clusterMgr := cluster.NewManager(db, hosts)
 	monitorMgr := monitor.NewManager(db, hosts)
 	autoScaler := orchestrator.NewAutoScaler(clusterMgr, monitorMgr, sugar)
+
+	// Initialize pipeline database
+	home, _ := os.UserHomeDir()
+	pipelineDBPath := filepath.Join(home, ".vimic2", "pipeline.db")
+	pipelineDB, err := pipeline.NewPipelineDB(pipelineDBPath)
+	if err != nil {
+		sugar.Warnw("Failed to initialize pipeline database — some features unavailable", "error", err)
+		pipelineDB = nil
+	}
+	defer func() {
+		if pipelineDB != nil {
+			pipelineDB.Close()
+		}
+	}()
+
+	// TODO: Wire up pool, network, and runner managers once interface
+	// mismatches between types.PipelineDB and concrete implementations
+	// are resolved. See:
+	//   - PipelineDB.DeleteNetwork takes (context.Context, string) but types.PipelineDB wants (string)
+	//   - PoolManager.GetPool returns (*Pool, error) but types.PoolManagerInterface wants (*PoolState, error)
+	//   - NetworkManager.CreateNetwork takes (*Network) but types.NetworkManagerInterface wants (*NetworkConfig)
+	//   - RunnerManager.CreateRunner takes different args than types.RunnerManagerInterface
+
+	// Initialize artifact manager and log collector (these work with PipelineDB directly)
+	var artifactMgr *pipeline.ArtifactManager
+	var logCollector *pipeline.LogCollector
+	if pipelineDB != nil {
+		artifactMgr, err = pipeline.NewArtifactManager(pipelineDB, &pipeline.ArtifactConfig{
+			StoragePath: filepath.Join(home, ".vimic2", "artifacts"),
+		})
+		if err != nil {
+			sugar.Warnw("Failed to initialize artifact manager", "error", err)
+		}
+		os.MkdirAll(filepath.Join(home, ".vimic2", "artifacts"), 0755)
+
+		logCollector, err = pipeline.NewLogCollector(pipelineDB, &pipeline.LogConfig{})
+		if err != nil {
+			sugar.Warnw("Failed to initialize log collector", "error", err)
+		}
+	}
 
 	// Start background monitoring
 	ctx, cancel := context.WithCancel(context.Background())
@@ -78,11 +132,42 @@ func main() {
 		cancel()
 	}()
 
-	// Initialize and run UI
-	app := ui.NewApp(cfg, db, clusterMgr, monitorMgr, autoScaler)
+	if *headless {
+		// Headless mode: start API server
+		sugar.Info("Running in headless mode — starting API server")
 
-	if err := app.Run(); err != nil {
-		sugar.Fatalw("Application error", "error", err)
+		serverCfg := &api.ServerConfig{
+			ListenAddr: ":8080",
+		}
+		if cfg.APIAuthEnabled {
+			serverCfg.AuthEnabled = true
+			serverCfg.AuthToken = cfg.APIAuthToken
+		}
+
+		server, err := api.NewServer(pipelineDB, nil, nil, artifactMgr, logCollector, nil, nil, nil, serverCfg)
+		if err != nil {
+			sugar.Fatalw("Failed to create API server", "error", err)
+		}
+
+		go func() {
+			if err := server.Start(); err != nil {
+				sugar.Errorw("API server error", "error", err)
+			}
+		}()
+
+		sugar.Info("Vimic2 API server listening on :8080")
+		sugar.Warn("Some features unavailable: pool/network/runner managers not yet wired (interface mismatch)")
+
+		// Wait for shutdown signal
+		<-sigChan
+		server.Stop(context.Background())
+	} else {
+		// GUI mode: start the Fyne UI
+		app := ui.NewApp(cfg, db, clusterMgr, monitorMgr, autoScaler)
+
+		if err := app.Run(); err != nil {
+			sugar.Fatalw("Application error", "error", err)
+		}
 	}
 
 	sugar.Info("Vimic2 shutdown complete")
@@ -90,10 +175,12 @@ func main() {
 
 // Config holds all configuration
 type Config struct {
-	DBPath    string
-	Hosts     map[string]*hypervisor.HostConfig
-	Monitor   MonitorConfig
-	AutoScale AutoScaleConfig
+	DBPath         string
+	Hosts          map[string]*hypervisor.HostConfig
+	Monitor        MonitorConfig
+	AutoScale      AutoScaleConfig
+	APIAuthEnabled bool
+	APIAuthToken   string
 }
 
 type MonitorConfig struct {
@@ -109,7 +196,6 @@ type AutoScaleConfig struct {
 }
 
 func loadConfig() (*Config, error) {
-	// Set up Viper
 	home, _ := os.UserHomeDir()
 	configPath := home + "/.vimic2"
 
@@ -118,7 +204,6 @@ func loadConfig() (*Config, error) {
 	viper.AddConfigPath(configPath)
 	viper.AddConfigPath(".")
 
-	// Set defaults
 	viper.SetDefault("dbpath", configPath+"/vimic2.db")
 	viper.SetDefault("monitor.interval", "5s")
 	viper.SetDefault("monitor.retention", "24h")
@@ -126,8 +211,8 @@ func loadConfig() (*Config, error) {
 	viper.SetDefault("autoscale.cpu_threshold", 70)
 	viper.SetDefault("autoscale.mem_threshold", 80)
 	viper.SetDefault("autoscale.cooldown", "5m")
+	viper.SetDefault("api.auth_enabled", false)
 
-	// Read config file
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
 	}
@@ -145,9 +230,10 @@ func loadConfig() (*Config, error) {
 			MemThreshold: viper.GetFloat64("autoscale.mem_threshold"),
 			Cooldown:     viper.GetDuration("autoscale.cooldown"),
 		},
+		APIAuthEnabled: viper.GetBool("api.auth_enabled"),
+		APIAuthToken:   viper.GetString("api.auth_token"),
 	}
 
-	// Load hosts from config
 	hosts := viper.GetStringMap("hosts")
 	for name, h := range hosts {
 		if hostMap, ok := h.(map[string]interface{}); ok {
