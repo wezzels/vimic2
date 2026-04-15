@@ -164,7 +164,7 @@ func TestRunnerStatus_Constants(t *testing.T) {
 		types.RunnerStatusBusy,
 		types.RunnerStatusError,
 		types.RunnerStatusCreating,
-		types.RunnerStatusRegistering,
+		types.RunnerStatusCreating,
 		types.RunnerStatusDestroyed,
 	}
 

@@ -19,8 +19,12 @@ import (
 	"github.com/stsgym/vimic2/internal/cluster"
 	"github.com/stsgym/vimic2/internal/database"
 	"github.com/stsgym/vimic2/internal/monitor"
+	"github.com/stsgym/vimic2/internal/network"
 	"github.com/stsgym/vimic2/internal/orchestrator"
 	"github.com/stsgym/vimic2/internal/pipeline"
+	"github.com/stsgym/vimic2/internal/pool"
+	"github.com/stsgym/vimic2/internal/runner"
+	"github.com/stsgym/vimic2/internal/types"
 	"github.com/stsgym/vimic2/internal/ui"
 	"github.com/stsgym/vimic2/pkg/hypervisor"
 )
@@ -40,7 +44,7 @@ func main() {
 	// Load configuration
 	cfg, err := loadConfig()
 	if err != nil {
-		sugar.Warnw("Using defaults - config not found", "error", err)
+		sugar.Warnw("Using defaults — config not found", "error", err)
 		cfg = defaultConfig()
 	}
 
@@ -63,7 +67,6 @@ func main() {
 		hv, err := hypervisor.NewHypervisor(hostCfg)
 		if err != nil {
 			sugar.Warnw("Failed to connect to host", "host", name, "error", err)
-			// Use stub for development
 			hv = hypervisor.NewStubHypervisor()
 		} else {
 			defer hv.Close()
@@ -78,42 +81,107 @@ func main() {
 
 	// Initialize pipeline database
 	home, _ := os.UserHomeDir()
-	pipelineDBPath := filepath.Join(home, ".vimic2", "pipeline.db")
+	vimic2Dir := filepath.Join(home, ".vimic2")
+	os.MkdirAll(vimic2Dir, 0755)
+
+	pipelineDBPath := filepath.Join(vimic2Dir, "pipeline.db")
 	pipelineDB, err := pipeline.NewPipelineDB(pipelineDBPath)
 	if err != nil {
-		sugar.Warnw("Failed to initialize pipeline database — some features unavailable", "error", err)
-		pipelineDB = nil
+		sugar.Fatalw("Failed to initialize pipeline database", "error", err)
 	}
-	defer func() {
-		if pipelineDB != nil {
-			pipelineDB.Close()
+	defer pipelineDB.Close()
+
+	// Create adapter that implements types.PipelineDB
+	pipelineDBAdapter := pipeline.NewPipelineDBAdapter(pipelineDB)
+
+	// Initialize network database and manager
+	netDBPath := filepath.Join(vimic2Dir, "network.db")
+	netDB, err := network.NewNetworkDB(netDBPath)
+	if err != nil {
+		sugar.Warnw("Failed to initialize network database", "error", err)
+		netDB = nil
+	}
+	var netMgr *network.NetworkManager
+	if netDB != nil {
+		netMgr = network.NewNetworkManager(netDB)
+		defer netDB.Close()
+	}
+
+	// Initialize pool manager
+	templateBasePath := filepath.Join(vimic2Dir, "templates")
+	templateOverlayPath := filepath.Join(vimic2Dir, "overlays")
+	os.MkdirAll(templateBasePath, 0755)
+	os.MkdirAll(templateOverlayPath, 0755)
+
+	templateMgr, err := pool.NewTemplateManager(templateBasePath, templateOverlayPath)
+	if err != nil {
+		sugar.Warnw("Failed to initialize template manager", "error", err)
+	}
+	var poolMgr *pool.PoolManager
+	if templateMgr != nil {
+		poolMgr, err = pool.NewPoolManager(pipelineDBAdapter, templateMgr, filepath.Join(vimic2Dir, "pool.yaml"))
+		if err != nil {
+			sugar.Warnw("Failed to initialize pool manager", "error", err)
+			poolMgr = nil
 		}
-	}()
+	}
 
-	// TODO: Wire up pool, network, and runner managers once interface
-	// mismatches between types.PipelineDB and concrete implementations
-	// are resolved. See:
-	//   - PipelineDB.DeleteNetwork takes (context.Context, string) but types.PipelineDB wants (string)
-	//   - PoolManager.GetPool returns (*Pool, error) but types.PoolManagerInterface wants (*PoolState, error)
-	//   - NetworkManager.CreateNetwork takes (*Network) but types.NetworkManagerInterface wants (*NetworkConfig)
-	//   - RunnerManager.CreateRunner takes different args than types.RunnerManagerInterface
+	// Initialize runner manager
+	var poolAdapter *pool.PoolManagerAdapter
+	if poolMgr != nil {
+		poolAdapter = pool.NewPoolManagerAdapter(poolMgr)
+	}
 
-	// Initialize artifact manager and log collector (these work with PipelineDB directly)
+	var netAdapter *network.NetworkManagerAdapter
+	if netMgr != nil {
+		netAdapter = network.NewNetworkManagerAdapter(netMgr)
+	}
+
+	var runnerMgr *runner.RunnerManager
+	if poolAdapter != nil {
+		runnerMgr, err = runner.NewRunnerManager(pipelineDBAdapter, poolAdapter, &runner.RunnerManagerConfig{})
+		if err != nil {
+			sugar.Warnw("Failed to initialize runner manager", "error", err)
+			runnerMgr = nil
+		}
+	}
+
+	var runnerAdapter *runner.RunnerManagerAdapter
+	if runnerMgr != nil {
+		runnerAdapter = runner.NewRunnerManagerAdapter(runnerMgr)
+	}
+
+	// Initialize pipeline components
+	var coordinator *pipeline.Coordinator
+	var dispatcher *pipeline.JobDispatcher
 	var artifactMgr *pipeline.ArtifactManager
 	var logCollector *pipeline.LogCollector
-	if pipelineDB != nil {
-		artifactMgr, err = pipeline.NewArtifactManager(pipelineDB, &pipeline.ArtifactConfig{
-			StoragePath: filepath.Join(home, ".vimic2", "artifacts"),
-		})
-		if err != nil {
-			sugar.Warnw("Failed to initialize artifact manager", "error", err)
-		}
-		os.MkdirAll(filepath.Join(home, ".vimic2", "artifacts"), 0755)
 
-		logCollector, err = pipeline.NewLogCollector(pipelineDB, &pipeline.LogConfig{})
+	coordinator, err = pipeline.NewCoordinator(pipelineDBAdapter, poolAdapter, netAdapter, runnerAdapter)
+	if err != nil {
+		sugar.Warnw("Failed to initialize coordinator", "error", err)
+	}
+
+	if runnerMgr != nil {
+		dispatcher, err = pipeline.NewJobDispatcher(pipelineDB, runnerMgr, &pipeline.DispatcherConfig{})
 		if err != nil {
-			sugar.Warnw("Failed to initialize log collector", "error", err)
+			sugar.Warnw("Failed to initialize dispatcher", "error", err)
 		}
+	}
+
+	artifactMgr, err = pipeline.NewArtifactManager(pipelineDB, &pipeline.ArtifactConfig{
+		StoragePath: filepath.Join(vimic2Dir, "artifacts"),
+	})
+	if err != nil {
+		sugar.Warnw("Failed to initialize artifact manager", "error", err)
+	}
+	os.MkdirAll(filepath.Join(vimic2Dir, "artifacts"), 0755)
+
+	logCollector, err = pipeline.NewLogCollector(pipelineDB, &pipeline.LogConfig{
+		StoragePath: filepath.Join(vimic2Dir, "logs"),
+	})
+	if err != nil {
+		sugar.Warnw("Failed to initialize log collector", "error", err)
 	}
 
 	// Start background monitoring
@@ -133,7 +201,7 @@ func main() {
 	}()
 
 	if *headless {
-		// Headless mode: start API server
+		// Headless mode: start API server with all managers wired
 		sugar.Info("Running in headless mode — starting API server")
 
 		serverCfg := &api.ServerConfig{
@@ -144,7 +212,7 @@ func main() {
 			serverCfg.AuthToken = cfg.APIAuthToken
 		}
 
-		server, err := api.NewServer(pipelineDB, nil, nil, artifactMgr, logCollector, nil, nil, nil, serverCfg)
+		server, err := api.NewServer(pipelineDB, coordinator, dispatcher, artifactMgr, logCollector, poolAdapter, netAdapter, runnerAdapter, serverCfg)
 		if err != nil {
 			sugar.Fatalw("Failed to create API server", "error", err)
 		}
@@ -156,7 +224,6 @@ func main() {
 		}()
 
 		sugar.Info("Vimic2 API server listening on :8080")
-		sugar.Warn("Some features unavailable: pool/network/runner managers not yet wired (interface mismatch)")
 
 		// Wait for shutdown signal
 		<-sigChan
@@ -175,12 +242,12 @@ func main() {
 
 // Config holds all configuration
 type Config struct {
-	DBPath         string
-	Hosts          map[string]*hypervisor.HostConfig
-	Monitor        MonitorConfig
-	AutoScale      AutoScaleConfig
-	APIAuthEnabled bool
-	APIAuthToken   string
+	DBPath          string
+	Hosts           map[string]*hypervisor.HostConfig
+	Monitor         MonitorConfig
+	AutoScale       AutoScaleConfig
+	APIAuthEnabled  bool
+	APIAuthToken    string
 }
 
 type MonitorConfig struct {
@@ -289,3 +356,6 @@ func defaultConfig() *Config {
 		},
 	}
 }
+
+// Verify PipelineDBAdapter satisfies the interface
+var _ types.PipelineDB = (*pipeline.PipelineDBAdapter)(nil)
