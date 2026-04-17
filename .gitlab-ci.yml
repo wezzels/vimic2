@@ -79,10 +79,6 @@ build-linux:
     - echo "=== Building for current platform ==="
     - make build
     - ls -lh build/
-  artifacts:
-    paths:
-      - build/vimic2
-    expire_in: 1 week
   only:
     - main
     - tags
