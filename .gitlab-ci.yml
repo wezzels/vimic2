@@ -76,46 +76,12 @@ build-linux:
   tags:
     - trooper2
   script:
-    - echo "=== Building Linux binaries ==="
-    - make build-linux
+    - echo "=== Building for current platform ==="
+    - make build
     - ls -lh build/
   artifacts:
     paths:
-      - build/vimic2-linux-amd64
-      - build/vimic2-linux-arm64
-    expire_in: 1 week
-  only:
-    - main
-    - tags
-
-build-windows:
-  stage: build
-  tags:
-    - trooper2
-  script:
-    - echo "=== Building Windows binaries ==="
-    - make build-windows
-    - ls -lh build/
-  artifacts:
-    paths:
-      - build/vimic2-windows-amd64.exe
-    expire_in: 1 week
-  only:
-    - main
-    - tags
-
-build-darwin:
-  stage: build
-  tags:
-    - trooper2
-  script:
-    - echo "=== Building macOS binaries ==="
-    - make build-darwin
-    - ls -lh build/
-  artifacts:
-    paths:
-      - build/vimic2-darwin-amd64
-      - build/vimic2-darwin-arm64
+      - build/vimic2
     expire_in: 1 week
   only:
     - main
@@ -128,15 +94,10 @@ build-all:
   script:
     - echo "=== Building all platforms ==="
     - make build-all
-    - make checksums
     - ls -lh build/
   artifacts:
     paths:
-      - build/vimic2-linux-amd64
-      - build/vimic2-linux-arm64
-      - build/vimic2-windows-amd64.exe
-      - build/vimic2-darwin-amd64
-      - build/vimic2-darwin-arm64
+      - build/vimic2-*
       - build/SHA256SUMS
     expire_in: 1 month
   only:
@@ -173,15 +134,10 @@ release-tag:
   script:
     - echo "=== Creating release ==="
     - make build-all
-    - make checksums
     - ls -lh build/
   artifacts:
     paths:
-      - build/vimic2-linux-amd64
-      - build/vimic2-linux-arm64
-      - build/vimic2-windows-amd64.exe
-      - build/vimic2-darwin-amd64
-      - build/vimic2-darwin-arm64
+      - build/vimic2-*
       - build/SHA256SUMS
     expire_in: 6 months
   only:
