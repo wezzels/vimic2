@@ -20,7 +20,7 @@ lint-go:
     - trooper2
   script:
     - echo "=== Linting Go code ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - go fmt ./...
     - go vet ./...
     - |
@@ -38,7 +38,7 @@ lint-mod:
     - trooper2
   script:
     - echo "=== Checking go.mod ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - go mod verify
     - go mod tidy
     - |
@@ -57,17 +57,17 @@ test-unit:
     - trooper2
   script:
     - echo "=== Running unit tests ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - go test -tags '!libvirt' -v -race -coverprofile=coverage.out ./...
     - go tool cover -func=coverage.out | tail -1
   coverage: '/total:\s+\(statements\)\s+(\d+\.?\d*)%/'
   artifacts:
     paths:
-      - vimic2/coverage.out
+      - coverage.out
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: vimic2/coverage.out
+        path: coverage.out
   only:
     - main
     - merge_requests
@@ -78,7 +78,7 @@ test-network:
     - trooper2
   script:
     - echo "=== Running network tests ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - go test -tags '!libvirt' -v ./internal/network/...
     - echo "Network tests passed"
   only:
@@ -91,7 +91,7 @@ test-integration:
     - trooper2
   script:
     - echo "=== Running integration tests ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - go test -tags '!libvirt' -v -count=1 ./...
     - echo "Integration tests passed"
   only:
@@ -105,13 +105,13 @@ build-linux:
     - trooper2
   script:
     - echo "=== Building Linux binaries ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - make build-linux
     - ls -lh build/
   artifacts:
     paths:
-      - vimic2/build/vimic2-linux-amd64
-      - vimic2/build/vimic2-linux-arm64
+      - build/vimic2-linux-amd64
+      - build/vimic2-linux-arm64
     expire_in: 1 week
   only:
     - main
@@ -123,12 +123,12 @@ build-windows:
     - trooper2
   script:
     - echo "=== Building Windows binaries ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - make build-windows
     - ls -lh build/
   artifacts:
     paths:
-      - vimic2/build/vimic2-windows-amd64.exe
+      - build/vimic2-windows-amd64.exe
     expire_in: 1 week
   only:
     - main
@@ -140,13 +140,13 @@ build-darwin:
     - trooper2
   script:
     - echo "=== Building macOS binaries ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - make build-darwin
     - ls -lh build/
   artifacts:
     paths:
-      - vimic2/build/vimic2-darwin-amd64
-      - vimic2/build/vimic2-darwin-arm64
+      - build/vimic2-darwin-amd64
+      - build/vimic2-darwin-arm64
     expire_in: 1 week
   only:
     - main
@@ -158,14 +158,14 @@ build-all:
     - trooper2
   script:
     - echo "=== Building all platforms ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - make build-all
     - make checksums
     - ls -lh build/
   artifacts:
     paths:
-      - vimic2/build/vimic2-*
-      - vimic2/build/SHA256SUMS
+      - build/vimic2-*
+      - build/SHA256SUMS
     expire_in: 1 month
   only:
     - tags
@@ -177,7 +177,7 @@ security-gosec:
     - trooper2
   script:
     - echo "=== Running security scan ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - |
       if command -v gosec &> /dev/null; then
         gosec -fmt sonarqube -out gosec-report.json ./...
@@ -196,7 +196,7 @@ security-dependencies:
     - trooper2
   script:
     - echo "=== Checking dependencies ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - go list -m all | grep -v "golang.org/x/crypto" || true
     - go mod graph | head -20
   only:
@@ -210,7 +210,7 @@ release-tag:
     - trooper2
   script:
     - echo "=== Creating release for tag ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
     - echo "Release version: ${VERSION}"
     - make build-all
@@ -231,8 +231,8 @@ release-tag:
     - echo "Release artifacts ready"
   artifacts:
     paths:
-      - vimic2/build/vimic2-*
-      - vimic2/build/SHA256SUMS
+      - build/vimic2-*
+      - build/SHA256SUMS
     expire_in: 6 months
   only:
     - tags
@@ -243,7 +243,7 @@ release-notes:
     - trooper2
   script:
     - echo "=== Generating release notes ==="
-    - cd vimic2
+    - echo "Working directory: $(pwd)"
     - |
       VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
       cat > RELEASE_NOTES.md << EOF
@@ -284,7 +284,7 @@ release-notes:
     - cat RELEASE_NOTES.md
   artifacts:
     paths:
-      - vimic2/RELEASE_NOTES.md
+      - RELEASE_NOTES.md
     expire_in: 6 months
   only:
     - tags
