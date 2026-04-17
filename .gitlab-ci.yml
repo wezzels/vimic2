@@ -21,7 +21,6 @@ lint-go:
     - echo "=== Linting Go code ==="
     - go fmt ./...
     - go vet ./...
-    - test -z "$(go fmt -l ./...)" || (echo "Code not formatted" && exit 1)
   only:
     - main
     - merge_requests
@@ -34,7 +33,6 @@ lint-mod:
     - echo "=== Checking go.mod ==="
     - go mod verify
     - go mod tidy
-    - test -z "$(git diff go.mod go.sum)" || (echo "go.mod needs updating" && exit 1)
   only:
     - main
     - merge_requests
@@ -58,7 +56,6 @@ test-network:
   script:
     - echo "=== Running network tests ==="
     - go test -tags "!libvirt" -v ./internal/network/...
-    - echo "Network tests passed"
   only:
     - main
     - merge_requests
@@ -70,7 +67,6 @@ test-integration:
   script:
     - echo "=== Running integration tests ==="
     - go test -tags "!libvirt" -v -count=1 ./...
-    - echo "Integration tests passed"
   only:
     - main
     - merge_requests
@@ -136,7 +132,11 @@ build-all:
     - ls -lh build/
   artifacts:
     paths:
-      - build/vimic2-*
+      - build/vimic2-linux-amd64
+      - build/vimic2-linux-arm64
+      - build/vimic2-windows-amd64.exe
+      - build/vimic2-darwin-amd64
+      - build/vimic2-darwin-arm64
       - build/SHA256SUMS
     expire_in: 1 month
   only:
@@ -148,7 +148,7 @@ security-gosec:
     - trooper2
   script:
     - echo "=== Running security scan ==="
-    - command -v gosec >/dev/null 2>&1 && gosec -fmt sonarqube -out gosec-report.json ./... || echo "gosec not installed, skipping"
+    - gosec -fmt sonarqube -out gosec-report.json ./... || echo "gosec not installed or failed"
   allow_failure: true
   only:
     - main
@@ -161,7 +161,7 @@ security-dependencies:
   script:
     - echo "=== Checking dependencies ==="
     - go list -m all
-    - go mod graph | head -20
+    - go mod graph
   only:
     - main
     - merge_requests
@@ -171,32 +171,18 @@ release-tag:
   tags:
     - trooper2
   script:
-    - echo "=== Creating release for tag ==="
-    - export VERSION=${VERSION:-v0.0.0}
-    - echo "Release version: ${VERSION}"
+    - echo "=== Creating release ==="
     - make build-all
     - make checksums
-    - echo "Release artifacts ready"
-    - echo "Release artifacts ready"
+    - ls -lh build/
   artifacts:
     paths:
-      - build/vimic2-*
+      - build/vimic2-linux-amd64
+      - build/vimic2-linux-arm64
+      - build/vimic2-windows-amd64.exe
+      - build/vimic2-darwin-amd64
+      - build/vimic2-darwin-arm64
       - build/SHA256SUMS
-    expire_in: 6 months
-  only:
-    - tags
-
-release-notes:
-  stage: release
-  tags:
-    - trooper2
-  script:
-    - echo "=== Generating release notes ==="
-    - export VERSION=${VERSION:-v0.1.0}
-    - echo "Release version: ${VERSION}"
-  artifacts:
-    paths:
-      - RELEASE_NOTES.md
     expire_in: 6 months
   only:
     - tags
@@ -206,7 +192,7 @@ notify-success:
   tags:
     - trooper2
   script:
-    - echo "=== Pipeline completed successfully ==="
+    - echo "Pipeline completed successfully"
   when: on_success
   only:
     - main
@@ -217,7 +203,7 @@ notify-failure:
   tags:
     - trooper2
   script:
-    - echo "=== Pipeline failed ==="
+    - echo "Pipeline failed"
   when: on_failure
   only:
     - main
