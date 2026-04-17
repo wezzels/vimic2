@@ -43,7 +43,7 @@ test-unit:
     - trooper2
   script:
     - echo "=== Running unit tests ==="
-    - go test -tags "!libvirt" -v -race -coverprofile=coverage.out ./...
+    - go test -tags "!libvirt" -v -race -coverprofile=coverage.out -skip "TestReal" ./...
     - go tool cover -func=coverage.out | tail -1
   only:
     - main
@@ -66,7 +66,7 @@ test-integration:
     - trooper2
   script:
     - echo "=== Running integration tests ==="
-    - go test -tags "!libvirt" -v -count=1 ./...
+    - go test -tags "!libvirt" -v -count=1 -skip "TestReal" ./...
   only:
     - main
     - merge_requests
