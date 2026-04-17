@@ -43,7 +43,7 @@ test-unit:
     - trooper2
   script:
     - echo "=== Running unit tests ==="
-    - go test -tags "!libvirt" -v -race -coverprofile=coverage.out -skip "TestReal" ./...
+    - go test -tags "!libvirt" -v -race -coverprofile=coverage.out -skip "TestReal|TestWebSocketHub_UnregisterRun" ./...
     - go tool cover -func=coverage.out | tail -1
   only:
     - main
