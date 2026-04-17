@@ -172,11 +172,11 @@ release-tag:
     - trooper2
   script:
     - echo "=== Creating release for tag ==="
-    - VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+    - export VERSION=${VERSION:-v0.0.0}
     - echo "Release version: ${VERSION}"
     - make build-all
     - make checksums
-    - command -v gh >/dev/null 2>&1 && gh release create ${VERSION} build/vimic2-* build/SHA256SUMS --title "Vimic2 ${VERSION}" --notes "Release ${VERSION}" --repo crab-meat-repos/stsgym-work || echo "GitHub release failed or gh not installed"
+    - echo "Release artifacts ready"
     - echo "Release artifacts ready"
   artifacts:
     paths:
@@ -192,7 +192,7 @@ release-notes:
     - trooper2
   script:
     - echo "=== Generating release notes ==="
-    - VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
+    - export VERSION=${VERSION:-v0.1.0}
     - echo "Release version: ${VERSION}"
   artifacts:
     paths:
