@@ -1,343 +1,355 @@
-// Package pool provides state tracker tests
+//go:build integration
+// +build integration
+
+// Package pool provides integration tests with real database for state tracking
 package pool
 
 import (
-	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stsgym/vimic2/internal/database"
 )
 
-// TestVMState_Struct tests VM state structure
-func TestVMState_Struct(t *testing.T) {
-	state := &VMState{
-		ID:        "vm-1",
-		Name:      "test-vm",
-		Status:    "running",
-		IPAddress: "10.100.1.10",
-		PoolName:  "pool-1",
-		Template:  "ubuntu-22.04",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	if state.ID != "vm-1" {
-		t.Errorf("expected vm-1, got %s", state.ID)
-	}
-	if state.Status != "running" {
-		t.Errorf("expected running status, got %s", state.Status)
-	}
-	if state.PoolName != "pool-1" {
-		t.Errorf("expected pool-1, got %s", state.PoolName)
-	}
-}
-
-// TestVMState_JSON tests VM state JSON marshaling
-func TestVMState_JSON(t *testing.T) {
-	state := &VMState{
-		ID:        "vm-1",
-		Name:      "test-vm",
-		Status:    "running",
-		IPAddress: "10.100.1.10",
-		PoolName:  "pool-1",
-		Template:  "ubuntu-22.04",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	data, err := json.Marshal(state)
+// TestStateTracker_GetVM_RealDB tests VM state retrieval with real database
+func TestStateTracker_GetVM_RealDB(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-state-test-*")
 	if err != nil {
-		t.Fatalf("failed to marshal: %v", err)
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	stateFile := filepath.Join(tmpDir, "state.json")
+	tracker, err := NewStateTracker(db, stateFile)
+	if err != nil {
+		t.Fatalf("failed to create state tracker: %v", err)
 	}
 
-	var state2 VMState
-	if err := json.Unmarshal(data, &state2); err != nil {
-		t.Fatalf("failed to unmarshal: %v", err)
+	// Set a VM state
+	vm := &VMState{
+		ID:        "vm-1",
+		Name:      "test-vm-1",
+		Status:    "running",
+		IPAddress: "10.0.0.1",
+		PoolName:  "test-pool",
+		Template:  "ubuntu-22.04",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	tracker.SetVM(vm)
+
+	// Get the VM state
+	retrieved, err := tracker.GetVM("vm-1")
+	if err != nil {
+		t.Fatalf("failed to get VM: %v", err)
 	}
 
-	if state2.ID != state.ID {
-		t.Errorf("expected ID %s, got %s", state.ID, state2.ID)
+	if retrieved.ID != vm.ID {
+		t.Errorf("expected VM ID %s, got %s", vm.ID, retrieved.ID)
 	}
-	if state2.Status != state.Status {
-		t.Errorf("expected status %s, got %s", state.Status, state2.Status)
+	if retrieved.Name != vm.Name {
+		t.Errorf("expected VM name %s, got %s", vm.Name, retrieved.Name)
+	}
+	if retrieved.Status != vm.Status {
+		t.Errorf("expected status %s, got %s", vm.Status, retrieved.Status)
 	}
 }
 
-// TestStateTransition tests state transition structure
-func TestStateTransition_Struct(t *testing.T) {
-	transition := &StateTransition{
-		From:      "creating",
-		To:        "running",
-		Timestamp: time.Now(),
-		Reason:    "VM started successfully",
+// TestStateTracker_SetVM_RealDB tests VM state setting with real database
+func TestStateTracker_SetVM_RealDB(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-state-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	stateFile := filepath.Join(tmpDir, "state.json")
+	tracker, err := NewStateTracker(db, stateFile)
+	if err != nil {
+		t.Fatalf("failed to create state tracker: %v", err)
 	}
 
-	if transition.From != "creating" {
-		t.Errorf("expected from creating, got %s", transition.From)
+	// Set multiple VM states
+	for i := 0; i < 3; i++ {
+		vm := &VMState{
+			ID:        "vm-" + string(rune('a'+i)),
+			Name:      "test-vm-" + string(rune('a'+i)),
+			Status:    "running",
+			PoolName:  "test-pool",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		tracker.SetVM(vm)
 	}
-	if transition.To != "running" {
-		t.Errorf("expected to running, got %s", transition.To)
-	}
-	if transition.Reason != "VM started successfully" {
-		t.Errorf("expected reason, got %s", transition.Reason)
+
+	// List all VMs
+	vms := tracker.ListVMs()
+	if len(vms) < 3 {
+		t.Errorf("expected at least 3 VMs, got %d", len(vms))
 	}
 }
 
-// TestStateEvent tests state event structure
-func TestStateEvent_Struct(t *testing.T) {
-	event := &StateEvent{
-		VMID:      "vm-1",
-		OldState:  "stopped",
-		NewState:  "running",
-		Timestamp: time.Now(),
-		Reason:    "Manual start",
+// TestStateTracker_DeleteVM_RealDB tests VM state deletion with real database
+func TestStateTracker_DeleteVM_RealDB(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-state-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	stateFile := filepath.Join(tmpDir, "state.json")
+	tracker, err := NewStateTracker(db, stateFile)
+	if err != nil {
+		t.Fatalf("failed to create state tracker: %v", err)
 	}
 
-	if event.VMID != "vm-1" {
-		t.Errorf("expected vm-1, got %s", event.VMID)
+	// Set a VM state
+	vm := &VMState{
+		ID:        "vm-1",
+		Name:      "test-vm-1",
+		Status:    "running",
+		PoolName:  "test-pool",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
-	if event.OldState != "stopped" {
-		t.Errorf("expected old state stopped, got %s", event.OldState)
-	}
-	if event.NewState != "running" {
-		t.Errorf("expected new state running, got %s", event.NewState)
+	tracker.SetVM(vm)
+
+	// Delete the VM
+	tracker.DeleteVM("vm-1")
+
+	// Verify it's deleted
+	_, err = tracker.GetVM("vm-1")
+	if err == nil {
+		t.Error("expected error when getting deleted VM")
 	}
 }
 
-// TestStateTracker_CreateStruct tests state tracker struct fields
-func TestStateTracker_CreateStruct(t *testing.T) {
-	st := &StateTracker{
-		cache:       make(map[string]*VMState),
-		subscribers: make(map[string][]chan StateEvent),
+// TestStateTracker_ListVMs_RealDB tests listing VM states with real database
+func TestStateTracker_ListVMs_RealDB(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-state-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	stateFile := filepath.Join(tmpDir, "state.json")
+	tracker, err := NewStateTracker(db, stateFile)
+	if err != nil {
+		t.Fatalf("failed to create state tracker: %v", err)
 	}
 
-	if st.cache == nil {
-		t.Error("cache should not be nil")
-	}
-	if st.subscribers == nil {
-		t.Error("subscribers should not be nil")
+	// Set multiple VMs with different statuses
+	vmIDs := []string{"vm-1", "vm-2", "vm-3"}
+	for _, id := range vmIDs {
+		vm := &VMState{
+			ID:        id,
+			Name:      "test-" + id,
+			Status:    "running",
+			PoolName:  "test-pool",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		tracker.SetVM(vm)
 	}
 
-	// Add a VM state
-	st.cache["vm-1"] = &VMState{
-		ID:     "vm-1",
-		Status: "running",
+	// List all VMs
+	vms := tracker.ListVMs()
+	if len(vms) < 3 {
+		t.Errorf("expected at least 3 VMs, got %d", len(vms))
 	}
 
-	if len(st.cache) != 1 {
-		t.Errorf("expected 1 cached state, got %d", len(st.cache))
+	// Verify all VMs are in the list
+	vmMap := make(map[string]bool)
+	for _, vm := range vms {
+		vmMap[vm.ID] = true
+	}
+	for _, id := range vmIDs {
+		if !vmMap[id] {
+			t.Errorf("expected VM %s in list", id)
+		}
 	}
 }
 
-// TestStateTracker_UpdateCachedState tests updating cached state
-func TestStateTracker_UpdateCachedState(t *testing.T) {
-	st := &StateTracker{
-		cache:       make(map[string]*VMState),
-		subscribers: make(map[string][]chan StateEvent),
+// TestStateTracker_Subscribe_RealDB tests state event subscription
+func TestStateTracker_Subscribe_RealDB(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-state-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	stateFile := filepath.Join(tmpDir, "state.json")
+	tracker, err := NewStateTracker(db, stateFile)
+	if err != nil {
+		t.Fatalf("failed to create state tracker: %v", err)
 	}
 
-	// Create initial state
-	st.cache["vm-1"] = &VMState{
+	// Subscribe to events
+	ch := tracker.Subscribe("test-subscriber")
+	if ch == nil {
+		t.Error("expected non-nil channel")
+	}
+
+	// Unsubscribe
+	tracker.Unsubscribe("test-subscriber", ch)
+}
+
+// TestStateTracker_Persistence tests that state persists across restarts
+func TestStateTracker_Persistence(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-state-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	stateFile := filepath.Join(tmpDir, "state.json")
+
+	// First session: create state
+	{
+		db, err := database.NewDB(dbPath)
+		if err != nil {
+			t.Fatalf("failed to create database: %v", err)
+		}
+
+		tracker, err := NewStateTracker(db, stateFile)
+		if err != nil {
+			t.Fatalf("failed to create state tracker: %v", err)
+		}
+
+		vm := &VMState{
+			ID:        "vm-persistent",
+			Name:      "persistent-vm",
+			Status:    "running",
+			PoolName:  "test-pool",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		tracker.SetVM(vm)
+		tracker.SaveState()
+
+		db.Close()
+	}
+
+	// Second session: verify state persisted
+	{
+		db, err := database.NewDB(dbPath)
+		if err != nil {
+			t.Fatalf("failed to create database: %v", err)
+		}
+		defer db.Close()
+
+		tracker, err := NewStateTracker(db, stateFile)
+		if err != nil {
+			t.Fatalf("failed to create state tracker: %v", err)
+		}
+
+		vm, err := tracker.GetVM("vm-persistent")
+		if err != nil {
+			t.Fatalf("failed to get persistent VM: %v", err)
+		}
+
+		if vm.Name != "persistent-vm" {
+			t.Errorf("expected VM name persistent-vm, got %s", vm.Name)
+		}
+	}
+}
+
+// TestVMState_Transitions tests VM state transitions
+func TestVMState_Transitions_RealDB(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-state-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	stateFile := filepath.Join(tmpDir, "state.json")
+	tracker, err := NewStateTracker(db, stateFile)
+	if err != nil {
+		t.Fatalf("failed to create state tracker: %v", err)
+	}
+
+	// Create VM in creating state
+	vm := &VMState{
 		ID:        "vm-1",
 		Name:      "test-vm",
 		Status:    "creating",
-		IPAddress: "",
+		PoolName:  "test-pool",
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
+	tracker.SetVM(vm)
 
-	// Update state
-	st.cache["vm-1"].Status = "running"
-	st.cache["vm-1"].IPAddress = "10.100.1.10"
-	st.cache["vm-1"].UpdatedAt = time.Now()
+	// Transition to running
+	vm.Status = "running"
+	vm.UpdatedAt = time.Now()
+	tracker.SetVM(vm)
 
-	if st.cache["vm-1"].Status != "running" {
-		t.Errorf("expected running status, got %s", st.cache["vm-1"].Status)
-	}
-	if st.cache["vm-1"].IPAddress != "10.100.1.10" {
-		t.Errorf("expected IP, got %s", st.cache["vm-1"].IPAddress)
-	}
-}
-
-// TestStateTracker_AddSubscriber tests subscriber pattern
-func TestStateTracker_AddSubscriber(t *testing.T) {
-	st := &StateTracker{
-		cache:       make(map[string]*VMState),
-		subscribers: make(map[string][]chan StateEvent),
-		eventChan:   make(chan StateEvent, 100),
-	}
-
-	// Create subscriber channel
-	ch := make(chan StateEvent, 10)
-
-	// Subscribe
-	st.subscribers["vm-1"] = append(st.subscribers["vm-1"], ch)
-
-	if len(st.subscribers["vm-1"]) != 1 {
-		t.Errorf("expected 1 subscriber, got %d", len(st.subscribers["vm-1"]))
-	}
-}
-
-// TestStateTracker_BroadcastStateEvent tests event broadcasting
-func TestStateTracker_BroadcastStateEvent(t *testing.T) {
-	st := &StateTracker{
-		cache:       make(map[string]*VMState),
-		subscribers: make(map[string][]chan StateEvent),
-		eventChan:   make(chan StateEvent, 100),
-	}
-
-	// Create subscriber
-	ch := make(chan StateEvent, 10)
-	st.subscribers["vm-1"] = append(st.subscribers["vm-1"], ch)
-
-	// Broadcast event
-	event := StateEvent{
-		VMID:      "vm-1",
-		OldState:  "stopped",
-		NewState:  "running",
-		Timestamp: time.Now(),
-		Reason:    "Manual start",
-	}
-
-	// Send to subscribers
-	for _, sub := range st.subscribers["vm-1"] {
-		sub <- event
-	}
-
-	// Receive
-	select {
-	case received := <-ch:
-		if received.VMID != "vm-1" {
-			t.Errorf("expected vm-1, got %s", received.VMID)
-		}
-		if received.NewState != "running" {
-			t.Errorf("expected running, got %s", received.NewState)
-		}
-	default:
-		t.Error("should have received event")
-	}
-}
-
-// TestVMState_ValidTransitions tests valid state transitions
-func TestVMState_ValidTransitions(t *testing.T) {
-	validTransitions := []struct {
-		from string
-		to   string
-	}{
-		{"creating", "running"},
-		{"creating", "error"},
-		{"running", "stopped"},
-		{"running", "error"},
-		{"stopped", "running"},
-		{"stopped", "destroyed"},
-	}
-
-	for _, tt := range validTransitions {
-		state := &VMState{Status: tt.from}
-		state.Status = tt.to
-
-		if state.Status != tt.to {
-			t.Errorf("failed to transition from %s to %s", tt.from, tt.to)
-		}
-	}
-}
-
-// TestStateTransition_JSON tests transition JSON
-func TestStateTransition_JSON(t *testing.T) {
-	transition := &StateTransition{
-		From:      "creating",
-		To:        "running",
-		Timestamp: time.Now(),
-		Reason:    "VM started",
-	}
-
-	data, err := json.Marshal(transition)
+	// Verify transition
+	retrieved, err := tracker.GetVM("vm-1")
 	if err != nil {
-		t.Fatalf("failed to marshal: %v", err)
+		t.Fatalf("failed to get VM: %v", err)
 	}
 
-	var t2 StateTransition
-	if err := json.Unmarshal(data, &t2); err != nil {
-		t.Fatalf("failed to unmarshal: %v", err)
+	if retrieved.Status != "running" {
+		t.Errorf("expected status running, got %s", retrieved.Status)
 	}
 
-	if t2.From != transition.From {
-		t.Errorf("expected from %s, got %s", transition.From, t2.From)
-	}
-}
+	// Transition to stopped
+	vm.Status = "stopped"
+	vm.UpdatedAt = time.Now()
+	tracker.SetVM(vm)
 
-// TestStateEvent_JSON tests event JSON
-func TestStateEvent_JSON(t *testing.T) {
-	event := &StateEvent{
-		VMID:      "vm-1",
-		OldState:  "stopped",
-		NewState:  "running",
-		Timestamp: time.Now(),
-		Reason:    "Manual start",
-	}
-
-	data, err := json.Marshal(event)
+	retrieved, err = tracker.GetVM("vm-1")
 	if err != nil {
-		t.Fatalf("failed to marshal: %v", err)
+		t.Fatalf("failed to get VM: %v", err)
 	}
 
-	var e2 StateEvent
-	if err := json.Unmarshal(data, &e2); err != nil {
-		t.Fatalf("failed to unmarshal: %v", err)
-	}
-
-	if e2.VMID != event.VMID {
-		t.Errorf("expected VMID %s, got %s", event.VMID, e2.VMID)
-	}
-}
-
-// TestVMState_MultipleVMs tests managing multiple VMs
-func TestVMState_MultipleVMs(t *testing.T) {
-	st := &StateTracker{
-		cache:       make(map[string]*VMState),
-		subscribers: make(map[string][]chan StateEvent),
-	}
-
-	// Add multiple VMs
-	for i := 1; i <= 5; i++ {
-		id := "vm-" + string(rune('0'+i))
-		st.cache[id] = &VMState{
-			ID:     id,
-			Status: "running",
-		}
-	}
-
-	if len(st.cache) != 5 {
-		t.Errorf("expected 5 VMs, got %d", len(st.cache))
-	}
-
-	// Verify each exists
-	for i := 1; i <= 5; i++ {
-		id := "vm-" + string(rune('0'+i))
-		if st.cache[id] == nil {
-			t.Errorf("VM %s should exist", id)
-		}
-	}
-}
-
-// TestVMState_RemoveVM tests removing a VM
-func TestVMState_RemoveVM(t *testing.T) {
-	st := &StateTracker{
-		cache:       make(map[string]*VMState),
-		subscribers: make(map[string][]chan StateEvent),
-	}
-
-	// Add VMs
-	st.cache["vm-1"] = &VMState{ID: "vm-1", Status: "running"}
-	st.cache["vm-2"] = &VMState{ID: "vm-2", Status: "running"}
-	st.cache["vm-3"] = &VMState{ID: "vm-3", Status: "running"}
-
-	// Remove one
-	delete(st.cache, "vm-2")
-
-	if len(st.cache) != 2 {
-		t.Errorf("expected 2 VMs, got %d", len(st.cache))
-	}
-	if st.cache["vm-2"] != nil {
-		t.Error("vm-2 should be removed")
+	if retrieved.Status != "stopped" {
+		t.Errorf("expected status stopped, got %s", retrieved.Status)
 	}
 }

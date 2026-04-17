@@ -217,7 +217,7 @@ func TestPipelineState_StatusTransitions(t *testing.T) {
 		{types.PipelineStatusCreating, types.PipelineStatusRunning},
 		{types.PipelineStatusRunning, types.PipelineStatusSuccess},
 		{types.PipelineStatusRunning, types.PipelineStatusFailed},
-		{types.PipelineStatusRunning, types.PipelineStatusCanceled},
+		{types.PipelineStatusRunning, types.PipelineStatusCancelled},
 	}
 
 	for _, tt := range transitions {

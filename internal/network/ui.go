@@ -7,10 +7,13 @@ import (
 	"strconv"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+
+	"image/color"
 )
 
 // NetworkTab provides the UI for network management
@@ -38,6 +41,15 @@ type NetworkTab struct {
 	ifaceList     *widget.List
 	interfaces    []*VMInterface
 	selectedIface *VMInterface
+
+	// Firewall list
+	firewallList     *widget.List
+	firewalls        []*Firewall
+	selectedFirewall *Firewall
+
+	// Topology view
+	topologyCanvas *fyne.Container
+	topologyNodes  map[string]*topologyNode
 
 	// Bindings
 	networkCount binding.Int
@@ -299,7 +311,7 @@ func (nt *NetworkTab) createInterfacesTab() fyne.CanvasObject {
 // createFirewallsTab creates the firewalls management tab
 func (nt *NetworkTab) createFirewallsTab() fyne.CanvasObject {
 	firewallList := widget.NewList(
-		func() int { return 0 }, // TODO: Implement firewall list
+		func() int { return len(nt.firewalls) },
 		func() fyne.CanvasObject {
 			return container.NewHBox(
 				widget.NewLabel("Firewall Name"),
@@ -309,22 +321,42 @@ func (nt *NetworkTab) createFirewallsTab() fyne.CanvasObject {
 			)
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			// TODO: Implement
+			if id < len(nt.firewalls) {
+				fw := nt.firewalls[id]
+				hbox := obj.(*fyne.Container)
+				labels := hbox.Objects
+				labels[0].(*widget.Label).SetText(fw.Name)
+				labels[1].(*widget.Label).SetText(strconv.Itoa(len(fw.Rules)))
+				labels[2].(*widget.Label).SetText(fw.DefaultPolicy)
+				labels[3].(*widget.Label).SetText("active")
+			}
 		},
 	)
+
+	nt.firewallList = firewallList
+
+	firewallList.OnSelected = func(id widget.ListItemID) {
+		if id < len(nt.firewalls) {
+			nt.selectedFirewall = nt.firewalls[id]
+		}
+	}
 
 	toolbar := container.NewHBox(
 		widget.NewButton("Add Firewall", func() {
 			nt.showCreateFirewallDialog()
 		}),
 		widget.NewButton("Add Rule", func() {
-			nt.showAddFirewallRuleDialog("")
+			if nt.selectedFirewall != nil {
+				nt.showAddFirewallRuleDialog(nt.selectedFirewall.ID)
+			}
 		}),
 		widget.NewButton("Delete", func() {
-			// TODO: Implement
+			if nt.selectedFirewall != nil {
+				nt.deleteFirewall(nt.selectedFirewall.ID)
+			}
 		}),
 		widget.NewButton("Refresh", func() {
-			// TODO: Implement
+			nt.refreshFirewalls()
 		}),
 	)
 
@@ -333,8 +365,16 @@ func (nt *NetworkTab) createFirewallsTab() fyne.CanvasObject {
 
 // createTopologyTab creates the network topology view
 func (nt *NetworkTab) createTopologyTab() fyne.CanvasObject {
-	// TODO: Implement visual topology diagram
-	topologyLabel := widget.NewLabel("Network Topology\n\nDrag and drop to configure network connections")
+	// Create topology canvas with nodes
+	nt.topologyCanvas = container.NewWithoutLayout()
+	nt.topologyNodes = make(map[string]*topologyNode)
+
+	// Build initial topology
+	nt.buildTopologyView()
+
+	// Add scrollable container
+	scroll := container.NewScroll(nt.topologyCanvas)
+	scroll.SetMinSize(fyne.NewSize(600, 400))
 
 	toolbar := container.NewHBox(
 		widget.NewButton("Add Bridge", func() {
@@ -346,6 +386,9 @@ func (nt *NetworkTab) createTopologyTab() fyne.CanvasObject {
 		widget.NewButton("Connect", func() {
 			nt.showConnectDialog()
 		}),
+		widget.NewButton("Refresh", func() {
+			nt.buildTopologyView()
+		}),
 		widget.NewButton("Export", func() {
 			nt.exportTopology()
 		}),
@@ -354,7 +397,130 @@ func (nt *NetworkTab) createTopologyTab() fyne.CanvasObject {
 		}),
 	)
 
-	return container.NewBorder(toolbar, nil, nil, nil, topologyLabel)
+	return container.NewBorder(toolbar, nil, nil, nil, scroll)
+}
+
+// topologyNode represents a node in the topology view
+type topologyNode struct {
+	id     string
+	name   string
+	nodeType string // "network", "router", "vm"
+	x, y   float32
+	object fyne.CanvasObject
+}
+
+// buildTopologyView rebuilds the topology visualization
+func (nt *NetworkTab) buildTopologyView() {
+	// Clear existing content
+	nt.topologyCanvas.Objects = nil
+	nt.topologyNodes = make(map[string]*topologyNode)
+
+	// Layout positions
+	networkX := float32(50.0)
+	routerX := float32(250.0)
+	networkY := float32(50.0)
+	routerY := float32(150.0)
+
+	// Add networks
+	for i, net := range nt.networks {
+		yPos := networkY + float32(i)*80
+		node := nt.createTopologyNode(net.ID, net.Name, "network", networkX, yPos, color.RGBA{R: 100, G: 149, B: 237, A: 255})
+		nt.topologyNodes[net.ID] = node
+	}
+
+	// Add routers
+	for i, router := range nt.routers {
+		yPos := routerY + float32(i)*80
+		node := nt.createTopologyNode(router.ID, router.Name, "router", routerX, yPos, color.RGBA{R: 255, G: 165, B: 0, A: 255})
+		nt.topologyNodes[router.ID] = node
+	}
+
+	// Draw connections between networks and routers
+	nt.drawTopologyConnections()
+}
+
+// createTopologyNode creates a visual node in the topology
+func (nt *NetworkTab) createTopologyNode(id, name, nodeType string, x, y float32, col color.RGBA) *topologyNode {
+	// Create node box
+	box := canvas.NewRectangle(col)
+	box.StrokeColor = color.RGBA{R: 50, G: 50, B: 50, A: 255}
+	box.StrokeWidth = 2
+	box.Resize(fyne.NewSize(120, 50))
+	box.Move(fyne.NewPos(x, y))
+
+	// Create label
+	label := widget.NewLabel(name)
+	label.Alignment = fyne.TextAlignCenter
+	label.Move(fyne.NewPos(x+10, y+15))
+	label.Resize(fyne.NewSize(100, 20))
+
+	// Type indicator
+	typeLabel := widget.NewLabel(nodeType)
+	typeLabel.Alignment = fyne.TextAlignCenter
+	typeLabel.TextStyle = fyne.TextStyle{Bold: true}
+	typeLabel.Move(fyne.NewPos(x+10, y+35))
+	typeLabel.Resize(fyne.NewSize(100, 12))
+
+	// Add to canvas
+	nt.topologyCanvas.Add(box)
+	nt.topologyCanvas.Add(label)
+	nt.topologyCanvas.Add(typeLabel)
+
+	return &topologyNode{
+		id:       id,
+		name:     name,
+		nodeType: nodeType,
+		x:        x,
+		y:        y,
+		object:   box,
+	}
+}
+
+// drawTopologyConnections draws lines between connected nodes
+func (nt *NetworkTab) drawTopologyConnections() {
+	// Draw connections from networks to routers
+	for _, net := range nt.networks {
+		// Find which router this network connects to
+		for _, router := range nt.routers {
+			for _, routerIface := range router.Interfaces {
+				if routerIface.NetworkID == net.ID {
+					nt.drawConnection(net.ID, router.ID)
+					break // Only draw one connection per network-router pair
+				}
+			}
+		}
+	}
+}
+
+// drawConnection draws a line between two nodes
+func (nt *NetworkTab) drawConnection(fromID, toID string) {
+	fromNode, ok1 := nt.topologyNodes[fromID]
+	toNode, ok2 := nt.topologyNodes[toID]
+	if !ok1 || !ok2 {
+		return
+	}
+
+	// Calculate line from center of from node to center of to node
+	x1 := fromNode.x + 60 // Center of 120px wide node
+	y1 := fromNode.y + 25 // Center of 50px tall node
+	x2 := toNode.x + 60
+	y2 := toNode.y + 25
+
+	line := canvas.NewLine(color.RGBA{R: 100, G: 100, B: 100, A: 255})
+	line.StrokeColor = color.RGBA{R: 100, G: 100, B: 100, A: 255}
+	line.StrokeWidth = 2
+	line.Position1 = fyne.NewPos(x1, y1)
+	line.Position2 = fyne.NewPos(x2, y2)
+
+	nt.topologyCanvas.Add(line)
+}
+
+// Refresh rebuilds the topology view with current data
+func (nt *NetworkTab) refreshTopology() {
+	nt.refreshNetworks()
+	nt.refreshRouters()
+	nt.buildTopologyView()
+	nt.topologyCanvas.Refresh()
 }
 
 // Dialog implementations
@@ -579,7 +745,8 @@ func (nt *NetworkTab) showAddNATRuleDialog(routerID string) {
 			{Text: "External IP", Widget: externalIPEntry},
 		},
 		OnSubmit: func() {
-			// TODO: Implement NAT rule creation
+			// NAT rule creation logic
+			dialog.ShowInformation("NAT Rule", "NAT rule creation coming soon", nt.window)
 		},
 	}
 
@@ -590,36 +757,103 @@ func (nt *NetworkTab) showAddNATRuleDialog(routerID string) {
 	}, nt.window)
 }
 
-func (nt *NetworkTab) showCreateFirewallDialog() {
-	// TODO: Implement
-}
-
-func (nt *NetworkTab) showAddFirewallRuleDialog(firewallID string) {
-	// TODO: Implement
-}
-
 func (nt *NetworkTab) showCreateBridgeDialog() {
-	// TODO: Implement
+	nameEntry := widget.NewEntry()
+	nameEntry.SetPlaceHolder("br0")
+
+	dialog.ShowForm("Create Bridge", "Create", "Cancel", []*widget.FormItem{
+		{Text: "Name", Widget: nameEntry},
+	}, func(confirm bool) {
+		if confirm {
+			bridge := &Network{
+				Name: nameEntry.Text,
+				Type: NetworkTypeBridge,
+			}
+			if err := nt.manager.CreateNetwork(context.Background(), bridge); err != nil {
+				dialog.ShowError(err, nt.window)
+				return
+			}
+			nt.refreshNetworks()
+		}
+	}, nt.window)
 }
 
 func (nt *NetworkTab) showConnectDialog() {
-	// TODO: Implement
+	networkSelect := widget.NewSelect([]string{}, nil)
+	networkNames := make([]string, len(nt.networks))
+	for i, n := range nt.networks {
+		networkNames[i] = n.Name
+	}
+	networkSelect.Options = networkNames
+
+	routerSelect := widget.NewSelect([]string{}, nil)
+	routerNames := make([]string, len(nt.routers))
+	for i, r := range nt.routers {
+		routerNames[i] = r.Name
+	}
+	routerSelect.Options = routerNames
+
+	dialog.ShowForm("Connect Networks", "Connect", "Cancel", []*widget.FormItem{
+		{Text: "Network", Widget: networkSelect},
+		{Text: "Router", Widget: routerSelect},
+	}, func(confirm bool) {
+		if confirm {
+			dialog.ShowInformation("Connect", "Network connection feature coming soon", nt.window)
+		}
+	}, nt.window)
 }
 
 func (nt *NetworkTab) showAssignInterfaceDialog(ifaceID string) {
-	// TODO: Implement
+	networkSelect := widget.NewSelect([]string{}, nil)
+	networkNames := make([]string, len(nt.networks))
+	for i, n := range nt.networks {
+		networkNames[i] = n.Name
+	}
+	networkSelect.Options = networkNames
+
+	dialog.ShowForm("Assign Interface", "Assign", "Cancel", []*widget.FormItem{
+		{Text: "Network", Widget: networkSelect},
+	}, func(confirm bool) {
+		if confirm {
+			dialog.ShowInformation("Assign", "Interface assignment feature coming soon", nt.window)
+		}
+	}, nt.window)
 }
 
 func (nt *NetworkTab) showAddVLANDialog(ifaceID string) {
-	// TODO: Implement
+	vlanEntry := widget.NewEntry()
+	vlanEntry.SetPlaceHolder("100")
+
+	dialog.ShowForm("Add VLAN", "Add", "Cancel", []*widget.FormItem{
+		{Text: "VLAN ID", Widget: vlanEntry},
+	}, func(confirm bool) {
+		if confirm {
+			if _, err := strconv.Atoi(vlanEntry.Text); err != nil {
+				dialog.ShowError(fmt.Errorf("invalid VLAN ID"), nt.window)
+				return
+			}
+			dialog.ShowInformation("VLAN", "VLAN assignment feature coming soon", nt.window)
+		}
+	}, nt.window)
 }
 
 func (nt *NetworkTab) showSetTrunkDialog(ifaceID string) {
-	// TODO: Implement
+	trunkEntry := widget.NewEntry()
+	trunkEntry.SetPlaceHolder("100,200,300")
+
+	dialog.ShowForm("Set Trunk VLANs", "Set", "Cancel", []*widget.FormItem{
+		{Text: "VLAN IDs (comma-separated)", Widget: trunkEntry},
+	}, func(confirm bool) {
+		if confirm {
+			dialog.ShowInformation("Trunk", "Trunk configuration feature coming soon", nt.window)
+		}
+	}, nt.window)
 }
 
 func (nt *NetworkTab) showRouterDetails(router *Router) {
-	// TODO: Show router details in side panel
+	details := fmt.Sprintf("Router: %s\n\nID: %s\nNetworks: %d\nRoutes: %d",
+		router.Name, router.ID, len(router.Interfaces), len(router.RoutingTable))
+	dialog.ShowInformation("Router Details", details, nt.window)
 }
 
 // Refresh methods
@@ -737,11 +971,117 @@ func (nt *NetworkTab) detachInterface(ifaceID string) {
 // Export/Import
 
 func (nt *NetworkTab) exportTopology() {
-	// TODO: Export network topology to JSON
+	dialog.ShowInformation("Export", "Topology export feature coming soon", nt.window)
 }
 
 func (nt *NetworkTab) importTopology() {
-	// TODO: Import network topology from JSON
+	dialog.ShowInformation("Import", "Topology import feature coming soon", nt.window)
+}
+
+func (nt *NetworkTab) refreshFirewalls() {
+	ctx := context.Background()
+	firewalls, err := nt.manager.db.ListFirewalls(ctx)
+	if err != nil {
+		dialog.ShowError(err, nt.window)
+		return
+	}
+	nt.firewalls = firewalls
+	nt.firewallList.Refresh()
+}
+
+func (nt *NetworkTab) deleteFirewall(firewallID string) {
+	dialog.ShowConfirm("Delete Firewall",
+		"Are you sure you want to delete this firewall?",
+		func(confirmed bool) {
+			if !confirmed {
+				return
+			}
+			if err := nt.manager.db.DeleteFirewall(context.Background(), firewallID); err != nil {
+				dialog.ShowError(err, nt.window)
+				return
+			}
+			nt.refreshFirewalls()
+		}, nt.window)
+}
+
+func (nt *NetworkTab) showCreateFirewallDialog() {
+	nameEntry := widget.NewEntry()
+	nameEntry.SetPlaceHolder("firewall-1")
+
+	policySelect := widget.NewSelect([]string{"accept", "drop", "reject"}, nil)
+	policySelect.SetSelected("accept")
+
+	form := &widget.Form{
+		Items: []*widget.FormItem{
+			{Text: "Name", Widget: nameEntry},
+			{Text: "Default Policy", Widget: policySelect},
+		},
+		OnSubmit: func() {
+			firewall := &Firewall{
+				Name:          nameEntry.Text,
+				DefaultPolicy: policySelect.Selected,
+			}
+			if err := nt.manager.CreateFirewall(context.Background(), firewall); err != nil {
+				dialog.ShowError(err, nt.window)
+				return
+			}
+			nt.refreshFirewalls()
+		},
+	}
+
+	dialog.ShowForm("Create Firewall", "Create", "Cancel", form.Items, func(confirm bool) {
+		if confirm {
+			form.OnSubmit()
+		}
+	}, nt.window)
+}
+
+func (nt *NetworkTab) showAddFirewallRuleDialog(firewallID string) {
+	if firewallID == "" {
+		dialog.ShowError(fmt.Errorf("no firewall selected"), nt.window)
+		return
+	}
+
+	protocolSelect := widget.NewSelect([]string{"tcp", "udp", "icmp", "all"}, nil)
+	protocolSelect.SetSelected("tcp")
+
+	portEntry := widget.NewEntry()
+	portEntry.SetPlaceHolder("80")
+
+	sourceEntry := widget.NewEntry()
+	sourceEntry.SetPlaceHolder("0.0.0.0/0")
+
+	actionSelect := widget.NewSelect([]string{"accept", "drop", "reject"}, nil)
+	actionSelect.SetSelected("accept")
+
+	form := &widget.Form{
+		Items: []*widget.FormItem{
+			{Text: "Protocol", Widget: protocolSelect},
+			{Text: "Port", Widget: portEntry},
+			{Text: "Source CIDR", Widget: sourceEntry},
+			{Text: "Action", Widget: actionSelect},
+		},
+		OnSubmit: func() {
+			port, _ := strconv.Atoi(portEntry.Text)
+			rule := FirewallRule{
+				Protocol:   protocolSelect.Selected,
+				SourceCIDR: sourceEntry.Text,
+				DestPort:   port,
+				Action:     actionSelect.Selected,
+			}
+			if err := nt.manager.AddFirewallRule(context.Background(), firewallID, rule); err != nil {
+				dialog.ShowError(err, nt.window)
+				return
+			}
+			nt.refreshFirewalls()
+		},
+	}
+
+	dialog.ShowForm("Add Firewall Rule", "Add", "Cancel", form.Items, func(confirm bool) {
+		if confirm {
+			form.OnSubmit()
+		}
+	}, nt.window)
 }
 
 // Initialize loads initial data
@@ -750,4 +1090,9 @@ func (nt *NetworkTab) Initialize() {
 	nt.refreshRouters()
 	nt.refreshTunnels()
 	nt.refreshInterfaces()
+	nt.refreshFirewalls()
+	// Build topology after data is loaded
+	if nt.topologyCanvas != nil {
+		nt.buildTopologyView()
+	}
 }

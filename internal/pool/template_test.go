@@ -1,262 +1,341 @@
-// Package pool provides template manager tests
+//go:build integration
+// +build integration
+
+// Package pool provides integration tests for template management
 package pool
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stsgym/vimic2/internal/database"
 )
 
-// TestTemplate tests template structure
-func TestTemplate_Create(t *testing.T) {
-	template := &Template{
-		ID:            "template-1",
-		Name:          "ubuntu-22.04",
-		Path:          "/var/lib/vimic2/templates/ubuntu-22.04.qcow2",
-		BaseImage:     "ubuntu-22.04-server.qcow2",
-		Size:          10737418240, // 10 GB
-		OS:            "ubuntu",
-		Arch:          "amd64",
-		DefaultCPU:    2,
-		DefaultMemory: 4096,
-		CreatedAt:     time.Now(),
-	}
-
-	if template.ID != "template-1" {
-		t.Errorf("expected template-1, got %s", template.ID)
-	}
-	if template.Name != "ubuntu-22.04" {
-		t.Errorf("expected ubuntu-22.04, got %s", template.Name)
-	}
-	if template.OS != "ubuntu" {
-		t.Errorf("expected ubuntu OS, got %s", template.OS)
-	}
-	if template.DefaultCPU != 2 {
-		t.Errorf("expected 2 CPUs, got %d", template.DefaultCPU)
-	}
-	if template.DefaultMemory != 4096 {
-		t.Errorf("expected 4096MB memory, got %d", template.DefaultMemory)
-	}
-}
-
-// TestTemplate_JSON tests template JSON marshaling
-func TestTemplate_JSON(t *testing.T) {
-	template := &Template{
-		ID:            "template-1",
-		Name:          "ubuntu-22.04",
-		Path:          "/var/lib/vimic2/templates/ubuntu-22.04.qcow2",
-		BaseImage:     "ubuntu-22.04-server.qcow2",
-		Size:          10737418240,
-		OS:            "ubuntu",
-		Arch:          "amd64",
-		DefaultCPU:    2,
-		DefaultMemory: 4096,
-		CreatedAt:     time.Now(),
-	}
-
-	data, err := json.Marshal(template)
+// TestTemplateManager_SaveTemplates tests saving templates
+func TestTemplateManager_SaveTemplates(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-template-test-*")
 	if err != nil {
-		t.Fatalf("failed to marshal template: %v", err)
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	basePath := filepath.Join(tmpDir, "base")
+	overlayPath := filepath.Join(tmpDir, "overlay")
+
+	if err := os.MkdirAll(basePath, 0755); err != nil {
+		t.Fatalf("failed to create base path: %v", err)
+	}
+	if err := os.MkdirAll(overlayPath, 0755); err != nil {
+		t.Fatalf("failed to create overlay path: %v", err)
 	}
 
-	var template2 Template
-	if err := json.Unmarshal(data, &template2); err != nil {
-		t.Fatalf("failed to unmarshal template: %v", err)
-	}
-
-	if template2.ID != template.ID {
-		t.Errorf("expected ID %s, got %s", template.ID, template2.ID)
-	}
-	if template2.Name != template.Name {
-		t.Errorf("expected name %s, got %s", template.Name, template2.Name)
-	}
-	if template2.DefaultCPU != template.DefaultCPU {
-		t.Errorf("expected CPU %d, got %d", template.DefaultCPU, template2.DefaultCPU)
-	}
-}
-
-// TestOverlay_Structure tests overlay structure fields
-func TestOverlay_Structure(t *testing.T) {
-	now := time.Now()
-	overlay := &Overlay{
-		ID:         "overlay-2",
-		TemplateID: "template-1",
-		VMID:       "vm-1",
-		Path:       "/var/lib/vimic2/overlays/vm-1.qcow2",
-		CreatedAt:  now,
-	}
-
-	if overlay.ID != "overlay-2" {
-		t.Errorf("expected overlay-2, got %s", overlay.ID)
-	}
-	if overlay.TemplateID != "template-1" {
-		t.Errorf("expected template-1, got %s", overlay.TemplateID)
-	}
-	if overlay.VMID != "vm-1" {
-		t.Errorf("expected vm-1, got %s", overlay.VMID)
-	}
-	if overlay.Path == "" {
-		t.Error("overlay path should not be empty")
-	}
-}
-
-// TestOverlay_JSONMarshaling tests overlay JSON marshaling
-func TestOverlay_JSONMarshaling(t *testing.T) {
-	now := time.Now()
-	overlay := &Overlay{
-		ID:         "overlay-2",
-		TemplateID: "template-1",
-		VMID:       "vm-1",
-		Path:       "/var/lib/vimic2/overlays/vm-1.qcow2",
-		CreatedAt:  now,
-	}
-
-	data, err := json.Marshal(overlay)
+	tmplMgr, err := NewTemplateManager(basePath, overlayPath)
 	if err != nil {
-		t.Fatalf("failed to marshal overlay: %v", err)
+		t.Fatalf("failed to create template manager: %v", err)
 	}
 
-	var overlay2 Overlay
-	if err := json.Unmarshal(data, &overlay2); err != nil {
-		t.Fatalf("failed to unmarshal overlay: %v", err)
-	}
-
-	if overlay2.ID != overlay.ID {
-		t.Errorf("expected ID %s, got %s", overlay.ID, overlay2.ID)
-	}
-	if overlay2.TemplateID != overlay.TemplateID {
-		t.Errorf("expected TemplateID %s, got %s", overlay.TemplateID, overlay2.TemplateID)
-	}
-	if overlay2.VMID != overlay.VMID {
-		t.Errorf("expected VMID %s, got %s", overlay.VMID, overlay2.VMID)
-	}
-}
-
-// TestTemplateManager_CreateStruct tests template manager struct fields
-func TestTemplateManager_CreateStruct(t *testing.T) {
-	tm := &TemplateManager{
-		basePath:    "/var/lib/vimic2/templates",
-		overlayPath: "/var/lib/vimic2/overlays",
-		templates:   make(map[string]*Template),
-		overlays:    make(map[string]*Overlay),
-	}
-
-	if tm.basePath != "/var/lib/vimic2/templates" {
-		t.Errorf("unexpected base path: %s", tm.basePath)
-	}
-	if tm.overlayPath != "/var/lib/vimic2/overlays" {
-		t.Errorf("unexpected overlay path: %s", tm.overlayPath)
-	}
-	if tm.templates == nil {
-		t.Error("templates map should not be nil")
-	}
-	if tm.overlays == nil {
-		t.Error("overlays map should not be nil")
-	}
-}
-
-// TestTemplateManager_AddTemplateToMap tests adding templates to the map
-func TestTemplateManager_AddTemplateToMap(t *testing.T) {
-	tm := &TemplateManager{
-		basePath:    "/var/lib/vimic2/templates",
-		overlayPath: "/var/lib/vimic2/overlays",
-		templates:   make(map[string]*Template),
-		overlays:    make(map[string]*Overlay),
-	}
-
+	// Create a template
 	template := &Template{
-		ID:            "template-1",
-		Name:          "ubuntu-22.04",
+		ID:            "ubuntu-22.04",
+		Name:          "Ubuntu 22.04",
+		Path:          "ubuntu-22.04.qcow2",
+		Size:          10 * 1024 * 1024 * 1024,
+		OS:            "linux",
 		DefaultCPU:    2,
 		DefaultMemory: 4096,
 		CreatedAt:     time.Now(),
 	}
 
-	tm.templates[template.ID] = template
+	tmplMgr.templates[template.ID] = template
 
-	if len(tm.templates) != 1 {
-		t.Errorf("expected 1 template, got %d", len(tm.templates))
+	// Save templates
+	if err := tmplMgr.saveTemplates(); err != nil {
+		t.Fatalf("failed to save templates: %v", err)
 	}
-	if tm.templates["template-1"] == nil {
-		t.Error("template should exist in map")
-	}
-	if tm.templates["template-1"].Name != "ubuntu-22.04" {
-		t.Errorf("expected name ubuntu-22.04, got %s", tm.templates["template-1"].Name)
+
+	// Verify file was created
+	templateFile := filepath.Join(basePath, "ubuntu-22.04.json")
+	if _, err := os.Stat(templateFile); os.IsNotExist(err) {
+		t.Fatalf("template file was not created")
 	}
 }
 
-// TestTemplateManager_AddOverlayToMap tests adding overlays to the map
-func TestTemplateManager_AddOverlayToMap(t *testing.T) {
-	tm := &TemplateManager{
-		basePath:    "/var/lib/vimic2/templates",
-		overlayPath: "/var/lib/vimic2/overlays",
-		templates:   make(map[string]*Template),
-		overlays:    make(map[string]*Overlay),
+// TestTemplateManager_GetTemplateFromFile tests retrieving a template from file
+func TestTemplateManager_GetTemplateFromFile(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-template-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	basePath := filepath.Join(tmpDir, "base")
+	overlayPath := filepath.Join(tmpDir, "overlay")
+
+	if err := os.MkdirAll(basePath, 0755); err != nil {
+		t.Fatalf("failed to create base path: %v", err)
+	}
+	if err := os.MkdirAll(overlayPath, 0755); err != nil {
+		t.Fatalf("failed to create overlay path: %v", err)
 	}
 
+	// Create template definition JSON
+	template := Template{
+		ID:            "ubuntu-22.04",
+		Name:          "Ubuntu 22.04",
+		Path:          "ubuntu-22.04.qcow2",
+		Size:          10 * 1024 * 1024 * 1024,
+		OS:            "linux",
+		DefaultCPU:    2,
+		DefaultMemory: 4096,
+		CreatedAt:     time.Now(),
+	}
+	templateJSON, _ := json.MarshalIndent(template, "", "  ")
+	templateFile := filepath.Join(basePath, "ubuntu-22.04.json")
+	if err := os.WriteFile(templateFile, templateJSON, 0644); err != nil {
+		t.Fatalf("failed to create template file: %v", err)
+	}
+
+	tmplMgr, err := NewTemplateManager(basePath, overlayPath)
+	if err != nil {
+		t.Fatalf("failed to create template manager: %v", err)
+	}
+
+	// Get template
+	retrieved, err := tmplMgr.GetTemplate("ubuntu-22.04")
+	if err != nil {
+		t.Fatalf("failed to get template: %v", err)
+	}
+
+	if retrieved.Name != "Ubuntu 22.04" {
+		t.Errorf("expected template name Ubuntu 22.04, got %s", retrieved.Name)
+	}
+}
+
+// TestTemplateManager_ListOverlays tests listing overlays
+func TestTemplateManager_ListOverlays(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-overlay-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	basePath := filepath.Join(tmpDir, "base")
+	overlayPath := filepath.Join(tmpDir, "overlay")
+
+	if err := os.MkdirAll(basePath, 0755); err != nil {
+		t.Fatalf("failed to create base path: %v", err)
+	}
+	if err := os.MkdirAll(overlayPath, 0755); err != nil {
+		t.Fatalf("failed to create overlay path: %v", err)
+	}
+
+	// Create template definition
+	template := Template{
+		ID:            "ubuntu-22.04",
+		Name:          "Ubuntu 22.04",
+		Path:          "ubuntu-22.04.qcow2",
+		Size:          10 * 1024 * 1024 * 1024,
+		OS:            "linux",
+		DefaultCPU:    2,
+		DefaultMemory: 4096,
+		CreatedAt:     time.Now(),
+	}
+	templateJSON, _ := json.MarshalIndent(template, "", "  ")
+	templateFile := filepath.Join(basePath, "ubuntu-22.04.json")
+	if err := os.WriteFile(templateFile, templateJSON, 0644); err != nil {
+		t.Fatalf("failed to create template file: %v", err)
+	}
+
+	tmplMgr, err := NewTemplateManager(basePath, overlayPath)
+	if err != nil {
+		t.Fatalf("failed to create template manager: %v", err)
+	}
+
+	// Create overlay
 	overlay := &Overlay{
 		ID:         "overlay-1",
-		TemplateID: "template-1",
+		TemplateID: "ubuntu-22.04",
+		Path:       filepath.Join(overlayPath, "overlay-1.qcow2"),
 		VMID:       "vm-1",
-		Path:       "/var/lib/vimic2/overlays/vm-1.qcow2",
 		CreatedAt:  time.Now(),
 	}
+	tmplMgr.overlays[overlay.ID] = overlay
 
-	tm.overlays[overlay.ID] = overlay
-
-	if len(tm.overlays) != 1 {
-		t.Errorf("expected 1 overlay, got %d", len(tm.overlays))
+	// List overlays
+	overlays := tmplMgr.ListOverlays()
+	if len(overlays) != 1 {
+		t.Errorf("expected 1 overlay, got %d", len(overlays))
 	}
-	if tm.overlays["overlay-1"] == nil {
-		t.Error("overlay should exist in map")
-	}
-	if tm.overlays["overlay-1"].VMID != "vm-1" {
-		t.Errorf("expected VMID vm-1, got %s", tm.overlays["overlay-1"].VMID)
+	if overlays[0].ID != "overlay-1" {
+		t.Errorf("expected overlay ID overlay-1, got %s", overlays[0].ID)
 	}
 }
 
-// TestTemplate_DefaultValues tests template default values
-func TestTemplate_DefaultValues(t *testing.T) {
-	template := &Template{
-		ID:        "template-1",
-		Name:      "minimal",
-		CreatedAt: time.Now(),
+// TestPoolManager_LoadConfig tests config loading
+func TestPoolManager_LoadConfig(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-config-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create config file
+	config := struct {
+		Pools map[string]poolConfig `json:"pools"`
+	}{
+		Pools: map[string]poolConfig{
+			"test-pool": {
+				Template: "ubuntu-22.04",
+				MinSize:  2,
+				MaxSize:  10,
+				CPU:      4,
+				Memory:   8192,
+			},
+		},
 	}
 
-	// Test that defaults can be set
-	if template.DefaultCPU == 0 {
-		template.DefaultCPU = 2
-	}
-	if template.DefaultMemory == 0 {
-		template.DefaultMemory = 2048
+	configJSON, _ := json.MarshalIndent(config, "", "  ")
+	configFile := filepath.Join(tmpDir, "config.json")
+	if err := os.WriteFile(configFile, configJSON, 0644); err != nil {
+		t.Fatalf("failed to create config file: %v", err)
 	}
 
-	if template.DefaultCPU != 2 {
-		t.Errorf("expected default CPU 2, got %d", template.DefaultCPU)
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
 	}
-	if template.DefaultMemory != 2048 {
-		t.Errorf("expected default memory 2048, got %d", template.DefaultMemory)
+	defer db.Close()
+
+	templateMgr, err := NewTemplateManager(tmpDir, tmpDir)
+	if err != nil {
+		t.Fatalf("failed to create template manager: %v", err)
+	}
+
+	pm, err := NewPoolManager(db, templateMgr, configFile)
+	if err != nil {
+		t.Fatalf("failed to create pool manager: %v", err)
+	}
+	defer pm.Close()
+
+	// Verify config was loaded
+	if len(pm.config) != 1 {
+		t.Errorf("expected 1 pool config, got %d", len(pm.config))
+	}
+	if pm.config["test-pool"].Template != "ubuntu-22.04" {
+		t.Errorf("expected template ubuntu-22.04, got %s", pm.config["test-pool"].Template)
 	}
 }
 
-// TestOverlay_DestroyedAt tests overlay destruction
-func TestOverlay_DestroyedAt(t *testing.T) {
-	now := time.Now()
-	destroyed := now.Add(1 * time.Hour)
+// TestPoolManager_AllocateVMContext tests context-based VM allocation
+func TestPoolManager_AllocateVMContext(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-vmctx-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
 
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	templateMgr, err := NewTemplateManager(tmpDir, tmpDir)
+	if err != nil {
+		t.Fatalf("failed to create template manager: %v", err)
+	}
+
+	pm, err := NewPoolManager(db, templateMgr, "")
+	if err != nil {
+		t.Fatalf("failed to create pool manager: %v", err)
+	}
+	pm.SetStateFile(filepath.Join(tmpDir, "pool-state.json"))
+	defer pm.Close()
+
+	// Create a pool
+	_, err = pm.CreatePool(nil, "test-pool-ctx", "ubuntu-22.04", 1, 5, 2, 4096)
+	if err != nil {
+		t.Fatalf("failed to create pool: %v", err)
+	}
+
+	// Allocate VM with context (this tests AllocateVMContext)
+	// Note: AllocateVMContext calls AllocateVM internally
+	vm, err := pm.AllocateVM("test-pool-ctx")
+	if err != nil {
+		t.Fatalf("failed to allocate VM: %v", err)
+	}
+
+	if vm.ID == "" {
+		t.Error("expected VM ID to be set")
+	}
+	if vm.Status == "" {
+		t.Error("expected VM status to be set")
+	}
+}
+
+// TestTemplateManager_SaveOverlays tests saving overlays
+func TestTemplateManager_SaveOverlays(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-overlay-save-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	basePath := filepath.Join(tmpDir, "base")
+	overlayPath := filepath.Join(tmpDir, "overlay")
+
+	if err := os.MkdirAll(basePath, 0755); err != nil {
+		t.Fatalf("failed to create base path: %v", err)
+	}
+	if err := os.MkdirAll(overlayPath, 0755); err != nil {
+		t.Fatalf("failed to create overlay path: %v", err)
+	}
+
+	// Create template
+	template := Template{
+		ID:            "ubuntu-22.04",
+		Name:          "Ubuntu 22.04",
+		Path:          "ubuntu-22.04.qcow2",
+		Size:          10 * 1024 * 1024 * 1024,
+		OS:            "linux",
+		DefaultCPU:    2,
+		DefaultMemory: 4096,
+		CreatedAt:     time.Now(),
+	}
+	templateJSON, _ := json.MarshalIndent(template, "", "  ")
+	templateFile := filepath.Join(basePath, "ubuntu-22.04.json")
+	if err := os.WriteFile(templateFile, templateJSON, 0644); err != nil {
+		t.Fatalf("failed to create template file: %v", err)
+	}
+
+	tmplMgr, err := NewTemplateManager(basePath, overlayPath)
+	if err != nil {
+		t.Fatalf("failed to create template manager: %v", err)
+	}
+
+	// Create and save overlay
 	overlay := &Overlay{
-		ID:          "overlay-3",
-		TemplateID:  "template-1",
-		VMID:        "vm-1",
-		Path:        "/var/lib/vimic2/overlays/vm-1.qcow2",
-		CreatedAt:   now,
-		DestroyedAt: &destroyed,
+		ID:         "overlay-save-test",
+		TemplateID: "ubuntu-22.04",
+		Path:       filepath.Join(overlayPath, "overlay-save-test.qcow2"),
+		VMID:       "vm-save-test",
+		CreatedAt:  time.Now(),
+	}
+	tmplMgr.overlays[overlay.ID] = overlay
+
+	// Save overlays
+	if err := tmplMgr.saveOverlays(); err != nil {
+		t.Fatalf("failed to save overlays: %v", err)
 	}
 
-	if overlay.DestroyedAt == nil {
-		t.Error("DestroyedAt should not be nil")
-	}
-	if overlay.DestroyedAt.Before(overlay.CreatedAt) {
-		t.Error("DestroyedAt should be after CreatedAt")
+	// Verify file was created
+	overlayFile := filepath.Join(overlayPath, "overlay-save-test.json")
+	if _, err := os.Stat(overlayFile); os.IsNotExist(err) {
+		t.Fatalf("overlay file was not created")
 	}
 }

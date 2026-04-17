@@ -172,11 +172,11 @@ func (w *Watcher) notifyNodeUpdate(node *database.Node, state string, status *hy
 		NodeID:    node.ID,
 		ClusterID: node.ClusterID,
 		State:     state,
-		IP:        status.IP,
 		Timestamp: time.Now(),
 	}
 
 	if status != nil {
+		update.IP = status.IP
 		update.CPU = status.CPUPercent
 		update.Memory = float64(status.MemUsed) / float64(status.MemTotal) * 100
 	}
@@ -188,7 +188,9 @@ func (w *Watcher) notifyNodeUpdate(node *database.Node, state string, status *hy
 	}
 
 	// Update database
-	w.db.UpdateNodeState(node.ID, state, status.IP)
+	if status != nil {
+		w.db.UpdateNodeState(node.ID, state, status.IP)
+	}
 }
 
 func (w *Watcher) notifyMetrics(node *database.Node, metrics *hypervisor.Metrics) {

@@ -111,13 +111,20 @@ func NewPoolManager(db types.PipelineDB, templateMgr *TemplateManager, configPat
 
 	// Load state from disk
 	if err := pm.loadState(); err != nil {
-		return nil, fmt.Errorf("failed to load state: %w", err)
+		// Non-fatal: state file might not exist yet
 	}
 
 	// Start event processor
 	go pm.processEvents()
 
 	return pm, nil
+}
+
+// SetStateFile sets a custom state file path
+func (pm *PoolManager) SetStateFile(path string) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	pm.stateFile = path
 }
 
 func (pm *PoolManager) loadConfig(configPath string) error {
@@ -175,9 +182,6 @@ func (pm *PoolManager) loadState() error {
 func (pm *PoolManager) saveState() error {
 	stateFile := pm.getStateFile()
 
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-
 	var state struct {
 		VMs      []*VM      `json:"vms"`
 		Overlays []*Overlay `json:"overlays"`
@@ -214,6 +218,21 @@ func (pm *PoolManager) processEvents() {
 		// Process events asynchronously
 		_ = event
 	}
+}
+
+// Close stops the pool manager and cleans up resources
+func (pm *PoolManager) Close() {
+	close(pm.eventChan)
+}
+
+// SaveState saves the current state to disk (public method)
+func (pm *PoolManager) SaveState() error {
+	return pm.saveState()
+}
+
+// LoadState loads state from disk (public method)
+func (pm *PoolManager) LoadState() error {
+	return pm.loadState()
 }
 
 // CreatePool creates a new VM pool

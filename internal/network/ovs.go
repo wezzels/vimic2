@@ -32,6 +32,12 @@ func NewOVSClient() *OVSClient {
 func (o *OVSClient) CreateBridge(name string) error {
 	// Check if bridge already exists
 	if o.bridgeExists(name) {
+		// Bridge exists, but make sure it's up
+		if err := o.upInterface(name); err != nil {
+			// Bridge may be stale in OVS DB — try to recreate
+			o.DeleteBridge(name)
+			return o.CreateBridge(name)
+		}
 		return nil
 	}
 

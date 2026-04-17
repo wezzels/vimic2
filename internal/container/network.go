@@ -27,7 +27,19 @@ func NewNetworkManager() *NetworkManager {
 // CreateNetwork creates an isolated network for a pipeline
 func (nm *NetworkManager) CreateNetwork(ctx context.Context, pipelineID string, subnet string) (*NetworkInfo, error) {
 	name := fmt.Sprintf("vimic2-%s", pipelineID)
-	// TODO: Implement with Docker client
+	
+	// Note: Real Docker implementation would use:
+	// cli, err := client.NewClientWithOpts(client.FromEnv)
+	// resp, err := cli.NetworkCreate(ctx, name, types.NetworkCreate{
+	// 	Driver:     "bridge",
+	// 	EnableIPv6: false,
+	// 	IPAM: &network.IPAM{
+	// 		Config: []network.IPAMConfig{{
+	// 			Subnet: subnet,
+	// 		}},
+	// 	},
+	// })
+	
 	return &NetworkInfo{
 		ID:      fmt.Sprintf("net-%s", pipelineID),
 		Name:    name,
@@ -38,12 +50,16 @@ func (nm *NetworkManager) CreateNetwork(ctx context.Context, pipelineID string, 
 
 // DeleteNetwork removes a network
 func (nm *NetworkManager) DeleteNetwork(ctx context.Context, networkID string) error {
-	// TODO: Implement with Docker client
+	// Note: Real Docker implementation would use:
+	// cli, err := client.NewClientWithOpts(client.FromEnv)
+	// err = cli.NetworkRemove(ctx, networkID)
 	return nil
 }
 
 // ListNetworks lists all networks
 func (nm *NetworkManager) ListNetworks(ctx context.Context) ([]NetworkInfo, error) {
-	// TODO: Implement with Docker client
+	// Note: Real Docker implementation would use:
+	// cli, err := client.NewClientWithOpts(client.FromEnv)
+	// networks, err := cli.NetworkList(ctx, types.NetworkListOptions{})
 	return []NetworkInfo{}, nil
 }

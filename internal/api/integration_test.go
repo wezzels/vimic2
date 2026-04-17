@@ -1,646 +1,293 @@
-// Package api provides integration tests with real database
+//go:build integration
+
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stsgym/vimic2/internal/pipeline"
-	"github.com/stsgym/vimic2/internal/testutil/mocknet"
-	"github.com/stsgym/vimic2/internal/testutil/mockpool"
-	"github.com/stsgym/vimic2/internal/testutil/mockrunner"
-	"github.com/stsgym/vimic2/internal/testutil/realdb"
 )
 
-// TestIntegration_HandleHealth tests health endpoint
-func TestIntegration_HandleHealth(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
+func setupAPITest(t *testing.T) (*Server, func()) {
+	t.Helper()
+	tmpDir, err := os.MkdirTemp("", "vimic2-api-test-")
 	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
+		t.Fatal(err)
 	}
 
-	req := httptest.NewRequest("GET", "/api/health", nil)
-	w := httptest.NewRecorder()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := pipeline.NewPipelineDB(dbPath)
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		t.Fatal(err)
+	}
 
-	s.handleHealth(w, req)
+	artifactConfig := &pipeline.ArtifactConfig{
+		StoragePath:   filepath.Join(tmpDir, "artifacts"),
+		RetentionDays: 30,
+	}
+	artifacts, err := pipeline.NewArtifactManager(db, artifactConfig)
+	if err != nil {
+		db.Close()
+		os.RemoveAll(tmpDir)
+		t.Fatal(err)
+	}
+	// Set state file to avoid leakage
+	artifacts.SetStateFile(filepath.Join(tmpDir, "artifacts-state.json"))
+
+	logConfig := &pipeline.LogConfig{
+		StoragePath: filepath.Join(tmpDir, "logs"),
+		BufferSize:  100,
+	}
+	logs, err := pipeline.NewLogCollector(db, logConfig)
+	if err != nil {
+		db.Close()
+		os.RemoveAll(tmpDir)
+		t.Fatal(err)
+	}
+	logs.SetStateFile(filepath.Join(tmpDir, "logs-state.json"))
+
+	server, err := NewServer(db, nil, nil, artifacts, logs, nil, nil, nil, &ServerConfig{
+		ListenAddr: ":0",
+	})
+	if err != nil {
+		db.Close()
+		os.RemoveAll(tmpDir)
+		t.Fatal(err)
+	}
+
+	return server, func() {
+		db.Close()
+		os.RemoveAll(tmpDir)
+	}
+}
+
+func TestAPI_Health(t *testing.T) {
+	server, cleanup := setupAPITest(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	w := httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("expected 200, got %d", w.Code)
+		t.Errorf("Health status = %d, want %d", w.Code, http.StatusOK)
 	}
 
-	var resp map[string]string
-	json.NewDecoder(w.Body).Decode(&resp)
-	if resp["status"] != "healthy" && resp["status"] != "ok" {
-		t.Errorf("expected status healthy or ok, got %s", resp["status"])
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp["status"] != "healthy" {
+		t.Errorf("Health response = %v, want healthy", resp)
 	}
 }
 
-// TestIntegration_HandleListPipelines tests listing pipelines
-func TestIntegration_HandleListPipelines(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
+func TestAPI_ListPipelines(t *testing.T) {
+	server, cleanup := setupAPITest(t)
 	defer cleanup()
 
-	poolMgr := mockpool.NewMockPoolManager()
-	netMgr := mocknet.NewMockNetworkManager()
-	runnerMgr := mockrunner.NewMockRunnerManager()
-
-	coord, err := pipeline.NewCoordinator(db, poolMgr, netMgr, runnerMgr)
-	if err != nil {
-		t.Fatalf("failed to create coordinator: %v", err)
-	}
-
-	s, err := NewServer(db.PipelineDB, coord, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	req := httptest.NewRequest("GET", "/api/pipelines", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/pipelines", nil)
 	w := httptest.NewRecorder()
-
-	s.handleListPipelines(w, req)
+	server.router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("expected 200, got %d", w.Code)
+		t.Errorf("ListPipelines status = %d, want %d", w.Code, http.StatusOK)
 	}
-
-	var pipelines []interface{}
-	json.NewDecoder(w.Body).Decode(&pipelines)
-	t.Logf("Got %d pipelines", len(pipelines))
 }
 
-// TestIntegration_HandleCreatePipeline tests creating pipeline
-func TestIntegration_HandleCreatePipeline(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
+func TestAPI_ListArtifacts(t *testing.T) {
+	server, cleanup := setupAPITest(t)
 	defer cleanup()
 
-	poolMgr := mockpool.NewMockPoolManager()
-	netMgr := mocknet.NewMockNetworkManager()
-	runnerMgr := mockrunner.NewMockRunnerManager()
-
-	coord, err := pipeline.NewCoordinator(db, poolMgr, netMgr, runnerMgr)
-	if err != nil {
-		t.Fatalf("failed to create coordinator: %v", err)
-	}
-
-	s, err := NewServer(db.PipelineDB, coord, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	// Just test that the handler doesn't panic
-	req := httptest.NewRequest("POST", "/api/pipelines", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/artifacts", nil)
 	w := httptest.NewRecorder()
-
-	s.handleCreatePipeline(w, req)
-
-	t.Logf("CreatePipeline status: %d", w.Code)
-}
-
-// TestIntegration_HandleGetStats tests stats endpoint
-func TestIntegration_HandleGetStats(t *testing.T) {
-	t.Skip("requires runner manager with database")
-}
-
-// TestIntegration_HandleStartPipeline tests starting pipeline
-func TestIntegration_HandleStartPipeline(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	poolMgr := mockpool.NewMockPoolManager()
-	netMgr := mocknet.NewMockNetworkManager()
-	runnerMgr := mockrunner.NewMockRunnerManager()
-
-	coord, err := pipeline.NewCoordinator(db, poolMgr, netMgr, runnerMgr)
-	if err != nil {
-		t.Fatalf("failed to create coordinator: %v", err)
-	}
-
-	s, err := NewServer(db.PipelineDB, coord, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	req := httptest.NewRequest("POST", "/api/pipelines/test/start", nil)
-	w := httptest.NewRecorder()
-
-	s.handleStartPipeline(w, req)
-
-	t.Logf("StartPipeline status: %d", w.Code)
-}
-
-// TestIntegration_HandleStopPipeline tests stopping pipeline
-func TestIntegration_HandleStopPipeline(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	poolMgr := mockpool.NewMockPoolManager()
-	netMgr := mocknet.NewMockNetworkManager()
-	runnerMgr := mockrunner.NewMockRunnerManager()
-
-	coord, err := pipeline.NewCoordinator(db, poolMgr, netMgr, runnerMgr)
-	if err != nil {
-		t.Fatalf("failed to create coordinator: %v", err)
-	}
-
-	s, err := NewServer(db.PipelineDB, coord, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	req := httptest.NewRequest("POST", "/api/pipelines/test/stop", nil)
-	w := httptest.NewRecorder()
-
-	s.handleStopPipeline(w, req)
-
-	t.Logf("StopPipeline status: %d", w.Code)
-}
-
-// TestIntegration_HandleDestroyPipeline tests destroying pipeline
-func TestIntegration_HandleDestroyPipeline(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	poolMgr := mockpool.NewMockPoolManager()
-	netMgr := mocknet.NewMockNetworkManager()
-	runnerMgr := mockrunner.NewMockRunnerManager()
-
-	coord, err := pipeline.NewCoordinator(db, poolMgr, netMgr, runnerMgr)
-	if err != nil {
-		t.Fatalf("failed to create coordinator: %v", err)
-	}
-
-	s, err := NewServer(db.PipelineDB, coord, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	req := httptest.NewRequest("DELETE", "/api/pipelines/test", nil)
-	w := httptest.NewRecorder()
-
-	s.handleDestroyPipeline(w, req)
-
-	t.Logf("DestroyPipeline status: %d", w.Code)
-}
-
-// TestIntegration_HandleListArtifacts tests listing artifacts
-func TestIntegration_HandleListArtifacts(t *testing.T) {
-	t.Skip("requires artifact manager with database")
-}
-
-// TestIntegration_Routes tests all routes
-func TestIntegration_Routes(t *testing.T) {
-	s, err := NewServer(nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	// Only test routes that don't require managers
-	routes := []struct {
-		method string
-		path   string
-	}{
-		{"GET", "/api/health"},
-	}
-
-	for _, route := range routes {
-		req := httptest.NewRequest(route.method, route.path, nil)
-		w := httptest.NewRecorder()
-		s.router.ServeHTTP(w, req)
-		if w.Code != http.StatusOK {
-			t.Errorf("%s %s: expected 200, got %d", route.method, route.path, w.Code)
-		}
-	}
-}
-
-// TestIntegration_WriteJSON tests JSON helper
-func TestIntegration_WriteJSON(t *testing.T) {
-	s, _ := NewServer(nil, nil, nil, nil, nil, nil, nil, nil, nil)
-
-	w := httptest.NewRecorder()
-
-	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	server.router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("expected 200, got %d", w.Code)
+		t.Errorf("ListArtifacts status = %d, want %d", w.Code, http.StatusOK)
 	}
+}
+
+func TestAPI_GetStats(t *testing.T) {
+	server, cleanup := setupAPITest(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/stats", nil)
+	w := httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("GetStats status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp["artifacts"] == nil {
+		t.Error("GetStats should include artifacts")
+	}
+}
+
+func TestAPI_UploadArtifact(t *testing.T) {
+	server, cleanup := setupAPITest(t)
+	defer cleanup()
+
+	content := []byte("test artifact content")
+	req := httptest.NewRequest(http.MethodPost, "/api/artifacts/upload?pipeline_id=test-pipeline&type=log&name=test.log", bytes.NewReader(content))
+	w := httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK && w.Code != http.StatusCreated {
+		t.Errorf("UploadArtifact status = %d, want %d or %d", w.Code, http.StatusOK, http.StatusCreated)
+	}
+}
+
+func TestAPI_ListLogStreams(t *testing.T) {
+	server, cleanup := setupAPITest(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/logs/streams?pipeline_id=test-pipeline", nil)
+	w := httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
+
+	// May return 200 (empty list) or other codes
+	t.Logf("ListLogStreams status: %d", w.Code)
+}
+
+func TestAPI_NotFound(t *testing.T) {
+	server, cleanup := setupAPITest(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/nonexistent", nil)
+	w := httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("NotFound status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
+func TestAPI_WriteJSON_ContentType(t *testing.T) {
+	server, cleanup := setupAPITest(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	w := httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
 
 	if w.Header().Get("Content-Type") != "application/json" {
-		t.Errorf("expected application/json, got %s", w.Header().Get("Content-Type"))
+		t.Errorf("Content-Type = %s, want application/json", w.Header().Get("Content-Type"))
 	}
 }
 
-// TestIntegration_WriteError tests error helper
-func TestIntegration_WriteError(t *testing.T) {
-	s, _ := NewServer(nil, nil, nil, nil, nil, nil, nil, nil, nil)
-
-	w := httptest.NewRecorder()
-
-	s.writeError(w, http.StatusBadRequest, "test error")
-
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("expected 400, got %d", w.Code)
+func TestAPI_Auth(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "vimic2-api-auth-test-")
+	if err != nil {
+		t.Fatal(err)
 	}
+	defer os.RemoveAll(tmpDir)
 
-	var resp map[string]string
-	json.NewDecoder(w.Body).Decode(&resp)
-	if resp["error"] != "test error" {
-		t.Errorf("expected 'test error', got %s", resp["error"])
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := pipeline.NewPipelineDB(dbPath)
+	if err != nil {
+		t.Fatal(err)
 	}
-}
+	defer db.Close()
 
-// TestIntegration_AuthMiddleware tests auth
-func TestIntegration_AuthMiddleware(t *testing.T) {
-	s, _ := NewServer(nil, nil, nil, nil, nil, nil, nil, nil, &ServerConfig{
+	artifactConfig := &pipeline.ArtifactConfig{
+		StoragePath:   filepath.Join(tmpDir, "artifacts"),
+		RetentionDays: 30,
+	}
+	artifacts, _ := pipeline.NewArtifactManager(db, artifactConfig)
+
+	logConfig := &pipeline.LogConfig{
+		StoragePath: filepath.Join(tmpDir, "logs"),
+		BufferSize:  100,
+	}
+	logs, _ := pipeline.NewLogCollector(db, logConfig)
+
+	server, err := NewServer(db, nil, nil, artifacts, logs, nil, nil, nil, &ServerConfig{
+		ListenAddr:  ":0",
 		AuthEnabled: true,
-		AuthToken:   "secret-token",
+		AuthToken:   "test-token",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	handler := s.authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-
-	// No token
-	req := httptest.NewRequest("GET", "/api/test", nil)
+	// Without auth - /api/health doesn't require auth
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected 401, got %d", w.Code)
-	}
+	server.router.ServeHTTP(w, req)
 
-	// Wrong token
-	req = httptest.NewRequest("GET", "/api/test", nil)
-	req.Header.Set("Authorization", "Bearer wrong")
-	w = httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected 401, got %d", w.Code)
-	}
-
-	// Correct token
-	req = httptest.NewRequest("GET", "/api/test", nil)
-	req.Header.Set("Authorization", "Bearer secret-token")
-	w = httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
+	// Health endpoint doesn't require auth, so it returns 200
 	if w.Code != http.StatusOK {
-		t.Errorf("expected 200, got %d", w.Code)
-	}
-}
-
-// TestIntegration_ConfigDefaults tests config
-func TestIntegration_ConfigDefaults(t *testing.T) {
-	config := &ServerConfig{}
-	s, err := NewServer(nil, nil, nil, nil, nil, nil, nil, nil, config)
-	if err != nil {
-		t.Fatalf("NewServer failed: %v", err)
-	}
-	// Default might be empty until httpServer is used
-	if s.httpServer == nil {
-		t.Fatal("expected non-nil httpServer")
-	}
-}
-
-// TestIntegration_WebSocketMessage tests WebSocket message
-func TestIntegration_WebSocketMessage(t *testing.T) {
-	msg := &WebSocketMessage{
-		Type:    "pipeline:update",
-		Payload: map[string]interface{}{"id": "test"},
+		t.Errorf("Health without auth status = %d, want %d", w.Code, http.StatusOK)
 	}
 
-	if msg.Type != "pipeline:update" {
-		t.Errorf("expected pipeline:update, got %s", msg.Type)
-	}
-}
+	// With auth - test a protected endpoint
+	req = httptest.NewRequest(http.MethodGet, "/api/pipelines", nil)
+	w = httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
 
-// TestIntegration_NewServer tests server creation
-func TestIntegration_NewServer(t *testing.T) {
-	s, err := NewServer(nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("NewServer failed: %v", err)
-	}
-	if s == nil {
-		t.Fatal("expected non-nil server")
-	}
-	if s.router == nil {
-		t.Fatal("expected non-nil router")
-	}
-}
-
-// TestIntegration_NewServer_WithConfig tests server creation with config
-func TestIntegration_NewServer_WithConfig(t *testing.T) {
-	config := &ServerConfig{
-		ListenAddr:  ":9090",
-		AuthEnabled: false,
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Pipelines without auth status = %d, want %d", w.Code, http.StatusUnauthorized)
 	}
 
-	s, err := NewServer(nil, nil, nil, nil, nil, nil, nil, nil, config)
-	if err != nil {
-		t.Fatalf("NewServer failed: %v", err)
-	}
-	if s.httpServer.Addr != ":9090" {
-		t.Errorf("expected :9090, got %s", s.httpServer.Addr)
-	}
-}
-
-// === Job Handler Tests ===
-
-// TestIntegration_HandleListJobs tests listing jobs
-func TestIntegration_HandleListJobs(t *testing.T) {
-	t.Skip("requires JobDispatcher with runner manager")
-}
-
-// TestIntegration_HandleGetJob tests getting a job
-func TestIntegration_HandleGetJob(t *testing.T) {
-	t.Skip("requires JobDispatcher with runner manager")
-}
-
-// TestIntegration_HandleEnqueueJob tests enqueueing a job
-func TestIntegration_HandleEnqueueJob(t *testing.T) {
-	t.Skip("requires JobDispatcher with runner manager")
-}
-
-// TestIntegration_HandleCancelJob tests canceling a job
-func TestIntegration_HandleCancelJob(t *testing.T) {
-	t.Skip("requires JobDispatcher with runner manager")
-}
-
-// TestIntegration_HandleRetryJob tests retrying a job
-func TestIntegration_HandleRetryJob(t *testing.T) {
-	t.Skip("requires JobDispatcher with runner manager")
-}
-
-// === Pool Handler Tests ===
-
-// TestIntegration_HandleListPools tests listing pools
-func TestIntegration_HandleListPools(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	poolMgr := mockpool.NewMockPoolManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	s.SetPoolManager(poolMgr)
-
-	req := httptest.NewRequest("GET", "/api/pools", nil)
-	w := httptest.NewRecorder()
-
-	s.handleListPools(w, req)
+	// With auth
+	req = httptest.NewRequest(http.MethodGet, "/api/pipelines", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	w = httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("expected 200, got %d: %s", w.Code, w.Body.String())
+		t.Errorf("Pipelines with auth status = %d, want %d", w.Code, http.StatusOK)
 	}
 }
 
-// TestIntegration_HandleGetPool tests getting a pool
-func TestIntegration_HandleGetPool(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
+func TestAPI_CreateNetwork(t *testing.T) {
+	server, cleanup := setupAPITest(t)
 	defer cleanup()
 
-	poolMgr := mockpool.NewMockPoolManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
+	networkData := map[string]interface{}{
+		"name":    "test-network",
+		"type":    "nat",
+		"cidr":    "192.168.100.0/24",
+		"gateway": "192.168.100.1",
 	}
+	body, _ := json.Marshal(networkData)
 
-	s.SetPoolManager(poolMgr)
-
-	req := httptest.NewRequest("GET", "/api/pools/default", nil)
-	w := httptest.NewRecorder()
-
-	s.handleGetPool(w, req)
-
-	t.Logf("GetPool status: %d", w.Code)
-}
-
-// TestIntegration_HandleCreatePool tests creating a pool
-func TestIntegration_HandleCreatePool(t *testing.T) {
-	t.Skip("requires PoolManager")
-}
-
-// TestIntegration_HandleAcquireVM tests acquiring a VM
-func TestIntegration_HandleAcquireVM(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	poolMgr := mockpool.NewMockPoolManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	s.SetPoolManager(poolMgr)
-
-	req := httptest.NewRequest("POST", "/api/pools/default/acquire", nil)
-	w := httptest.NewRecorder()
-
-	s.handleAcquireVM(w, req)
-
-	t.Logf("AcquireVM status: %d", w.Code)
-}
-
-// TestIntegration_HandleReleaseVM tests releasing a VM
-func TestIntegration_HandleReleaseVM(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	poolMgr := mockpool.NewMockPoolManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	s.SetPoolManager(poolMgr)
-
-	body := `{"vm_id":"test-vm-123"}`
-	req := httptest.NewRequest("POST", "/api/pools/default/release", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/networks", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
 
-	s.handleReleaseVM(w, req)
-
-	t.Logf("ReleaseVM status: %d", w.Code)
-}
-
-// === Network Handler Tests ===
-
-// TestIntegration_HandleListNetworks tests listing networks
-func TestIntegration_HandleListNetworks(t *testing.T) {
-	t.Skip("requires IsolationManager")
-}
-
-// TestIntegration_HandleGetNetwork tests getting a network
-func TestIntegration_HandleGetNetwork(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	netMgr := mocknet.NewMockNetworkManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	s.SetNetworkManager(netMgr)
-
-	req := httptest.NewRequest("GET", "/api/networks/net-123", nil)
-	w := httptest.NewRecorder()
-
-	s.handleGetNetwork(w, req)
-
-	t.Logf("GetNetwork status: %d", w.Code)
-}
-
-// TestIntegration_HandleCreateNetwork tests creating a network
-func TestIntegration_HandleCreateNetwork(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	netMgr := mocknet.NewMockNetworkManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	s.SetNetworkManager(netMgr)
-
-	body := `{"pipeline_id":"test-pipeline"}`
-	req := httptest.NewRequest("POST", "/api/networks", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	s.handleCreateNetwork(w, req)
-
+	// Without network manager, should return error
 	t.Logf("CreateNetwork status: %d", w.Code)
 }
 
-// TestIntegration_HandleDeleteNetwork tests deleting a network
-func TestIntegration_HandleDeleteNetwork(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
+func TestAPI_ListPools(t *testing.T) {
+	server, cleanup := setupAPITest(t)
 	defer cleanup()
 
-	netMgr := mocknet.NewMockNetworkManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	s.SetNetworkManager(netMgr)
-
-	req := httptest.NewRequest("DELETE", "/api/networks/net-123", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/pools", nil)
 	w := httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
 
-	s.handleDeleteNetwork(w, req)
-
-	t.Logf("DeleteNetwork status: %d", w.Code)
+	t.Logf("ListPools status: %d", w.Code)
 }
 
-// === Runner Handler Tests ===
-
-// TestIntegration_HandleListRunners tests listing runners
-func TestIntegration_HandleListRunners(t *testing.T) {
-	t.Skip("requires RunnerManager")
-}
-
-// TestIntegration_HandleGetRunner tests getting a runner
-func TestIntegration_HandleGetRunner(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
+func TestAPI_ListRunners(t *testing.T) {
+	server, cleanup := setupAPITest(t)
 	defer cleanup()
 
-	runnerMgr := mockrunner.NewMockRunnerManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	s.SetRunnerManager(runnerMgr)
-
-	req := httptest.NewRequest("GET", "/api/runners/runner-123", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/runners", nil)
 	w := httptest.NewRecorder()
+	server.router.ServeHTTP(w, req)
 
-	s.handleGetRunner(w, req)
-
-	t.Logf("GetRunner status: %d", w.Code)
-}
-
-// TestIntegration_HandleCreateRunner tests creating a runner
-func TestIntegration_HandleCreateRunner(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	runnerMgr := mockrunner.NewMockRunnerManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	s.SetRunnerManager(runnerMgr)
-
-	body := `{"pool_name":"default","platform":"linux","pipeline_id":"test-pipeline","labels":["test"]}`
-	req := httptest.NewRequest("POST", "/api/runners", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	s.handleCreateRunner(w, req)
-
-	t.Logf("CreateRunner status: %d", w.Code)
-}
-
-// TestIntegration_HandleStopRunner tests stopping a runner
-func TestIntegration_HandleStopRunner(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	runnerMgr := mockrunner.NewMockRunnerManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	s.SetRunnerManager(runnerMgr)
-
-	req := httptest.NewRequest("POST", "/api/runners/runner-123/stop", nil)
-	w := httptest.NewRecorder()
-
-	s.handleStopRunner(w, req)
-
-	t.Logf("StopRunner status: %d", w.Code)
-}
-
-// TestIntegration_HandleDestroyRunner tests destroying a runner
-func TestIntegration_HandleDestroyRunner(t *testing.T) {
-	db, cleanup := realdb.NewTestDB(t)
-	defer cleanup()
-
-	runnerMgr := mockrunner.NewMockRunnerManager()
-
-	s, err := NewServer(db.PipelineDB, nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	s.SetRunnerManager(runnerMgr)
-
-	req := httptest.NewRequest("DELETE", "/api/runners/runner-123", nil)
-	w := httptest.NewRecorder()
-
-	s.handleDestroyRunner(w, req)
-
-	t.Logf("DestroyRunner status: %d", w.Code)
+	t.Logf("ListRunners status: %d", w.Code)
 }

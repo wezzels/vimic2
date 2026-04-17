@@ -215,12 +215,12 @@ func TestMockDB_Pool(t *testing.T) {
 		Busy:      3,
 	}
 
-	err := db.SavePool(pool)
+	err := db.SavePoolRecord(pool)
 	if err != nil {
 		t.Fatalf("failed to save pool: %v", err)
 	}
 
-	retrieved, err := db.GetPool("pool-1")
+	retrieved, err := db.GetPoolRecord("pool-1")
 	if err != nil {
 		t.Fatalf("failed to get pool: %v", err)
 	}

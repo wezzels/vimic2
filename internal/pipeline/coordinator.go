@@ -21,7 +21,7 @@ type Coordinator struct {
 	eventChan      chan PipelineEvent
 }
 
-// PipelineState represents the state of a pipeline
+// PipelineState represents the in-memory state of a pipeline (coordinator-level)
 type PipelineState struct {
 	ID           string               `json:"id"`
 	Platform     types.RunnerPlatform `json:"platform"`
@@ -85,7 +85,6 @@ func NewCoordinator(db types.PipelineDB, poolMgr types.PoolManagerInterface, net
 		eventChan:      make(chan PipelineEvent, 1000),
 	}
 
-	// Load existing pipelines
 	if err := c.loadPipelines(); err != nil {
 		return nil, fmt.Errorf("failed to load pipelines: %w", err)
 	}
@@ -95,22 +94,21 @@ func NewCoordinator(db types.PipelineDB, poolMgr types.PoolManagerInterface, net
 
 // loadPipelines loads existing pipelines from database
 func (c *Coordinator) loadPipelines() error {
-	ids, err := c.db.ListPipelines()
+	ctx := context.Background()
+	dbPipelines, err := c.db.ListPipelines(ctx, 100, 0)
 	if err != nil {
 		return err
 	}
 
-	for _, id := range ids {
-		c.pipelines[id] = &PipelineState{
-			ID: id,
-		}
+	for _, p := range dbPipelines {
+		c.pipelines[p.ID] = pipelineStateToCoordinatorState(p)
 	}
 
 	return nil
 }
 
 // CreatePipeline creates a new pipeline
-func (c *Coordinator) CreatePipeline(ctx context.Context, platform types.RunnerPlatform, repo, branch string) (*PipelineState, error) {
+func (c *Coordinator) CreatePipeline(ctx context.Context, platform types.RunnerPlatform, repo, branch, commitSHA, commitMsg, author string) (*PipelineState, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -122,6 +120,9 @@ func (c *Coordinator) CreatePipeline(ctx context.Context, platform types.RunnerP
 		Platform:   platform,
 		Repository: repo,
 		Branch:     branch,
+		CommitSHA:  commitSHA,
+		CommitMsg:  commitMsg,
+		Author:     author,
 		Status:     types.PipelineStatusCreating,
 		CreatedAt:  now,
 		UpdatedAt:  now,
@@ -132,15 +133,9 @@ func (c *Coordinator) CreatePipeline(ctx context.Context, platform types.RunnerP
 
 	c.pipelines[id] = ps
 
-	// Save to database
-	state := map[string]interface{}{
-		"status":     string(ps.Status),
-		"platform":   string(ps.Platform),
-		"repository": ps.Repository,
-		"branch":     ps.Branch,
-		"created":    ps.CreatedAt,
-	}
-	if err := c.db.SavePipeline(id, state); err != nil {
+	// Save to database using the typed interface
+	dbState := coordinatorStateToPipelineState(ps)
+	if err := c.db.SavePipeline(ctx, dbState); err != nil {
 		delete(c.pipelines, id)
 		return nil, fmt.Errorf("failed to save pipeline: %w", err)
 	}
@@ -164,13 +159,9 @@ func (c *Coordinator) StartPipeline(ctx context.Context, id string, runners int)
 
 	ps.Status = types.PipelineStatusRunning
 	ps.StartTime = time.Now()
+	ps.UpdatedAt = time.Now()
 
-	// Update database
-	state := map[string]interface{}{
-		"status":     string(ps.Status),
-		"start_time": ps.StartTime,
-	}
-	if err := c.db.SavePipeline(id, state); err != nil {
+	if err := c.db.UpdatePipelineStatus(ctx, id, types.PipelineStatusRunning); err != nil {
 		return fmt.Errorf("failed to update pipeline: %w", err)
 	}
 
@@ -213,16 +204,12 @@ func (c *Coordinator) CancelPipeline(ctx context.Context, id string) error {
 		return fmt.Errorf("pipeline not found: %s", id)
 	}
 
-	ps.Status = types.PipelineStatusCanceled
+	ps.Status = types.PipelineStatusCancelled
 	now := time.Now()
 	ps.EndTime = &now
+	ps.UpdatedAt = now
 
-	// Update database
-	state := map[string]interface{}{
-		"status":   string(ps.Status),
-		"end_time": ps.EndTime,
-	}
-	if err := c.db.SavePipeline(id, state); err != nil {
+	if err := c.db.UpdatePipelineStatus(ctx, id, types.PipelineStatusCancelled); err != nil {
 		return fmt.Errorf("failed to update pipeline: %w", err)
 	}
 
@@ -239,12 +226,60 @@ func (c *Coordinator) DeletePipeline(id string) error {
 	}
 
 	delete(c.pipelines, id)
-	return c.db.DeletePipeline(id)
+	return c.db.DeletePipeline(context.Background(), id)
 }
 
 // Subscribe subscribes to pipeline events
 func (c *Coordinator) Subscribe() chan PipelineEvent {
 	return c.eventChan
+}
+
+// Conversion helpers between coordinator PipelineState and types.PipelineState
+func coordinatorStateToPipelineState(ps *PipelineState) *types.PipelineState {
+	if ps == nil {
+		return nil
+	}
+	return &types.PipelineState{
+		ID:         ps.ID,
+		Platform:   ps.Platform,
+		Repository: ps.Repository,
+		Branch:     ps.Branch,
+		CommitSHA:  ps.CommitSHA,
+		CommitMsg:  ps.CommitMsg,
+		Author:     ps.Author,
+		Status:     ps.Status,
+		NetworkID:  ps.NetworkID,
+		StartTime:  ps.StartTime,
+		EndTime:    ps.EndTime,
+		Duration:   ps.Duration,
+		CreatedAt:  ps.CreatedAt,
+		UpdatedAt:  ps.UpdatedAt,
+	}
+}
+
+func pipelineStateToCoordinatorState(ps *types.PipelineState) *PipelineState {
+	if ps == nil {
+		return nil
+	}
+	return &PipelineState{
+		ID:         ps.ID,
+		Platform:   ps.Platform,
+		Repository: ps.Repository,
+		Branch:     ps.Branch,
+		CommitSHA:  ps.CommitSHA,
+		CommitMsg:  ps.CommitMsg,
+		Author:     ps.Author,
+		Status:     ps.Status,
+		NetworkID:  ps.NetworkID,
+		StartTime:  ps.StartTime,
+		EndTime:    ps.EndTime,
+		Duration:   ps.Duration,
+		CreatedAt:  ps.CreatedAt,
+		UpdatedAt:  ps.UpdatedAt,
+		VMs:        make([]string, 0),
+		Runners:    make([]string, 0),
+		Stages:     make([]StageState, 0),
+	}
 }
 
 func generateID() string {

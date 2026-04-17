@@ -131,18 +131,16 @@ func (st *StateTracker) GetVM(vmID string) (*VMState, error) {
 // SetVM sets VM state
 func (st *StateTracker) SetVM(vm *VMState) error {
 	st.mu.Lock()
-	defer st.mu.Unlock()
-
 	st.cache[vm.ID] = vm
+	st.mu.Unlock()
 	return st.saveState()
 }
 
 // DeleteVM removes VM state
 func (st *StateTracker) DeleteVM(vmID string) error {
 	st.mu.Lock()
-	defer st.mu.Unlock()
-
 	delete(st.cache, vmID)
+	st.mu.Unlock()
 	return st.saveState()
 }
 
@@ -189,3 +187,8 @@ func (st *StateTracker) Unsubscribe(id string, ch chan StateEvent) {
 
 // ErrVMNotFound is returned when a VM is not found
 var ErrVMNotFound = fmt.Errorf("vm not found")
+
+// SaveState explicitly saves state to disk
+func (st *StateTracker) SaveState() error {
+	return st.saveState()
+}

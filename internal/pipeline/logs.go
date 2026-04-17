@@ -2,6 +2,7 @@
 package pipeline
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -111,10 +113,8 @@ func (lc *LogCollector) loadState() error {
 }
 
 // saveState saves log state to disk
+// NOTE: Caller must hold lc.mu lock before calling this.
 func (lc *LogCollector) saveState() error {
-	lc.mu.RLock()
-	defer lc.mu.RUnlock()
-
 	logs := make([]*LogStream, 0, len(lc.logs))
 	for _, log := range lc.logs {
 		logs = append(logs, log)
@@ -266,17 +266,48 @@ func (lc *LogCollector) ReadLog(streamID string, offset int64, limit int) ([]*Lo
 	}
 
 	// Seek to offset
-	if _, err := stream.file.Seek(offset, 0); err != nil {
+	if _, err := stream.file.Seek(0, 0); err != nil {
 		return nil, fmt.Errorf("failed to seek: %w", err)
 	}
 
-	// Read lines
+	// Read from start to find lines
+	if offset > 0 {
+		// Skip to offset position
+		if _, err := stream.file.Seek(offset, 0); err != nil {
+			return nil, fmt.Errorf("failed to seek to offset: %w", err)
+		}
+	}
+
+	// Read lines using bufio.Scanner
+	scanner := io.LimitReader(stream.file, 1<<20) // 1 MB limit
+	bufScanner := bufio.NewScanner(scanner)
+	
 	entries := make([]*LogEntry, 0, limit)
-	_ = io.LimitReader(stream.file, 1<<20) // 1 MB limit
+	linesRead := 0
+	
+	for bufScanner.Scan() && (limit == 0 || linesRead < limit) {
+		line := bufScanner.Text()
+		if line == "" {
+			continue
+		}
+		
+		// Parse log line format: 2026-04-14T12:00:00Z [INFO] message
+		entry := &LogEntry{}
+		parts := strings.SplitN(line, " ", 3)
+		if len(parts) >= 3 {
+			if t, err := time.Parse(time.RFC3339, parts[0]); err == nil {
+				entry.Timestamp = t
+			}
+			level := strings.Trim(parts[1], "[]")
+			entry.Level = level
+			entry.Message = parts[2]
+		}
+		
+		entries = append(entries, entry)
+		linesRead++
+	}
 
-	// TODO: Implement proper line-by-line reading
-
-	return entries, nil
+	return entries, bufScanner.Err()
 }
 
 // StreamLog subscribes to live log updates
@@ -432,19 +463,24 @@ func (lc *LogCollector) DeleteLogsForPipeline(ctx context.Context, pipelineID st
 // SearchLogs searches logs by query
 func (lc *LogCollector) SearchLogs(ctx context.Context, pipelineID, query string, limit int) ([]*LogEntry, error) {
 	// Get logs from database
-	logs, err := lc.db.ListLogsByPipeline(ctx, pipelineID, limit, 0)
+	logs, err := lc.db.ListLogsByPipeline(ctx, pipelineID, limit*10, 0) // Get more for filtering
 	if err != nil {
 		return nil, fmt.Errorf("failed to get logs: %w", err)
 	}
 
-	// Filter by query
-	// TODO: Implement proper full-text search
-
-	entries := make([]*LogEntry, 0)
+	// Filter by query - case-insensitive search
+	query = strings.ToLower(query)
+	entries := make([]*LogEntry, 0, limit)
+	
 	for _, log := range logs {
-		// Simple string matching
-		if contains(log.Message, query) {
+		// Check message, level, stage
+		if strings.Contains(strings.ToLower(log.Message), query) ||
+			strings.Contains(strings.ToLower(log.Level), query) ||
+			strings.Contains(strings.ToLower(log.Stage), query) {
 			entries = append(entries, log)
+			if len(entries) >= limit {
+				break
+			}
 		}
 	}
 

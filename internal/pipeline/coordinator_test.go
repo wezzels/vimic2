@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Coordinator Tests
+// Coordinator Tests (stubs - require full setup)
 
 func TestCoordinator_CreatePipeline(t *testing.T) {
 	t.Skip("requires database and pool manager")
@@ -43,90 +43,16 @@ func TestCoordinator_GetStats(t *testing.T) {
 	t.Skip("requires database")
 }
 
-// Job Dispatcher Tests
-
-func TestJobDispatcher_EnqueueJob(t *testing.T) {
-	t.Skip("requires database")
-}
-
-func TestJobDispatcher_GetJob(t *testing.T) {
-	t.Skip("requires database")
-}
-
-func TestJobDispatcher_ListJobs(t *testing.T) {
-	t.Skip("requires database")
-}
-
-func TestJobDispatcher_CancelJob(t *testing.T) {
-	t.Skip("requires database")
-}
+// Job Dispatcher stubs (real tests in dispatcher_test.go)
 
 func TestJobDispatcher_RetryJob(t *testing.T) {
 	t.Skip("requires database")
 }
 
-func TestJobDispatcher_GetStats(t *testing.T) {
-	t.Skip("requires database")
-}
-
-// Artifact Manager Tests
-
-func TestArtifactManager_UploadArtifact(t *testing.T) {
-	t.Skip("requires database and file system")
-}
-
-func TestArtifactManager_DownloadArtifact(t *testing.T) {
-	t.Skip("requires database and file system")
-}
-
-func TestArtifactManager_GetArtifact(t *testing.T) {
-	t.Skip("requires database")
-}
-
-func TestArtifactManager_ListArtifacts(t *testing.T) {
-	t.Skip("requires database")
-}
-
-func TestArtifactManager_DeleteArtifact(t *testing.T) {
-	t.Skip("requires database and file system")
-}
+// Artifact Manager stubs (real tests in artifact_manager_test.go)
 
 func TestArtifactManager_CleanupExpiredArtifacts(t *testing.T) {
 	t.Skip("requires database and file system")
-}
-
-func TestArtifactManager_GetStats(t *testing.T) {
-	t.Skip("requires database")
-}
-
-// Log Collector Tests
-
-func TestLogCollector_CreateLogStream(t *testing.T) {
-	t.Skip("requires database and file system")
-}
-
-func TestLogCollector_WriteLog(t *testing.T) {
-	t.Skip("requires database and file system")
-}
-
-func TestLogCollector_ReadLog(t *testing.T) {
-	t.Skip("requires database and file system")
-}
-
-func TestLogCollector_StreamLog(t *testing.T) {
-	t.Skip("requires database and file system")
-}
-
-func TestLogCollector_CloseLogStream(t *testing.T) {
-	t.Skip("requires database and file system")
-}
-
-func TestLogCollector_SearchLogs(t *testing.T) {
-	t.Skip("requires database")
-}
-
-func TestLogCollector_GetStats(t *testing.T) {
-	t.Skip("requires database")
 }
 
 // Helper function tests

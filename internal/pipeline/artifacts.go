@@ -99,10 +99,8 @@ func (am *ArtifactManager) loadState() error {
 }
 
 // saveState saves artifact state to disk
+// NOTE: Caller must hold am.mu (write) lock before calling this.
 func (am *ArtifactManager) saveState() error {
-	am.mu.RLock()
-	defer am.mu.RUnlock()
-
 	artifacts := make([]*Artifact, 0, len(am.artifacts))
 	for _, artifact := range am.artifacts {
 		artifacts = append(artifacts, artifact)
