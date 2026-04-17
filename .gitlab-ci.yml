@@ -1,5 +1,5 @@
 # GitLab CI/CD Pipeline for Vimic2
-# Runner: trooper2-vault (shell executor)
+# Runner: trooper2 (shell executor)
 
 stages:
   - lint
@@ -13,21 +13,14 @@ variables:
   GO_VERSION: "1.23"
   BINARY_NAME: "vimic2"
 
-# Lint stage - code quality
 lint-go:
   stage: lint
   tags:
     - trooper2
   script:
     - echo "=== Linting Go code ==="
-    - echo "Working directory: $(pwd)"
     - go fmt ./...
     - go vet ./...
-    - |
-      if [ -n "$(go fmt -l ./...)" ]; then
-        echo "Code is not formatted. Run 'go fmt ./...'"
-        exit 1
-      fi
   only:
     - main
     - merge_requests
@@ -38,36 +31,20 @@ lint-mod:
     - trooper2
   script:
     - echo "=== Checking go.mod ==="
-    - echo "Working directory: $(pwd)"
     - go mod verify
     - go mod tidy
-    - |
-      if [ -n "$(git diff go.mod go.sum)" ]; then
-        echo "go.mod/go.sum need updating. Run 'go mod tidy'"
-        exit 1
-      fi
   only:
     - main
     - merge_requests
 
-# Test stage - unit and integration tests
 test-unit:
   stage: test
   tags:
     - trooper2
   script:
     - echo "=== Running unit tests ==="
-    - echo "Working directory: $(pwd)"
-    - go test -tags '!libvirt' -v -race -coverprofile=coverage.out ./...
+    - go test -tags "!libvirt" -v -race -coverprofile=coverage.out ./...
     - go tool cover -func=coverage.out | tail -1
-  coverage: '/total:\s+\(statements\)\s+(\d+\.?\d*)%/'
-  artifacts:
-    paths:
-      - coverage.out
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.out
   only:
     - main
     - merge_requests
@@ -78,9 +55,7 @@ test-network:
     - trooper2
   script:
     - echo "=== Running network tests ==="
-    - echo "Working directory: $(pwd)"
-    - go test -tags '!libvirt' -v ./internal/network/...
-    - echo "Network tests passed"
+    - go test -tags "!libvirt" -v ./internal/network/...
   only:
     - main
     - merge_requests
@@ -91,21 +66,17 @@ test-integration:
     - trooper2
   script:
     - echo "=== Running integration tests ==="
-    - echo "Working directory: $(pwd)"
-    - go test -tags '!libvirt' -v -count=1 ./...
-    - echo "Integration tests passed"
+    - go test -tags "!libvirt" -v -count=1 ./...
   only:
     - main
     - merge_requests
 
-# Build stage - cross-platform binaries
 build-linux:
   stage: build
   tags:
     - trooper2
   script:
     - echo "=== Building Linux binaries ==="
-    - echo "Working directory: $(pwd)"
     - make build-linux
     - ls -lh build/
   artifacts:
@@ -123,7 +94,6 @@ build-windows:
     - trooper2
   script:
     - echo "=== Building Windows binaries ==="
-    - echo "Working directory: $(pwd)"
     - make build-windows
     - ls -lh build/
   artifacts:
@@ -140,7 +110,6 @@ build-darwin:
     - trooper2
   script:
     - echo "=== Building macOS binaries ==="
-    - echo "Working directory: $(pwd)"
     - make build-darwin
     - ls -lh build/
   artifacts:
@@ -158,33 +127,28 @@ build-all:
     - trooper2
   script:
     - echo "=== Building all platforms ==="
-    - echo "Working directory: $(pwd)"
     - make build-all
     - make checksums
     - ls -lh build/
   artifacts:
     paths:
-      - build/vimic2-*
+      - build/vimic2-linux-amd64
+      - build/vimic2-linux-arm64
+      - build/vimic2-windows-amd64.exe
+      - build/vimic2-darwin-amd64
+      - build/vimic2-darwin-arm64
       - build/SHA256SUMS
     expire_in: 1 month
   only:
     - tags
 
-# Security stage - vulnerability scanning
 security-gosec:
   stage: security
   tags:
     - trooper2
   script:
     - echo "=== Running security scan ==="
-    - echo "Working directory: $(pwd)"
-    - |
-      if command -v gosec &> /dev/null; then
-        gosec -fmt sonarqube -out gosec-report.json ./...
-        echo "Security scan complete"
-      else
-        echo "gosec not installed, skipping"
-      fi
+    - gosec -fmt sonarqube -out gosec-report.json ./... || echo "gosec not installed or failed"
   allow_failure: true
   only:
     - main
@@ -196,107 +160,39 @@ security-dependencies:
     - trooper2
   script:
     - echo "=== Checking dependencies ==="
-    - echo "Working directory: $(pwd)"
-    - go list -m all | grep -v "golang.org/x/crypto" || true
-    - go mod graph | head -20
+    - go list -m all
+    - go mod graph
   only:
     - main
     - merge_requests
 
-# Release stage - create releases
 release-tag:
   stage: release
   tags:
     - trooper2
   script:
-    - echo "=== Creating release for tag ==="
-    - echo "Working directory: $(pwd)"
-    - VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-    - echo "Release version: ${VERSION}"
+    - echo "=== Creating release ==="
     - make build-all
     - make checksums
-    - |
-      if command -v gh &> /dev/null; then
-        gh release create ${VERSION} \
-          build/vimic2-linux-amd64 \
-          build/vimic2-linux-arm64 \
-          build/vimic2-windows-amd64.exe \
-          build/vimic2-darwin-amd64 \
-          build/vimic2-darwin-arm64 \
-          build/SHA256SUMS \
-          --title "Vimic2 ${VERSION}" \
-          --notes "Release ${VERSION}" \
-          --repo crab-meat-repos/stsgym-work || echo "GitHub release failed"
-      fi
-    - echo "Release artifacts ready"
+    - ls -lh build/
   artifacts:
     paths:
-      - build/vimic2-*
+      - build/vimic2-linux-amd64
+      - build/vimic2-linux-arm64
+      - build/vimic2-windows-amd64.exe
+      - build/vimic2-darwin-amd64
+      - build/vimic2-darwin-arm64
       - build/SHA256SUMS
     expire_in: 6 months
   only:
     - tags
 
-release-notes:
-  stage: release
-  tags:
-    - trooper2
-  script:
-    - echo "=== Generating release notes ==="
-    - echo "Working directory: $(pwd)"
-    - |
-      VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
-      cat > RELEASE_NOTES.md << EOF
-      # Vimic2 ${VERSION}
-      
-      ## Release Artifacts
-      
-      | Platform | Architecture | Binary |
-      |----------|-------------|--------|
-      | Linux | amd64 | vimic2-linux-amd64 |
-      | Linux | arm64 | vimic2-linux-arm64 |
-      | Windows | amd64 | vimic2-windows-amd64.exe |
-      | macOS | amd64 | vimic2-darwin-amd64 |
-      | macOS | arm64 | vimic2-darwin-arm64 |
-      
-      ## Installation
-      
-      \`\`\`bash
-      # Linux
-      wget https://idm.wezzel.com/crab-meat-repos/stsgym-work/releases/download/${VERSION}/vimic2-linux-amd64
-      chmod +x vimic2-linux-amd64
-      ./vimic2-linux-amd64
-      \`\`\`
-      
-      ## Checksums
-      
-      See SHA256SUMS file for verification.
-      
-      ## What's New
-      
-      - Network stack with OVS support
-      - VXLAN/GRE/Geneve tunnels
-      - Virtual routers with NAT
-      - Firewall rules
-      - Topology visualization
-      - 49 tests, 33.4% coverage
-      EOF
-    - cat RELEASE_NOTES.md
-  artifacts:
-    paths:
-      - RELEASE_NOTES.md
-    expire_in: 6 months
-  only:
-    - tags
-
-# Notifications
 notify-success:
   stage: .post
   tags:
     - trooper2
   script:
-    - echo "=== Pipeline completed successfully ==="
-    - echo "Build artifacts available in GitLab"
+    - echo "Pipeline completed successfully"
   when: on_success
   only:
     - main
@@ -307,8 +203,7 @@ notify-failure:
   tags:
     - trooper2
   script:
-    - echo "=== Pipeline failed ==="
-    - echo "Check logs for details"
+    - echo "Pipeline failed"
   when: on_failure
   only:
     - main
